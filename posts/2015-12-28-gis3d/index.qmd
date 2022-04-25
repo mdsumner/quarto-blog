@@ -8,6 +8,14 @@ tags: [R, spatial, mesh]
 
 ```{r raster, include=FALSE, eval=TRUE}
 library(raster)
+library(gris)
+library(dplyr)
+library(maptools)
+library(rgeos)
+library(rgl)
+dplyr::select_(mtcars, "mpg")
+dplyr::distinct_(mtcars)
+dplyr::data_frame(y = 1)
 ```
 
 ## GIS for 3D
@@ -207,7 +215,9 @@ The triangulation vertices (long-lat) can be converted to XYZ, and plotted.
 
 ```{r xyz-plot}
 xyz <- llh2xyz(cbind(tri$P, 0))
+open3d()
 triangles3d(xyz[t(tri$T), ], col = "grey")
+aspect3d("iso")
 rglwidget()
 ```
 
@@ -219,6 +229,7 @@ Luckily Triangle can set a minimum triangle size. We set a constant minimum area
 ```{r finer-triangles}
 tri <- RTriangle::triangulate(pslgraph, a = 9)  ## a (area) is in degrees, same as our vertices
 xyz <- llh2xyz(cbind(tri$P, 0))
+open3d()
 triangles3d(xyz[t(tri$T), ], col = "grey")
 rglwidget()
 ```
@@ -229,6 +240,7 @@ We still can't identify individual polygons as we smashed that information after
 ```{r loop}
 ## loop over objects
 cols <- sample(grey(seq(0, 1, length = nrow(gobject$o))))
+open3d()
 for (iobj in seq(nrow(gobject$o))) {
   pslgraph <- gris:::mkpslg(gobject[iobj, ])
   tri <- RTriangle::triangulate(pslgraph, a = 9)  ## a is in units of degrees, same as our vertices
