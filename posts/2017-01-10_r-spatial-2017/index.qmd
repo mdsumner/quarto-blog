@@ -1,0 +1,124 @@
+---
+title: "R spatial in 2017"
+author: "Michael D. Sumner"
+date: "2017-01-10"
+categories: [news, code]
+tags: [R, spatial]
+---
+
+
+This document is a broad overview of what I see as most relevant to future spatial, for 2017 and beyond. I've tried to be as broad as possible, without going into too much detail, but it's also quite personal and opinionated. 
+
+## The state of things
+
+An enormous amount of activity has been going on in R spatial. The keystone activity is the new *simple features for R* package `sf`, and the many responses to "supporting sf" in various packages but there are many other non-obvious linkages. 
+
+Personally, I have learnt quite a lot recently about the broader context within R and I'm keen to help consolidate some of the "non-central" tools that we use. There are also some surprisingly helpful implications of the new simple features support both for within the central package, and for the ecosystem around it. 
+
+* simple features for R via the `sf` package
+* upcoming replacement for `raster`
+* point clouds
+* mapview and leaflet
+* simple features in other packages
+* "exotic types" in sf
+* spatial data that simple features cannot support
+* htmlwidgets and plotly
+
+## sf
+
+The simple features package `sf` was one of the first supported projects of the RConsortium and has been 
+created by Edzer Pebesma. This package replaces `sp` vector data completely, includes a replacement for `rgdal` and `rgeos` and there  is a long list of important improvements. These are described in full in the [package vignettes](https://CRAN.r-project.org/package=sf) and [blog posts](http://r-spatial.org/). 
+
+The key changes relevant here are
+
+* no S4 classes, everything is S3 and so is more immediately manipulable/accessible
+* much better methods support overall, for printing/summary etc. 
+* the key objects are list-vectors, and data frames
+* support for simple features standard, no more ambiguity for multi-polygons/holes, mixed types, NULL geometry, XYZ-M support
+* native support for dplyr verbs, tibbles (some is WIP but group_by/summarize reprojection and geometric union are good examples that already work)
+* reprojection and geometry manipulation and file format support is now GDAL 2.0 and GEOS(?), modernized, more reliable, easier
+
+
+I strongly recommend getting familiar with the sf data structures, it's really important to understand the hierarchy levels and the ways the vectors (POINT) and matrices (everything else) are stored.  POINT is a vector, MULTIPOINT is a matrix, POLYGON is a list of matrices (one island, zero or more holes), LINESTRING is a matrix (same as m-point), MULTIPOLYGON is a list of lists of matrices (a list of POLYGONs, effectively), and MULTILINESTRING is a list of matrices (a list of LINESTRINGs, effectively and structurally the same as a POLYGON). 
+
+If you want to see how to convert between sf forms and extract the raw coordinates I would look at `st_cast` in, and the leaflet approach here: 
+
+https://github.com/rstudio/leaflet/blob/master/R/normalize-sf.R
+
+## rasters
+
+The `raster` package is apparently being significantly upgraded and Edzer has plans for this as well.
+
+http://r-spatial.org/r/2016/09/26/future.html
+
+There are some very interesting extensions to raster on CRAN recently, notably [velox](https://CRAN.R-project.org/package=velox), [fasteraster](https://CRAN.R-project.org/package=fasteraster), and the unrelated but very nice [dggridR](https://CRAN.R-project.org/package=dggridR).
+
+
+HDF5 is now fully supported by `rhdf5` on Bioconductor, this could also replace many of the NetCDF4 formats supported by `ncdf4`, and notably can be used to read NetCDF4 files with compound types. 
+
+## Point clouds
+
+A recent contribution on CRAN is [rlas](https://CRAN.R-project.org/package=rlas) and [lidR](https://CRAN.R-project.org/package=lidR) for the LiDaR LAS format, and algorithms for working with point clouds. It is trivial to push these data into `sf` types, but it won't always make sense to do so. You could have a MULTIPOINT with X, Y, Z, and M (but none of the other point attributes) or a point (XYZ) with all the attributes in one sf data frame. This package will be useful for driving interest in the exotic `sf` types. 
+
+It's easy and readily doable right now to read LIDAR data with `rlas`, and plot it interactively with RGB styling and so in with plotly. Keen to try writing a "detect ground" algorithm? Try it!  What does st_triangulate do with a XYZ multipoint? (hmm, it fails noisily - you aren't supposed to do that). 
+
+## mapview and leaflet
+
+`mapview` has support from RConsortium to bring user interaction to spatial in R. Currently building in support for `sf`, which will be accelerated by the recent dev upgrades in leaflet itself and will eventually support the range of `sf` types, including full support for MULTIPOLYGON. 
+
+`leaflet` now has a huge number of new extensions thanks to `leaflet.extras`, and there is ongoing updates around integrating `crosstalk` which will be very importatnt for interactive map applications. 
+
+
+## simple features in other packages
+
+`tmap`, `mapview`, `spbabel`, `stplanr`, .... all have internal versions of sf types converted to something else. It's an interesting time for these packages that extend the `sp` and `sf` structures, and there are opportunities to ensure that best practices are being used. 
+
+## Exotic types in sf
+
+These are TINs, Polyhedral Surfaces (multipatch - basically polygons with shared "internal" edges), curves and various combinations and varieties of these. None of the triangulations use an indexed mesh, which makes them a bit clunky and probably only for very bespoke uses, but they provide interesting territory to explore. Certainly you can use them to build 3D plots in `rgl` and `plotly` (show examples, thanks to @timelyportfolio). 
+
+Note that a GEOMETRYCOLLECTION of triangle POLYGONs is effectively the same as a simple features TIN, it doesn't really add any structure improvement to the way the thing is put together: 
+
+https://github.com/r-gris/sfct
+
+We can bend the limits of simple features with "mesh" techniques, and the `plotly` packge provides easy publishing of interactive 3D visualizations of these. 
+
+`plotly` is already useable for many applications, we can use techniques from `rangl` to put sf data into it, and we can use that to easily create exotic triangulated surfaces that are pretty inefficient in the simple features form: 
+
+Also check out Geotiff.js and  timevis. 
+
+Here are some rough examples with plotly. 
+
+http://rpubs.com/cyclemumner/rangl-poly-topo-plotly
+
+http://rpubs.com/cyclemumner/raster-quads-to-triangles
+
+http://rpubs.com/cyclemumner/rangl-plotly
+
+I particularly want texture mapping to go with this kind of plotting, but apparently plotly cannot do that. 
+
+https://twitter.com/mathinpython/status/818500905905561600
+
+
+## The limits of simple features
+
+Simple features can't fully represent GPS and other track data, indexed meshes (like rgl mesh3d, segmented paths), or custom hierarchies like networks, nested objects like counties within states, or arc-node topology (like TopoJSON), and it can't store aesthetics with primitives (like ggplot2/ggvis, rgl, plotly and others can). R can do all of these things, in many different ways and converting from and to sf is not too difficult. 
+
+Please don't get the wrong idea though, `sf` is invaluable for developing more general tools that can work with these structures. Using the types in sf is very refreshing if you've been frustrated trying to pick apart a `Spatial` object in the past. 
+
+In terms of going beyong simple features itself, GDAL is also going in this direction: http://lists.osgeo.org/pipermail/gdal-dev/2016-December/045675.html
+
+We already have most of this capability in R, it's just scattered all over the place. I'm interested to collate together the best workflows and see where this can go. 
+
+
+## My plans
+
+I'm pretty comfortable now with sf and using it for what I want, I have converters to build the forms and workflows I need, and the support in mapview and leaflet and plotly provides more than enough to go with. I will work on making this as accessible and general as possible, and work on integrating it to replace my work on tracking data (the trip and SGAT packages), with 3D models (rbgm, quadmesh) and integrating it with htmlwidgets tools. 
+
+I haven't yet looked at curves, but I'm keen to see this capability in R both for sf and more generally, we could easily represent the forms made possible by TopoJSON (see "Bostock flawed example"), there is curve support in grid. 
+
+We could provide smart geo-spatial finite element forms (triangulations, quads), 
+
+I'm keen to see how ggvis and ggplot2 represent geometric types for objects that shared vertices, such as intervals and bar charts, and how we can put in indexed data structures (unlike what ggraph is doing, it builds a mesh from a group of coordinates, you can't provide it with and index-mesh).  I think we can build spatial structures that can store all of these things, so we could throw sf at ggplot2, and use the output as a kind of super-form that knows how to wrap it up into an interactive 4D plot, how to display its primitives etc. etc. 
+
+GIS itself needs what we can already do in R, it's not a target we are aspring to it's the other way around. 
