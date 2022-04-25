@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-0.9.305">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael D. Sumner">
+<meta name="dcterms.date" content="2017-07-25">
+
+<title>quarto-blog - Web services for scientific data in R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link id="quarto-text-highlighting-styles" href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">quarto-blog</span>
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html">About</a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/"><i class="bi bi-github" role="img">
+</i> 
+ </a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com"><i class="bi bi-twitter" role="img">
+</i> 
+ </a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Web services for scientific data in R</h1>
+                          <div class="quarto-categories">
+                <div class="quarto-category">news</div>
+                <div class="quarto-category">code</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+
+
+
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael D. Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">2017-07-25</p>
+      </div>
+    </div>
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<p>NOTE: this post has been resurrected from a 2017 post (April 2022).</p>
+<p><em>This post is in-progress …</em></p>
+<p>Two very important packages in R are <a href="https://CRAN.R-project.org/package=rerddap">rerddap</a> and <a href="https://github.com/ropensci/plotdap">plotdap</a> providing straightforward access to and visualization of time-varying gridded data sets. Traditionally this is handled by individuals who either have or quickly gain <em>expert knowledge</em> about the minute details regarding obtaining data sources, exploring and extracting data from them, manipulating the data for the required purpose and reporting results. Often this task is not the primary goal, it’s simply a requirement for <em>comparison to environmental data</em> or validation of direct measurements or modelled scenarios against independent data.</p>
+<p>This is a complex area, it touches on <strong>big data</strong>, <strong>web services</strong>, complex and sophisticated <strong>multi-dimensional scientific data in array formats</strong> (primarily <em>NetCDF</em>), <strong>map projections</strong>, and <strong>data aesthetics</strong> or <em>scaling</em> methods by which data values are converted into visualizations.</p>
+<p>R is not known to be strong in this area for <strong>handling large and complex array-based data</strong>, although it has had good support for every piece in the chain many of them were either not designed to work together or or languished without modernization for some time. There are many many approaches to <em>bring it all together</em> but unfortunately no concerted effort to sort it all out. What there is however is a very exciting and productive wave of experimentation and new packages to try, there’s a lot of exploration occurring and a lot of powerful new approaches.</p>
+<p><a href="https://ropensci.org/">ROpenSci</a> is producing a variety of valuable new R packages for scientific exploration and analysis. It and the <strong>RConsortium</strong> are both contributing directly into this ecosystem, with the latter helping to foster developments in <a href="https://CRAN.R-project.org/package=rerddap">simple features (polygons, lines and points)</a>, <a href="https://CRAN.R-project.org/package=rerddap">interactive map editing</a> and an <a href="https://github.com/r-spatial/stars">integration of large raster data handling</a>.</p>
+<section id="cool-right" class="level2">
+<h2 class="anchored" data-anchor-id="cool-right">Cool right!?</h2>
+<p>This is extremely cool, there is a lot of exciting new support for these sometimes challenging sources of data. However, there is unfortunately no concerted vision for integration of multi-dimensional data into the <a href="https:://tidyverse.org/">tidyverse</a> and many of the projects created for <em>data getting</em> and <em>data extraction</em> must include their own internal handlers for downloading and caching data sources and converting data into required forms. This <em>is</em> a complex area, but in some places it is <em>harder and more complex</em> than it really needs to be.</p>
+<p>To put some guides in this discussion, the rest of this post is informed by the following themes.</p>
+<ul>
+<li>the tidyverse is not just cool, it’s totally awesome (also provides a long-term foundation for the future)</li>
+<li>“good software design” facilitates powerful APIs and strong useability: composable, orthogonal components <strong>and</strong> effortless exploration and workflow development</li>
+<li>new abstractions are still to be found</li>
+</ul>
+<p>The tidyverse is loudly loved and hated. Critics complain that they already understood long-form data frames and that constant effusive praise on twitter is really annoying. Supporters just sit agog at a constant stream of pointless shiny fashion parading before their eyes … I mean, they fall into a pit of success and never climb out. Developers who choose the tidyverse as framework for their work appreciate its seamless integration of database principles and <em>actual databases</em>, the consistent and systematic syntax of composable single-purpose functions with predictable return types, the modularization and abstractability of <em>magrittr</em> piping, and the exciting and disruptive impact of <strong>tidy evaluation</strong> seen clearly already in <code>dplyr</code> and family, but which will clearly make it very easy to traverse the boundary between <em>being a user</em> and <em>being a developer</em>. What could be a better environment for the future of science and research?</p>
+</section>
+<section id="what-about-the-rasters" class="level2">
+<h2 class="anchored" data-anchor-id="what-about-the-rasters">What about the rasters!</h2>
+<p>I’ve been using <strong>gridded data</strong> in R since 2002. I remember clearly learning about the use of the <code>graphics::image</code> function for visualizing <em>2D kernel density</em> maps created using <a href="https://CRAN.R-project.org/package=sm">sm</a>. I have a life-long shudder reflex at the <code>heat.colors</code> palette, and at KDE maps generally. I also remember my first encounter with the <a href="https://www.unidata.ucar.edu/software/netcdf/">NetCDF format</a> which would have looked exactly like this (after waiting half and hour to download <a href="ftp://ftp.cdc.noaa.gov/Datasets/noaa.oisst.v2/sst.wkmean.1990-present.nc">this file</a>).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(sst.file)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ftp.cdc.noaa.gov/Datasets/noaa.oisst.v2/sst.wkmean.1990-present.nc"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RNetCDF)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">open.nc</span>(<span class="fu">file.path</span>(dp, sst.file))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>lon <span class="ot">&lt;-</span> <span class="fu">var.get.nc</span>(con, <span class="st">"lon"</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>lat <span class="ot">&lt;-</span> <span class="fu">var.get.nc</span>(con, <span class="st">"lat"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>xlim <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">140</span>, <span class="dv">155</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>ylim <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">50</span>, <span class="sc">-</span><span class="dv">35</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>xsub <span class="ot">&lt;-</span> lon <span class="sc">&gt;=</span> xlim[<span class="dv">1</span>] <span class="sc">&amp;</span> lon <span class="sc">&lt;=</span> xlim[<span class="dv">2</span>]</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>ysub <span class="ot">&lt;-</span> lat <span class="sc">&gt;=</span> ylim[<span class="dv">1</span>] <span class="sc">&amp;</span> lat <span class="sc">&lt;=</span> ylim[<span class="dv">2</span>]</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>tlim  <span class="ot">&lt;-</span> <span class="st">"oh just give up, it's too painful ..."</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>time <span class="ot">&lt;-</span> <span class="fu">var.get.nc</span>(con, <span class="st">"time"</span>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="do">## you get the idea, who can be bothered indexing time as well these days</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">var.get.nc</span>(con, <span class="st">"sst"</span>, <span class="at">start =</span> <span class="fu">c</span>(<span class="fu">which</span>(xsub)[<span class="dv">1</span>], <span class="fu">length</span>(ysub) <span class="sc">-</span> <span class="fu">max</span>(<span class="fu">which</span>(ysub)), <span class="fu">length</span>(time)), <span class="at">count =</span> <span class="fu">c</span>(<span class="fu">sum</span>(xsub), <span class="fu">sum</span>(ysub), <span class="dv">1</span>))</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(lon[xsub], <span class="fu">rev</span>(lat[ysub]), v[<span class="fu">nrow</span>(v)<span class="sc">:</span><span class="dv">1</span>, ], <span class="at">asp =</span> <span class="dv">1</span><span class="sc">/</span><span class="fu">cos</span>(<span class="dv">42</span> <span class="sc">*</span> pi<span class="sc">/</span><span class="dv">180</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>What a hassle! Let’s just use <a href="https://CRAN.R-project.org/package=raster">raster</a>. (These aren’t the same but I really don’t care about making sure the old way works, the new way is much better - when it works, which is <em>mostly</em> …).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raster)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: sp</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'raster'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:dplyr':
+
+    select</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="fu">brick</span>(<span class="fu">file.path</span>(dp, sst.file))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required namespace: ncdf4</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">nlayers</span>(b)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1685</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">raster</span>(b)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class      : RasterLayer 
+dimensions : 180, 360, 64800  (nrow, ncol, ncell)
+resolution : 1, 1  (x, y)
+extent     : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +datum=WGS84 +no_defs </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="do">## what time did you want?</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">crop</span>(<span class="fu">subset</span>(b, <span class="fu">nlayers</span>(b) <span class="sc">-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">0</span>)), <span class="fu">extent</span>(xlim, ylim), <span class="at">snap =</span> <span class="st">"out"</span>), <span class="at">col =</span> <span class="fu">heat.colors</span>(<span class="dv">12</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>These are pretty cruddy data anyway, <em>1 degree resolution</em>, <em>weekly time steps</em>? Come on man!</p>
+<p>Why is this data set relevant? For a very long time the <strong>Optimally Interpolated Sea Surface Temperature</strong> data set, known fondly as <em>Reynolds SST</em> in some circles, was a very important touchstone for those working in <em>marine animal tracking</em>. From the earliest days of tuna tracking by <a href="https://swfsc.noaa.gov/publications/TM/SWFSC/NOAA-TM-NMFS-SWFC-60.PDF">(PDF): Northwest Pacific by light-level geo-locators</a>, a <a href="http://onlinelibrary.wiley.com/doi/10.1029/JC091iC11p12879/full">regional or global data set of surface ocean temperatures</a> was a critical comparison for tag-measured water temperatures. The strong and primarily <em>zonal</em>-gradients (i.e.&nbsp;varying by latitude, it gets cold as you move towards the poles) in the oceans provided an informative corrective to “light level geo-location” latitude estimates, especially when plagued by <a href="http://publishing.cdlib.org/ucpressebooks/view?docId=ft7b69p131&amp;chunk.id=d0e20466&amp;toc.depth=1&amp;brand=ucpress"><em>total zonal ambiguity</em> (see Figure 12.3)</a> around the equinoxes.</p>
+<p>Today we can use much finer resoution <em>blended</em> products for the entire globe. Blended means it’s a combination of measured (remote-sensing, bucket off a ship) and modelled observations, that’s been interpolated to “fill gaps”. This is not a simple topic of course, remotely sensed temperatures must consider whether it is day or night, how windy it is, the presence of sea ice, and many other factors - but as a global science community we have developed to the point of delivering a single agreed data set for this property. And now that it’s 2017, you have the chance of downloading all 5000 or so daily files, the total is only 2000 Gb.</p>
+<p>So nothing’s free right? You want high-resolution, you get a big download bill.</p>
+</section>
+<section id="web-services-for-scientific-array-data" class="level2">
+<h2 class="anchored" data-anchor-id="web-services-for-scientific-array-data">Web services for scientific array data</h2>
+<p>Ah, no - we don’t have to download every large data set. That’s where <a href="http://coastwatch.pfeg.noaa.gov/erddap/index.html">ERDDAP</a> comes in!</p>
+<p>This makes it easy, but I’m still not happy. In this code a raw NetCDF file is downloaded but is not readily useable by other processes, it’s not obvious how to connect directly to the source with NetCDF API, the raster data itself is turned into both a data frame, and turned into a grid ignoring irregularity in the coordinates, the raster is then resized and possibly reprojected, then turned into a <em>polygon layer</em> (eek) and finally delivered to the user as a very simple high level function that accepts standard grammar expressions of the tidyverse.</p>
+<p>What follows is some raw but real examples of using an in-development package <code>tidync</code> in the hypertidy family. It’s very much work-in-progress, as is this blog post …</p>
+<p>Please reach out to discuss any of this if you are interested!</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages("rerddap")</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co">#devtools::install_github("ropensci/plotdap")</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rerddap)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotdap)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>sstInfo <span class="ot">&lt;-</span> <span class="fu">info</span>(<span class="st">'jplMURSST41'</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co">#system.time({  ## 26 seconds</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>murSST <span class="ot">&lt;-</span> <span class="fu">griddap</span>(sstInfo, <span class="at">latitude =</span> <span class="fu">c</span>(<span class="fl">22.</span>, <span class="fl">51.</span>), <span class="at">longitude =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">140.</span>, <span class="sc">-</span><span class="dv">105</span>),</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">time =</span> <span class="fu">c</span>(<span class="st">'last'</span>,<span class="st">'last'</span>), <span class="at">fields =</span> <span class="st">'analysed_sst'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>info() output passed to x; setting base url to: https://upwell.pfeg.noaa.gov/erddap</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co">#})</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> <span class="fu">attr</span>(murSST, <span class="st">"path"</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="co">#unlink(f)</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="do">## the murSST (it's a GHRSST L4  foundational SST product ) is an extremely detailed raster source, it's really the only</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="do">## daily blended (remote sensing + model) and interpolated (no-missing values)</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="do">## Sea Surface Temperature for global general usage that is high resolution.</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="do">## The other daily blended product Optimally Interpolated (OISST) is only 0.25 degree resolution</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="do">## The GHRSST product is available since 2002, whereas OISST is available since</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="do">## 1981 (the start of the AVHRR sensor era)</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>maxpixels <span class="ot">&lt;-</span> <span class="dv">50000</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>dres <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">mean</span>(<span class="fu">diff</span>(<span class="fu">sort</span>(<span class="fu">unique</span>(murSST<span class="sc">$</span>data<span class="sc">$</span>lon)))), <span class="fu">mean</span>(<span class="fu">diff</span>(<span class="fu">sort</span>(<span class="fu">unique</span>(murSST<span class="sc">$</span>data<span class="sc">$</span>lat)))))</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raster)</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">raster</span>(<span class="fu">extent</span>(<span class="fu">range</span>(murSST<span class="sc">$</span>data<span class="sc">$</span>lon) <span class="sc">+</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>) <span class="sc">*</span> dres[<span class="dv">1</span>]<span class="sc">/</span><span class="dv">2</span>, <span class="fu">range</span>(murSST<span class="sc">$</span>data<span class="sc">$</span>lat) <span class="sc">+</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>) <span class="sc">*</span> dres[<span class="dv">2</span>]<span class="sc">/</span><span class="dv">2</span>),</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">res =</span> dres, <span class="at">crs =</span> <span class="st">"+init=epsg:4326"</span>)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(r) <span class="ot">&lt;-</span> <span class="fu">dim</span>(r)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>] <span class="sc">%/%</span> <span class="fu">sqrt</span>(<span class="fu">ceiling</span>(<span class="fu">ncell</span>(r) <span class="sc">/</span> maxpixels))</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> murSST<span class="sc">$</span>data <span class="sc">%&gt;%</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a> <span class="fu">mutate</span>(<span class="at">bigcell =</span> <span class="fu">cellFromXY</span>(r, <span class="fu">cbind</span>(lon, lat))) <span class="sc">%&gt;%</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(time, bigcell) <span class="sc">%&gt;%</span></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">analysed_sst =</span> <span class="fu">mean</span>(analysed_sst, <span class="at">na.rm =</span> <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lon =</span> <span class="fu">xFromCell</span>(r, bigcell), <span class="at">lat =</span> <span class="fu">yFromCell</span>(r, bigcell))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`summarise()` has grouped output by 'time'. You can override using the
+`.groups` argument.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>r[] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>r[dat<span class="sc">$</span>bigcell] <span class="ot">&lt;-</span> dat<span class="sc">$</span>analysed_sst</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(r) <span class="ot">&lt;-</span> <span class="st">"analysed_sst"</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>bigcell <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="co">#m &lt;- sf::st_as_sf(maps::map("world", region = "USA"))</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>bgMap <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>( maps<span class="sc">::</span><span class="fu">map</span>(<span class="st">'world'</span>, <span class="at">plot =</span> <span class="cn">FALSE</span>, <span class="at">fill =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="at">data =</span> bgMap) <span class="sc">+</span> <span class="fu">xlim</span>(<span class="fu">xmin</span>(r), <span class="fu">xmax</span>(r)) <span class="sc">+</span> <span class="fu">ylim</span>(<span class="fu">ymin</span>(r), <span class="fu">ymax</span>(r)) <span class="sc">+</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_raster</span>(<span class="at">data =</span> dat, <span class="fu">aes</span>(<span class="at">x =</span> lon, <span class="at">y =</span> lat, <span class="at">fill =</span> analysed_sst))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="do">## now, what happened before?</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#system.time({p &lt;- sf::st_as_sf(raster::rasterToPolygons(r))})</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="do">## should be a bit faster due to use of implicit coordinate mesh</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({p <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>(spex<span class="sc">::</span><span class="fu">polygonize</span>(r, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  0.766   0.004   0.770 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="do">## plot(p, border = NA)</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="at">data =</span> bgMap) <span class="sc">+</span> <span class="fu">xlim</span>(<span class="fu">xmin</span>(r), <span class="fu">xmax</span>(r)) <span class="sc">+</span> <span class="fu">ylim</span>(<span class="fu">ymin</span>(r), <span class="fu">ymax</span>(r)) <span class="sc">+</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> p, <span class="fu">aes</span>(<span class="at">fill =</span> analysed_sst), <span class="at">colour =</span> <span class="st">"transparent"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>old-style crs object detected; please recreate object with a recent sf::st_crs()</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-8-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>u <span class="ot">&lt;-</span> <span class="st">"http://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41"</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidync)</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>tnc <span class="ot">&lt;-</span> tidync<span class="sc">::</span><span class="fu">tidync</span>(u)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>not a file: 
+' http://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41 '
+
+... attempting remote connection</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Connection succeeded.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>tnc  <span class="do">## notice there are four variables in this active space</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Data Source (1): jplMURSST41 ...
+
+Grids (4) &lt;dimension family&gt; : &lt;associated variables&gt; 
+
+[1]   D1,D0,D2 : analysed_sst, analysis_error, mask, sea_ice_fraction    **ACTIVE GRID** ( 4.707458e+12  values per variable)
+[2]   D0       : latitude
+[3]   D1       : longitude
+[4]   D2       : time
+
+Dimensions 3 (all active): 
+  
+  dim   name    length     min    max start count    dmin   dmax unlim coord_dim 
+  &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt; &lt;int&gt;   &lt;dbl&gt;  &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt;     
+1 D0    latitu…  17999 -9.00e1 9.00e1     1 17999 -9.00e1 9.00e1 FALSE TRUE      
+2 D1    longit…  36000 -1.80e2 1.8 e2     1 36000 -1.80e2 1.8 e2 FALSE TRUE      
+3 D2    time      7265  1.02e9 1.65e9     1  7265  1.02e9 1.65e9 FALSE TRUE      </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>hf <span class="ot">&lt;-</span> tnc <span class="sc">%&gt;%</span> <span class="fu">hyper_filter</span>(<span class="at">longitude =</span> longitude <span class="sc">&gt;=</span> <span class="sc">-</span><span class="dv">140</span> <span class="sc">&amp;</span> longitude <span class="sc">&lt;=</span> <span class="sc">-</span><span class="dv">105</span>, <span class="at">latitude =</span> latitude <span class="sc">&gt;=</span> <span class="dv">22</span> <span class="sc">&amp;</span> latitude <span class="sc">&lt;=</span> <span class="dv">51</span>,</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">time =</span> index <span class="sc">==</span> <span class="fu">max</span>(index))</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>hf</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Data Source (1): jplMURSST41 ...
+
+Grids (4) &lt;dimension family&gt; : &lt;associated variables&gt; 
+
+[1]   D1,D0,D2 : analysed_sst, analysis_error, mask, sea_ice_fraction    **ACTIVE GRID** ( 4.707458e+12  values per variable)
+[2]   D0       : latitude
+[3]   D1       : longitude
+[4]   D2       : time
+
+Dimensions 3 (all active): 
+  
+  dim   name   length     min    max start count    dmin    dmax unlim coord_dim 
+  &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt; &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt;     
+1 D0    latit…  17999 -9.00e1 9.00e1 11200  2901  2.2 e1  5.1 e1 FALSE TRUE      
+2 D1    longi…  36000 -1.80e2 1.8 e2  4000  3501 -1.4 e2 -1.05e2 FALSE TRUE      
+3 D2    time     7265  1.02e9 1.65e9  7265     1  1.65e9  1.65e9 FALSE TRUE      </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="do">## looking ok, so let's go for gold!</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="do">## specify just sst, otherwise we will get all four</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="do">## hyper_tibble gets the raw arrays with ncvar_get(conn, start = , count = ) calls</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="do">## then expands out the axes based on the values from the filtered axis tables</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a> tab <span class="ot">&lt;-</span> hf <span class="sc">%&gt;%</span> <span class="fu">hyper_tibble</span>(<span class="at">select_var =</span> <span class="st">"analysed_sst"</span>)</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  3.290   2.338  22.892 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># system.time({  ## 210 seconds</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="co">#   hs &lt;- hyper_slice(hf, select_var = "analysed_sst")</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a><span class="co"># })</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="co"># hyper_index(hf)</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a><span class="co"># nc &lt;- ncdf4::nc_open(u)</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a><span class="co"># system.time({  ## 144 seconds</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   l &lt;- ncdf4::ncvar_get(nc, "analysed_sst", start = c(4000, 2901, 5531), count = c(3501, 2901, 1))</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a><span class="co"># })</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

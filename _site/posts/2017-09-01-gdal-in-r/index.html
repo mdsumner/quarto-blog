@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-0.9.305">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael D. Sumner">
+<meta name="dcterms.date" content="2017-09-01">
+
+<title>quarto-blog - GDAL in R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link id="quarto-text-highlighting-styles" href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">quarto-blog</span>
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html">About</a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/"><i class="bi bi-github" role="img">
+</i> 
+ </a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com"><i class="bi bi-twitter" role="img">
+</i> 
+ </a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">GDAL in R</h1>
+                          <div class="quarto-categories">
+                <div class="quarto-category">news</div>
+                <div class="quarto-category">code</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+
+
+
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael D. Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">2017-09-01</p>
+      </div>
+    </div>
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<p>For some time I have used <a href="http://www.gdal.org/">GDAL</a> as a standard tool in my kit, I was introduced to the concept by the <code>rgdal</code> package authors and it slowly dawned on me what it meant to have a <em>geo-spatial data abstraction library</em>. To realize what this meant I had spent a lot of time in R, reading (primarily) MapInfo TAB and MIF format files as well (of course) as <em>shapefiles</em>, and the occasional <em>GeoTIFF</em>.</p>
+<p>I already knew how immensely powerful R was, with its epic flexibity and useability and I could just sense there was a brighter way once I understood many more details. As my experience grew I was able to do amazing tasks like, <em>merge a few shapefiles together into one</em>, or <em>plot a window of data from a georeferenced grid</em>. Previously the best I’d done in this space was VBScript in Manifold GIS, which I could use to automate some data tasks - but the prospects of <em>full automation</em> from raw data files to output, end-to-end with a software tool that <em>anyone could use</em> was absolutely mind-blowing. I was super-powered, I remember earning <em>a carton of beer</em> from a colleague of my father, for munging some SHP or TAB files between AGD66 and GDA94 … or something, and I knew I had a bright future ahead.</p>
+<p>So what’s the abstraction? GDAL does not care what <em>format</em> the data is in, it could be points, lines, areas, a raster DEM, a time series of remote sensing, or an actual <em>image</em>. It just doesn’t mind, there’s an interpretation in its model for what’s in the file (or data base, or web server) and it will deliver that interpretation to you, very efficiently. If you understand that intepretation you can do a whole lot of amazing stuff. When this works well it’s because the tasks are modular, you have a series of basic tools designed to work together, and it’s up to you as a developer or a user to chain together the pieces to solve your particular problem.</p>
+<section id="where-does-this-get-difficult" class="level2">
+<h2 class="anchored" data-anchor-id="where-does-this-get-difficult">Where does this get difficult?</h2>
+<p>GDAL is a C++ library, and that’s not accessible to most users or developers. The other key user-interface is the set of <em>command line utilities</em>, these are called <em>gdal_translate</em>, <em>gdalinfo</em>, <em>ogr2ogr</em>, <em>ogrinfo</em>, and many others. The command line is also not that accessible to many users, though it’s more so than C++ - this is why <em>command line</em> is a key topic for <a href="https://software-carpentry.org/">Software Carpentry</a>. These interfaces give very high fidelity to the native interpretation provided by the GDAL model.</p>
+<p>GDAL is used from many languages, there’s Python, R, Perl, C#, Fortran, and it is bundled into many, many softwares - <a href="https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal">a very long list</a>. The original author wrote code for some of the most influential geo-spatial software the world has, and some of that is in GDAL, some is locked up forever in propietary forms. He saw this as a problem and very early on engineered the work to be able to be <em>open</em>, in the <em>do anything with me, including privatize me</em>-license called MIT. Have a look in the source code for gdalwarp, you’ll see the company who was the best at raster reprojection in the late 1990s and early 2000s.</p>
+<p>Python is surely the closest <em>other language</em> to the native interpretation, but then it’s not that simple, and this is not that story …</p>
+<p>R has a very particular interpretation of the GDAL interpretation, it’s called <code>rgdal</code> and if you are familiar with the GDAL model and with R you can see a very clear extra layer there. This extra level is there partly because of <strong>when it was done</strong>, the goals of the authors, the community response to the <em>amazingly powerful</em> facilities it provided, but also and perhaps mainly <em>because it was very hard</em>. R’s rather peculiar API meant that in the early 2000s the authors had to write in another language, a language between the native GDAL C++ and the R user language - this is the R API, it’s full of SEXP and UNPROTECTs and if you search this issue you’ll see clear signals not to bother - now you should just get on with learning <code>Rcpp</code>.</p>
+<p>These extra levels are there in the R API, the hard stuff down in the <code>rgdal/src/</code> folder but also in the R code itself. There’s a bunch of rigorous rules applied there, things to help protect us from that lower level, and to save from making serious analytical mistakes. All of this was very hard work and very well-intended, but it’s clear that it takes us away from the magic of the <em>GDAL abstraction</em>, we have a contract with <code>rgdal</code>, the R code has a contract with the R API, and the <code>rgdal/src</code> has a contract with GDAL. All of these things divorce R users and developers from the original schemes that GDAL provides, because at the R level rgdal itself has to provide certain guarantees and contracts with both R and with R users. I think that is too much for one package.</p>
+<p>Add to this the complex zoo of formats, the <strong>other libraries</strong> that GDAL requires for full use. The Windows <code>rgdal</code> on CRAN doesn’t include HDF4, or HDF5, or NetCDF, or DODS - there are many missing things in this list, and it’s not clear if it’s because it’s hard, it’s against the license (ECW might be tricky, MrSID most definitely would be), or because <strong>no one has asked</strong> or <strong>maybe no one knows how</strong>, or maybe <strong>CRAN doesn’t want to</strong>. (Would you know how to find out?) All of these things add up to being way too much for one package. It’s kind of impossible, though now there are many more eyes on the problem and progress is being made. Who should decide these things? How would anyone know it’s even an issue?</p>
+<p>I wonder if many of us see rgdal as the definition of the GDAL abstraction. I see pretty clearly the difference, and while the package has been extremely useful for me I’ve long wanted lower level control and access to the GDAL core itself. (I had rather influential guidance from extremely expert programmers I’ve worked with, and I’ve discussed GDAL with many others, including employees of various companies, and across various projects and with many users. I assume most R users don’t know much about the details, and why would they want to?).</p>
+<p>There is active work to modernize <code>rgdal</code>, and you should be aware of the immensely successful <a href="https://github.com/r-spatial/sf">sf</a> and the soon to be <a href="https://github.com/r-spatial/stars">stars</a> project. <code>sf</code> is an R interpretation of the Simple Features Standard (GDAL has an interpretation of that standard too, sf starts there when it <em>reads with GDAL</em>). <code>stars</code> will start with GDAL as a model for gridded data, and it’s not yet fleshed out what the details of that will be. None of these interpretations are permanent, though while the simple features standard is unlikely to change, there is no doubt that GDAL will evolve and include more features that don’t involve that standard. These things do change and very few people, relatively, are engaged in the decisions that are made. (GDAL could definitely benefit from more input, also something I’ve long wanted to do more of).</p>
+<p>It’s been a long time, but I’ve recently found a way over the key obstacle I had - building a package to compile for use in R with bindings to GDAL itself. I have a lot to thank Roger Bivand and Edzer Pebesma for many years of instruction and guidance in that, in many different ways. I also am extremely grateful to R-Core for the overall environment, and the tireless work done by the CRAN maintainers. I have to mention Jeroen Ooms and Mark Padgham who’ve been extremely helpful very recently. This is something I’ve wanted to be able to do for a really long time, I hope this post helps provide context to why, and I hope it encourages some more interest in the general topic.</p>
+</section>
+<section id="vapour" class="level2">
+<h2 class="anchored" data-anchor-id="vapour">vapour</h2>
+<p>My response to the interpretation layers is <a href="https://github.com/hypertidy/vapour"><code>vapour</code></a>, this is my version of a <em>very minimal interpretation</em> of the core GDAL facilities. There’s a function to read the <em>attribute data</em> from geometric features, a function to read the <em>geometry data</em> as raw binary, or various text formats, a function to read only the <em>bounding box</em> of each feature, and there’s a function to read the raw pixel values from a local window within a gridded data set.</p>
+<p>None of this is new, we have R packages that do these things and the vapour functions will have bugs, and will need maintenance, and maybe no one but me will ever use them. I’ve needed them and I’ve started to learn a whole lot more about what I’m going to do next with them. I recommend that any R user with an interest in geo-spatial or GDAL facilities have a closer look at how they work - and if you know there’s a lower level below the interpretations provide in R you should explore them. <code>Rcpp</code> and the modern tools for R really do make this immensely more easy than in the past (RStudio has <em>intellisense</em> for C++ …).</p>
+<p>I also believe strongly that R is well-placed to write the future of multi-dimensional and hierarchical and complex structured and geo-spatial data. Do you know what that future should look like?</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
