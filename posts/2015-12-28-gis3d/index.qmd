@@ -6,7 +6,10 @@ categories: [news, code]
 tags: [R, spatial, mesh]
 ---
 
-```{r raster, include=FALSE, eval=TRUE}
+```{r}
+#| Label: raster
+#| include: false
+#| eval: true
 library(raster)
 library(gris)
 library(dplyr)
@@ -28,7 +31,8 @@ Here I describe a simple example, showing several ways of visualizing a simple p
 
 The R package [maptools](https://cran.r-project.org/package=maptools) contains an in-built data set called `wrld_simpl`, which is a basic (and out of date) set of polygons describing the land masses of the world by country. This code loads the data set and plots it with a basic grey-scale scheme for individual countries.
 
-```{r maptools}
+```{r}
+#| Label: maptools
 library(maptools)
 data(wrld_simpl)
 print(wrld_simpl)
@@ -40,7 +44,8 @@ We also include a print statement to get a description of the data set, this is 
 
 These structures are quite complicated, involving nested lists of matrices with X-Y coordinates. I can use class coercion from polygons, to lines, then to points as the most straightforward way of obtaining every XY coordinate by dropping the recursive hierarchy structure to get at every single vertex in one matrix.
 
-```{r Spatial-Coords}
+```{r}
+#| Label: Spatial-Coords
 allcoords <- coordinates(as(as(wrld_simpl, "SpatialLines"), "SpatialPoints"))
 dim(allcoords)
 head(allcoords)  ## print top few rows
@@ -50,7 +55,8 @@ head(allcoords)  ## print top few rows
 
 We need to put these "X/Y" coordinates in 3D so I simply add another column filled with zeroes.
 
-```{r 3D}
+```{r}
+#| Label: 3D
 allcoords <- cbind(allcoords, 0)
 head(allcoords)
 ```
@@ -62,7 +68,8 @@ head(allcoords)
 
 In R we have access to 3D visualizations in OpenGL via the [rgl](https://cran.r-project.org/package=rgl) package, but the model for data representation is very different so I first plot the vertices of the `wrld_simpl` layer as points only.
 
-```{r rgl}
+```{r}
+#| Label: rgl
 library(rgl)
 plot3d(allcoords, xlab = "", ylab = "") ## smart enough to treat 3-columns as X,Y,Z
 rglwidget()
@@ -71,7 +78,8 @@ rglwidget()
 
 Plotting in the plane is one thing, but more striking is to convert the vertices from planar longitude-latitude to Cartesizan XYZ. Define an R function to take "longitude-latitude-height" and return spherical coordinates (we can leave WGS84 for another day).
 
-```{r lonlat-2-xyz}
+```{r}
+#| Label: lonlat-2-xyz
 llh2xyz <- 
 function (lonlatheight, rad = 6378137, exag = 1) 
 {
@@ -93,7 +101,8 @@ xyzcoords <- llh2xyz(allcoords)
 
 Now we can visualize these XYZ coordinates in a more natural setting, and even add a blue sphere for visual effect.
 
-```{r plot3d}
+```{r}
+#| Label: plot3d
 plot3d(xyzcoords, xlab = "", ylab = "")
 spheres3d(0, 0, 0, radius = 6370000, col = "lightblue")
 rglwidget()
@@ -109,7 +118,8 @@ If we ingest the wrld_simpl layer we get a list with several tables.
 
 EDITOR NOTE (April 2022): see [anglr](https://github.com/hypertidy/anglr) function `DEL0()` for an updated way to create what gris was doing in 2015. 
 
-```{r gris}
+```{r}
+#| Label: gris
 library(gris)  ## devtools::install_github("r-gris/gris")
 library(dplyr)
 gobject <- gris(wrld_simpl)
@@ -118,13 +128,15 @@ gobject <- gris(wrld_simpl)
 
 The objects, these are individual countries with several attributes including the NAME.
 
-```{r structure-gris0}
+```{r}
+#| Label: structure-gris0
 gobject$o
 ```
 
 The branches, these are individual simple, one-piece "ring polygons". Every object may have one or more branches (branches may be an "island" or a "hole" but this is not currently recorded). Note how branch 1 and 2 (.br0) both belong to object 1, but branch 3 is the only piece of object 2.
 
-```{r structure-gris1}
+```{r}
+#| Label: structure-gris1
 gobject$b
 
 plot(gobject[1, ], col = "#333333")
@@ -139,7 +151,8 @@ title(gobject$o$NAME[2])
 
 The links between branches and vertices.
 
-```{r structure-gris2}
+```{r}
+#| Label: structure-gris2
 gobject$bXv
 ```
 
@@ -148,7 +161,8 @@ This table is required so that we can normalize the vertices by removing any dup
 
 Finally, the vertices themselves. Here we only have X and Y, but these table structures can hold any number of attributes and of many types.
 
-```{r structure-gris3}
+```{r}
+#| Label: structure-gris3
 gobject$v
 ```
 
@@ -161,7 +175,8 @@ Indices here are numeric, but there's actually no reason that they couldn't be c
 
 Why go to all this effort just for a few polygons? The structure of the gris objects gives us much more flexibility, so I can for example store the XYZ Cartesian coordinates right on the same data set. I don't need to recursively visit nested objects, it's just a straightforward calculation and update - although we're only making a simple point, this could be generalized a lot more for user code.
 
-```{r more3d}
+```{r}
+#| Label: more3d
 gobject$v$zlonlat <- 0
 do_xyz <- function(table) {
   xyz <- llh2xyz(dplyr::select(table, x_, y_, zlonlat))
@@ -179,7 +194,8 @@ gobject$v
 
 I now have XYZ coordinates for my data set, and so for example I will extract out a few nearby countries and plot them.
 
-```{r extract}
+```{r}
+#| Label: extract
 localarea <- gobject[gobject$o$NAME %in% c("Australia", "New Zealand"), ]
 ## plot in traditional 2d
 plot(localarea, col = c("dodgerblue", "firebrick"))
@@ -187,7 +203,8 @@ plot(localarea, col = c("dodgerblue", "firebrick"))
 
 The plot is a bit crazy since parts of NZ that are over the 180 meridian skews everything, and we could fix that easily by modifiying the vertex values for longitude, but it's more sensible in 3D.
 
-```{r projection}
+```{r}
+#| Label: projection
 rgl::plot3d(as.matrix(localarea$v[c("X", "Y", "Z")]), xlab = "", ylab = "")
 rglwidget()
 ```
@@ -196,7 +213,8 @@ Finally, to get to the entire point of this discussion let's triangulate the pol
 
 The R package [RTriangle](https://cran.r-project.org/package=RTriangle) wraps [Jonathan Shewchuk's Triangle](https://www.cs.cmu.edu/~quake/triangle.html) library, allowing constrained Delaunay triangulations. To run this we need to make a Planar Straight Line Graph from the polygons, but this is fairly straightforward by tracing through paired vertices in the data set. The key parts of the PSLG are the vertices P and the segment indexes S defining paired vertices for each line segment. This is a "structural" index where the index values are bound to the actual size and shape of the vertices, as opposed to a more general but perhaps less efficient relational index.
 
-```{r triangulate}
+```{r}
+#| Label: trangulate
 pslgraph <- gris:::mkpslg(gobject)
 dim(pslgraph$P)
 range(pslgraph$S)
@@ -207,13 +225,15 @@ head(pslgraph$S)
 
 The PSLG is what we need for the triangulation.
 
-```{r pslg}
+```{r}
+#| Label: pslg
 tri <- RTriangle::triangulate(pslgraph)
 ```
 
 The triangulation vertices (long-lat) can be converted to XYZ, and plotted.
 
-```{r xyz-plot}
+```{r}
+#| Label: xyz-plot
 xyz <- llh2xyz(cbind(tri$P, 0))
 open3d()
 triangles3d(xyz[t(tri$T), ], col = "grey")
@@ -226,7 +246,8 @@ These are very ugly polygons since there's no internal vertices to carry the cur
 
 Luckily Triangle can set a minimum triangle size. We set a constant minimum area, which means no individual triangle can be larger in area than so many "square degrees". This gives a lot more internal structure so the polygons are more elegantly draped around the surface of the sphere. (There's not really enough internal structure added with this minimum area, but I've kept it simpler to make the size of this document more manageable).
 
-```{r finer-triangles}
+```{r}
+#| Label: finer-triangles
 tri <- RTriangle::triangulate(pslgraph, a = 9)  ## a (area) is in degrees, same as our vertices
 xyz <- llh2xyz(cbind(tri$P, 0))
 open3d()
@@ -237,7 +258,8 @@ rglwidget()
 
 We still can't identify individual polygons as we smashed that information after putting the polygon boundary segments through the triangulator. With more careful work we could build a set of tables to store particular triangles between our vertices and objects, but to finish this story I just loop over each object adding them to the scene.
 
-```{r loop}
+```{r}
+#| Label: loop
 ## loop over objects
 cols <- sample(grey(seq(0, 1, length = nrow(gobject$o))))
 open3d()
