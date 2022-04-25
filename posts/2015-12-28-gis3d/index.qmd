@@ -6,6 +6,15 @@ categories: [news, code]
 tags: [R, spatial, mesh]
 ---
 
+GIS data structures are not well suited for generalization, and visualizations and models in 3D require pretty forceful and ad hoc approaches.
+
+Here I describe a simple example, showing several ways of visualizing a simple polygon data set. I use the programming environment R for the data manipulation and the creation of this document via several extensions (packages) to base R.
+
+## Polygon "layer"
+
+The R package [maptools](https://cran.r-project.org/package=maptools) contains an in-built data set called `wrld_simpl`, which is a basic (and out of date) set of polygons describing the land masses of the world by country. This code loads the data set and plots it with a basic grey-scale scheme for individual countries.
+
+
 ```{r}
 #| Label: raster
 #| include: false
@@ -21,15 +30,6 @@ dplyr::distinct_(mtcars)
 dplyr::data_frame(y = 1)
 ```
 
-## GIS for 3D
-
-GIS data structures are not well suited for generalization, and visualizations and models in 3D require pretty forceful and ad hoc approaches.
-
-Here I describe a simple example, showing several ways of visualizing a simple polygon data set. I use the programming environment R for the data manipulation and the creation of this document via several extensions (packages) to base R.
-
-## Polygon "layer"
-
-The R package [maptools](https://cran.r-project.org/package=maptools) contains an in-built data set called `wrld_simpl`, which is a basic (and out of date) set of polygons describing the land masses of the world by country. This code loads the data set and plots it with a basic grey-scale scheme for individual countries.
 
 ```{r}
 #| Label: maptools
