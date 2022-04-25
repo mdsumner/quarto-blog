@@ -5,9 +5,7 @@ date: "2019-05-29"
 categories: [news, code]
 ---
 
-PLEASE NOTE (April 2022): this post has been migrated from an old site, and some details
-may have changed. There might an update to this post to reflect the rgl package as it is now. 
----
+PLEASE NOTE (April 2022): this post has been migrated from an old site, and some details may have changed. There might an update to this post to reflect the rgl package as it is now. ---
 
 This post describes the *mesh3d* format used in the rgl package and particularly how colour properties are stored and used. There are [recent changes to this behaviour](https://rdrr.io/cran/rgl/man/mesh3d.html) (see 'meshColor'), and previously the situation was not clearly documented.
 
