@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>http://hypertidy.org/about.html</loc>
+    <lastmod>2022-04-25T15:13:42.158Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/index.html</loc>
+    <lastmod>2022-04-25T15:13:44.546Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
+    <lastmod>2022-04-25T15:13:53.806Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
+    <lastmod>2022-04-25T15:13:55.346Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
+    <lastmod>2022-04-25T15:13:59.290Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-09-01_gdal-in-r/index.html</loc>
+    <lastmod>2022-04-25T15:13:59.986Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2014-04-17_r-matrices-and-image/index.html</loc>
+    <lastmod>2022-04-25T15:14:02.206Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
+    <lastmod>2022-04-25T15:14:02.886Z</lastmod>
+  </url>
+</urlset>

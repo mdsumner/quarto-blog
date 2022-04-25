@@ -3,6 +3,12 @@ project:
 
 website:
   title: "hypertidy-blog"
+  site-url: http://hypertidy.org
+  repo-url: https://github.com/mdsumner/quarto-blog
+  open-graph: true
+  twitter-card:
+    creator: "@mdsumner"
+    card-style: summary_large_image
   navbar:
     right:
       - about.qmd
