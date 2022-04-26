@@ -12,19 +12,25 @@ There's several meanings floating around when you say the "GDAL warper". It can 
 * the *rasterio* package in Python, and its [WarpedVRT](https://rasterio.readthedocs.io/en/latest/topics/virtual-warping.html)
 * the GDAL C++ API warping library
 
-
 We can also mean 
 
+* the *sf* package in R, and its [gdal_utils()](https://r-spatial.github.io/sf/reference/gdal_utils.html) function
 * the *stars* package in R, and its [st_warp()](https://r-spatial.github.io/stars/reference/st_warp.html) function
 * the *terra* package in R, and its [project()](https://rspatial.github.io/terra/reference/project.html) function
-* the [gdalUtils](https://github.com/gearslaboratory/gdalUtils) package in R, or the [gdalUtilities](https://github.com/JoshOBrien/gdalUtilities) package in R
+* the [gdalUtils](https://github.com/gearslaboratory/gdalUtils) package in R
+* the [gdalUtilities](https://github.com/JoshOBrien/gdalUtilities) package in R
 
-What I mean is the GDAL C++ API warping library. 
+But, what I mean is the GDAL C++ API warping library. 
 
 ## The GDAL C++ API warping library
 
-GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very *low-level development facilities*, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ (or sometimes Python, and sometimes R) code
-against the library directly. Sometimes you need to modify GDAL itself, which is how open source is supposed to work. 
+GDAL is complex. It deals with very many different formats, and has many tools.
+In terms of this post, it has very *low-level development facilities*, written
+in C++. This means you can usually go as deep as you need into a geospatial
+problem by writing C++ code against the library directly. Often you don't need
+C++ and can use Python, and sometimes you can use R depending on what is exposed
+there. Sometimes you need to modify GDAL itself, and you can do anything you
+want then(!), which is how open source is supposed to work.
 
 Key feature of the *gdalwarp_lib.cpp* `GDALWarp()` C++ function, versus the `GDALWarpDirect()`, `GDALWarpIndirect()` and the lower level `GDALWarpMulti()` and `GDALWarpImage()` functions. 
 
@@ -32,7 +38,7 @@ When we use *gdalwarp_lib*, we get handling of multiple-zoom level sources witho
 
 Most use cases I see of the warper facilities are for whole-sale conversion of large datasets, multiple input files converted to a another projection in a large output file or series of tiles. 
 
-## The warper is a generalized RasterIO
+## The warper is also a generalized RasterIO
 
 (rasterio is a famous python package for using GDAL's raster facilities, it's not what we mean here). 
 
@@ -76,9 +82,14 @@ The other arguments in RasterIO.
 * `GDT_Float64` controls the type of data we get out (64 bit doubles here, GDAL will auto-convert if the source is different type)
 * `0, 0, &psExtraArg` are further details we won't discuss (though, the way resampling is done is controlled in the extra args options). 
 
-## Enter the WuTang
+What are its limitations: 
 
-## Enter the Warper!
+* only one source at a time, you can't resample from multiple rasters at once (we are using offset/size indexing so the rasters must all be the same shape, you can read multiple bands)
+* 
+
+What is interesting about RasterIO vs. Warping is that we would never ever use warping for pure graphics. It doesn't make sens
+
+## Enter the ~~WuTang~~ Warper!
 
 Doing discretized extent raster math is boring. With the warper we don't need to do it. 
 

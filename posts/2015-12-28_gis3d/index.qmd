@@ -28,6 +28,7 @@ library(rgl)
 dplyr::select_(mtcars, "mpg")
 dplyr::distinct_(mtcars)
 dplyr::data_frame(y = 1)
+material3d(specular = "black")
 ```
 
 
@@ -40,7 +41,7 @@ plot(wrld_simpl, col = grey(sample(seq(0, 1, length = nrow(wrld_simpl)))))
 ```
 
 
-We also include a print statement to get a description of the data set, this is a `SpatialPolgyonsDataFrame` which is basically a table of attributes with one row for each country, linked to a recursive data structure holding sets of arrays of coordinates for each individual piece of these complex polygons.
+We also include a print statement to get a description of the data set, this is a `SpatialPolygonsDataFrame` which is basically a table of attributes with one row for each country, linked to a recursive data structure holding sets of arrays of coordinates for each individual piece of these complex polygons.
 
 These structures are quite complicated, involving nested lists of matrices with X-Y coordinates. I can use class coercion from polygons, to lines, then to points as the most straightforward way of obtaining every XY coordinate by dropping the recursive hierarchy structure to get at every single vertex in one matrix.
 
@@ -111,10 +112,11 @@ rglwidget()
 
 This is still not very exciting, since our plot knows nothing about the connectivity between vertices.
 
-Organization of polygons
+## Organization of polygons
+
 The in-development R package gris provides a way to represent spatial objects as a set of relational tables. I'm leaving out the details because it's not the point I want to make, but in short a gris object has tables "o" (objects), "b" (for branches), "bXv" (links between branches and vertices) and "v" the vertices.
 
-If we ingest the wrld_simpl layer we get a list with several tables.
+If we ingest the `wrld_simpl` layer we get a list with several tables.
 
 EDITOR NOTE (April 2022): see [anglr](https://github.com/hypertidy/anglr) function `DEL0()` for an updated way to create what gris was doing in 2015. 
 
@@ -133,7 +135,7 @@ The objects, these are individual countries with several attributes including th
 gobject$o
 ```
 
-The branches, these are individual simple, one-piece "ring polygons". Every object may have one or more branches (branches may be an "island" or a "hole" but this is not currently recorded). Note how branch 1 and 2 (.br0) both belong to object 1, but branch 3 is the only piece of object 2.
+The branches, these are individual simple, one-piece "ring polygons". Every object may have one or more branches (branches may be an "island" or a "hole" but this is not currently recorded). Note how branch 1 and 2 (`branch_`) both belong to object 1, but branch 3 is the only piece of object 2.
 
 ```{r}
 #| Label: structure-gris1
@@ -236,13 +238,15 @@ The triangulation vertices (long-lat) can be converted to XYZ, and plotted.
 #| Label: xyz-plot
 xyz <- llh2xyz(cbind(tri$P, 0))
 open3d()
-triangles3d(xyz[t(tri$T), ], col = "grey")
-aspect3d("iso")
+triangles3d(xyz[t(tri$T), ], col = "grey", specular = "black")
+aspect3d("iso"); bg3d("grey12")
 rglwidget()
 ```
 
 
-These are very ugly polygons since there's no internal vertices to carry the curvature of this sphere. This is the same problem we'd face if we tried to drape these polygons over topography, as some point we need internal structure.
+
+
+These are very ugly polygons since there's no internal vertices to carry the curvature of this sphere. This is the same problem we'd face if we tried to drape these polygons over topography: at some point we need internal structure.
 
 Luckily Triangle can set a minimum triangle size. We set a constant minimum area, which means no individual triangle can be larger in area than so many "square degrees". This gives a lot more internal structure so the polygons are more elegantly draped around the surface of the sphere. (There's not really enough internal structure added with this minimum area, but I've kept it simpler to make the size of this document more manageable).
 
@@ -251,7 +255,8 @@ Luckily Triangle can set a minimum triangle size. We set a constant minimum area
 tri <- RTriangle::triangulate(pslgraph, a = 9)  ## a (area) is in degrees, same as our vertices
 xyz <- llh2xyz(cbind(tri$P, 0))
 open3d()
-triangles3d(xyz[t(tri$T), ], col = "grey")
+triangles3d(xyz[t(tri$T), ], col = "grey", specular = "black")
+bg3d("gray12")
 rglwidget()
 ```
 
@@ -267,8 +272,9 @@ for (iobj in seq(nrow(gobject$o))) {
   pslgraph <- gris:::mkpslg(gobject[iobj, ])
   tri <- RTriangle::triangulate(pslgraph, a = 9)  ## a is in units of degrees, same as our vertices
   xyz <- llh2xyz(cbind(tri$P, 0))
-  triangles3d(xyz[t(tri$T), ], col = cols[iobj])
+  triangles3d(xyz[t(tri$T), ], col = cols[iobj], specular = "black")
 }
+bg3d("gray12")
 rglwidget()
 ```
 

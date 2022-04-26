@@ -213,20 +213,22 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul>
 <p>We can also mean</p>
 <ul>
+<li>the <em>sf</em> package in R, and its <a href="https://r-spatial.github.io/sf/reference/gdal_utils.html">gdal_utils()</a> function</li>
 <li>the <em>stars</em> package in R, and its <a href="https://r-spatial.github.io/stars/reference/st_warp.html">st_warp()</a> function</li>
 <li>the <em>terra</em> package in R, and its <a href="https://rspatial.github.io/terra/reference/project.html">project()</a> function</li>
-<li>the <a href="https://github.com/gearslaboratory/gdalUtils">gdalUtils</a> package in R, or the <a href="https://github.com/JoshOBrien/gdalUtilities">gdalUtilities</a> package in R</li>
+<li>the <a href="https://github.com/gearslaboratory/gdalUtils">gdalUtils</a> package in R</li>
+<li>the <a href="https://github.com/JoshOBrien/gdalUtilities">gdalUtilities</a> package in R</li>
 </ul>
-<p>What I mean is the GDAL C++ API warping library.</p>
+<p>But, what I mean is the GDAL C++ API warping library.</p>
 <section id="the-gdal-c-api-warping-library" class="level2">
 <h2 class="anchored" data-anchor-id="the-gdal-c-api-warping-library">The GDAL C++ API warping library</h2>
-<p>GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very <em>low-level development facilities</em>, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ (or sometimes Python, and sometimes R) code against the library directly. Sometimes you need to modify GDAL itself, which is how open source is supposed to work.</p>
+<p>GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very <em>low-level development facilities</em>, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ code against the library directly. Often you don’t need C++ and can use Python, and sometimes you can use R depending on what is exposed there. Sometimes you need to modify GDAL itself, and you can do anything you want then(!), which is how open source is supposed to work.</p>
 <p>Key feature of the <em>gdalwarp_lib.cpp</em> <code>GDALWarp()</code> C++ function, versus the <code>GDALWarpDirect()</code>, <code>GDALWarpIndirect()</code> and the lower level <code>GDALWarpMulti()</code> and <code>GDALWarpImage()</code> functions.</p>
 <p>When we use <em>gdalwarp_lib</em>, we get handling of multiple-zoom level sources without intervention on our own.</p>
 <p>Most use cases I see of the warper facilities are for whole-sale conversion of large datasets, multiple input files converted to a another projection in a large output file or series of tiles.</p>
 </section>
-<section id="the-warper-is-a-generalized-rasterio" class="level2">
-<h2 class="anchored" data-anchor-id="the-warper-is-a-generalized-rasterio">The warper is a generalized RasterIO</h2>
+<section id="the-warper-is-also-a-generalized-rasterio" class="level2">
+<h2 class="anchored" data-anchor-id="the-warper-is-also-a-generalized-rasterio">The warper is also a generalized RasterIO</h2>
 <p>(rasterio is a famous python package for using GDAL’s raster facilities, it’s not what we mean here).</p>
 <p>RasterIO is a C++ function in the GDAL library, its job is to take a source data set (i.e.&nbsp;a path to GeoTIFF) and to provide you with a window of pixels from that source. A window can be a subset, the entire raster, or a resampling (i.e.&nbsp;fewer pixels than native) of either the entire or a subset of the raster.</p>
 <p>It’s really, cool and using it looks like this:</p>
@@ -255,12 +257,15 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li><code>GDT_Float64</code> controls the type of data we get out (64 bit doubles here, GDAL will auto-convert if the source is different type)</li>
 <li><code>0, 0, &amp;psExtraArg</code> are further details we won’t discuss (though, the way resampling is done is controlled in the extra args options).</li>
 </ul>
+<p>What are its limitations:</p>
+<ul>
+<li>only one source at a time, you can’t resample from multiple rasters at once (we are using offset/size indexing so the rasters must all be the same shape, you can read multiple bands)</li>
+<li></li>
+</ul>
+<p>What is interesting about RasterIO vs.&nbsp;Warping is that we would never ever use warping for pure graphics. It doesn’t make sens</p>
 </section>
-<section id="enter-the-wutang" class="level2">
-<h2 class="anchored" data-anchor-id="enter-the-wutang">Enter the WuTang</h2>
-</section>
-<section id="enter-the-warper" class="level2">
-<h2 class="anchored" data-anchor-id="enter-the-warper">Enter the Warper!</h2>
+<section id="enter-the-wutang-warper" class="level2">
+<h2 class="anchored" data-anchor-id="enter-the-wutang-warper">Enter the <del>WuTang</del> Warper!</h2>
 <p>Doing discretized extent raster math is boring. With the warper we don’t need to do it.</p>
 <p>This is because the warper is for <em>changing projections</em>, this is an entire re-modelling of raster data. (in the 2000s it was possible to do but still quite slow and problematic, hence you have very slowly changing standards and perceptions of what is possible/normal/appropriate in software comunities etc.).</p>
 <p>This is a global longlat data set, but we want a local projection so we adopt one by finding its specification.</p>
