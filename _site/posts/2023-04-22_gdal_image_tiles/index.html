@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Michael D. Sumner">
-<meta name="dcterms.date" content="2022-12-09">
+<meta name="dcterms.date" content="2023-04-22">
 
 <title>hypertidy-blog - GDAL and image tiles, the {ceramic} package</title>
 <style>
@@ -164,7 +164,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">GDAL and image tile, the {ceramic} package</h1>
+      <h1 class="title">GDAL and image tiles, the {ceramic} package</h1>
                           <div class="quarto-categories">
                 <div class="quarto-category">news</div>
                 <div class="quarto-category">code</div>
@@ -188,7 +188,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">2022-12-09</p>
+        <p class="date">2023-04-22</p>
       </div>
     </div>
       
@@ -211,7 +211,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>to download tiles from image servers</li>
 <li>to load raster data from image servers</li>
 </ol>
-<p>NOTE: we need a Mapbox key for the Mapbox servers see, please see /perm_storage/home/mdsumner/R/x86_64-pc-linux-gnu-library/4.2/ceramic/help/get_api_key at <a href="https://hypertidy.github.io/ceramic/reference/get_api_key.html">get_api_key()</a>.</p>
+<p>NOTE: we need a Mapbox key for the Mapbox servers see, please see <a href="https://hypertidy.github.io/ceramic/reference/get_api_key.html">ceramic::get_api_key()</a>.</p>
 <p>The original versions of ceramic didn’t really separate these tasks but the new version does.</p>
 <section id="get-raster-data-from-online" class="level2">
 <h2 class="anchored" data-anchor-id="get-raster-data-from-online">Get raster data from online</h2>
@@ -333,25 +333,26 @@ https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
 <p>Finally, we can use a point and buffer to get imagery, or we can use a spatial object, currently supported are objects from {geos}, {wk}, {terra}, {sf}, {sp}, {raster}, and {stars}.</p>
 <p>Here’s an example.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wkarea <span class="ot">&lt;-</span> wk<span class="sc">::</span><span class="fu">rct</span>(<span class="at">xmin =</span> <span class="sc">-</span><span class="dv">0</span>, <span class="at">ymin =</span> <span class="dv">15</span>, <span class="at">xmax =</span> <span class="dv">40</span>, <span class="at">ymax =</span> <span class="dv">55</span>, <span class="at">crs =</span> <span class="st">"OGC:CRS84"</span>)</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">cc_location</span>(wkarea))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wkarea <span class="ot">&lt;-</span> wk<span class="sc">::</span><span class="fu">rct</span>(<span class="at">xmin =</span> <span class="fl">5e6</span>, <span class="at">ymin =</span> <span class="sc">-</span><span class="fl">2e6</span>, <span class="at">xmax =</span> <span class="fl">2e6</span>, <span class="at">ymax =</span> <span class="fl">3e6</span>, <span class="at">crs =</span> <span class="st">"+proj=laea +lon_0=25 +lat_0=31"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>im2 <span class="ot">&lt;-</span> <span class="fu">cc_location</span>(wkarea)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>el2 <span class="ot">&lt;-</span> <span class="fu">cc_elevation</span>(wkarea)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>op <span class="ot">&lt;-</span> <span class="fu">par</span>(<span class="at">mfcol =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(el2, <span class="at">legend =</span> F); <span class="fu">plot</span>(im2, <span class="at">add =</span> <span class="cn">TRUE</span>); <span class="fu">plot</span>(el2, <span class="at">col =</span> <span class="fu">grey.colors</span>(<span class="dv">128</span>), <span class="at">legend =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="index_files/figure-html/wk-1.png" class="img-fluid" width="672"></p>
 </div>
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">cc_elevation</span>(wkarea), <span class="at">col =</span> <span class="fu">grey.colors</span>(<span class="dv">128</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="index_files/figure-html/wk-2.png" class="img-fluid" width="672"></p>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(op)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</div>
+<p>(Please note that the result is still in Mercator, the query can be in any projection but we’re not matching that here, only its extent - ceramic version 0.8.0 is merely a stepping stone to some of the things we can do better with GDAL).</p>
 <p>Previous versions of <code>cc_location()</code> and <code>cc_elevation()</code> were stuck with only ‘zoom’ and ‘max_tiles’ arguments, these make sense when you restrict exactly to the available tiles but when you just want a given area and a resolution, ‘dimension’ is more appropriate.</p>
 <p>By default, the dimension is chosen relative to the graphics device. But, we can also specify exactly what we want. (Use zero for one of the dimensions to let the system figure out an appropriate size for the query you have).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
-dimensions  : 960, 754, 3  (nrow, ncol, nlyr)
-resolution  : 5909.027, 5909.027  (x, y)
-extent      : 0, 4455406, 1327548, 7000214  (xmin, xmax, ymin, ymax)
+dimensions  : 960, 776, 3  (nrow, ncol, nlyr)
+resolution  : 7094.906, 7094.906  (x, y)
+extent      : 4203326, 9708973, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
 coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
 source(s)   : memory
 colors RGB  : 1, 2, 3 
@@ -363,26 +364,26 @@ max values  : 255,   255,  255 </code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 dimensions  : 700, 400, 3  (nrow, ncol, nlyr)
-resolution  : 11131.95, 8103.809  (x, y)
-extent      : 0, 4452780, 1327548, 7000214  (xmin, xmax, ymin, ymax)
+resolution  : 13766.3, 9730.157  (x, y)
+extent      : 4203326, 9709847, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
 coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
 source(s)   : memory
 colors RGB  : 1, 2, 3 
 names       : red, green, blue 
-min values  :   0,     0,    0 
+min values  :   0,     2,    0 
 max values  : 255,   255,  255 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea, <span class="fu">c</span>(<span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea, <span class="at">dimension =</span> <span class="fu">c</span>(<span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
-dimensions  : 960, 754, 3  (nrow, ncol, nlyr)
-resolution  : 5909.027, 5909.027  (x, y)
-extent      : 0, 4455406, 1327548, 7000214  (xmin, xmax, ymin, ymax)
+dimensions  : 1267, 1024, 3  (nrow, ncol, nlyr)
+resolution  : 5377.463, 5377.463  (x, y)
+extent      : 4203326, 9709847, 103240.4, 6916485  (xmin, xmax, ymin, ymax)
 coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
 source(s)   : memory
 colors RGB  : 1, 2, 3 
 names       : red, green, blue 
-min values  :   0,     0,    0 
+min values  :   0,     1,    0 
 max values  : 255,   255,  255 </code></pre>
 </div>
 </div>
@@ -395,8 +396,9 @@ max values  : 255,   255,  255 </code></pre>
 <li>we don’t materialize tiles as polygons, we have the tile description, or the compact <code>rct</code> representation</li>
 <li>new functions <code>read_tiles()</code>, <code>unpack_rgb()</code>,</li>
 </ul>
-<p>See the full list of changes here: https://hypertidy.github.io/ceramic/news/index.html</p>
+<p>See the full list of changes here: <a href="https://hypertidy.github.io/ceramic/news/index.html">https://hypertidy.github.io/ceramic/news/index.html</a>.</p>
 <p>ceramic is my final CRAN package that had direct dependencies on rgdal, rgeos, or maptools - in some ways it was the most challenging for me and had loomed as a problem for some time. But, I’ve progressed my own tool kit well in the time and I learnt a lot with this update.</p>
+<p>A future version will probably make the separation (are we tiles, or are we loading raster?) more complete, at any rate there are better ways to organize these things now. There are data sources, data readers and writers, data structures, and algorithms. This work is part of a family of tools that aims to make that orthogonality real and accessible.</p>
 
 
 </section>
