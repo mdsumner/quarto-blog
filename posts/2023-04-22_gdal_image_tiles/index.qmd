@@ -1,5 +1,5 @@
 ---
-title: "GDAL and image tile, the {ceramic} package"
+title: "GDAL and image tiles, the {ceramic} package"
 author: "Michael D. Sumner"
 date: "2022-12-09"
 categories: [news, code]
