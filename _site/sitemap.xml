@@ -2,34 +2,42 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>http://hypertidy.org/about.html</loc>
-    <lastmod>2022-04-26T01:18:21.426Z</lastmod>
+    <lastmod>2023-04-22T02:54:06.074Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/a.html</loc>
+    <lastmod>2023-04-22T02:54:06.678Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/index.html</loc>
-    <lastmod>2022-04-26T01:21:24.602Z</lastmod>
+    <lastmod>2023-04-22T02:54:09.202Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
-    <lastmod>2022-04-26T01:18:32.182Z</lastmod>
+    <lastmod>2023-04-22T02:54:17.882Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
-    <lastmod>2022-04-26T01:18:33.598Z</lastmod>
+    <lastmod>2023-04-22T02:54:22.290Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
-    <lastmod>2022-04-26T01:21:22.046Z</lastmod>
+    <lastmod>2023-04-22T02:54:27.058Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2017-09-01_gdal-in-r/index.html</loc>
-    <lastmod>2022-04-26T01:18:38.078Z</lastmod>
+    <lastmod>2023-04-22T02:54:27.786Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2014-04-17_r-matrices-and-image/index.html</loc>
-    <lastmod>2022-04-26T01:18:40.390Z</lastmod>
+    <lastmod>2023-04-22T02:54:30.438Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-12-07_L3bin-chlor_a/readme.html</loc>
+    <lastmod>2023-04-22T02:54:32.658Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
-    <lastmod>2022-04-26T01:18:41.098Z</lastmod>
+    <lastmod>2023-04-22T02:54:33.366Z</lastmod>
   </url>
 </urlset>

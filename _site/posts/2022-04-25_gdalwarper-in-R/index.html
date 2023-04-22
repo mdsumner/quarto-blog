@@ -205,6 +205,28 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
+<section id="crux" class="level2">
+<h2 class="anchored" data-anchor-id="crux">CRUX</h2>
+<p>see what Jakub asked here: https://twitter.com/mdsumner/status/1520729901766430720?s=20&amp;t=A9oCvSqLHZqEBTAH5-Flxg and what others have said in that and related posts.</p>
+<ul>
+<li><ol type="a">
+<li>your motivation to use the tools (R/gdal)</li>
+</ol></li>
+<li><ol start="2" type="a">
+<li>what is missing</li>
+</ol></li>
+<li><ol start="3" type="a">
+<li>what can be done to fix (b).</li>
+</ol></li>
+<li>GDALDatasetH vs GDALDataset *</li>
+<li>VRT as a way to augment, and to represent (like a table of files)</li>
+<li>urls in place of files</li>
+<li>tile servers that don’t have georeferenceing, hence GDAL_WMS tags and the TMS minidrivers</li>
+<li>what raadtools needs</li>
+<li>warper as general superceded</li>
+<li>what’s left? raster logic, rgdal-like package, helpers for native grid of source vs.&nbsp;map of a user</li>
+</ul>
+<hr>
 <p>There’s several meanings floating around when you say the “GDAL warper”. It can mean</p>
 <ul>
 <li>command-line <a href="https://gdal.org/apps">gdalwarp</a></li>
@@ -220,6 +242,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>the <a href="https://github.com/JoshOBrien/gdalUtilities">gdalUtilities</a> package in R</li>
 </ul>
 <p>But, what I mean is the GDAL C++ API warping library.</p>
+</section>
 <section id="the-gdal-c-api-warping-library" class="level2">
 <h2 class="anchored" data-anchor-id="the-gdal-c-api-warping-library">The GDAL C++ API warping library</h2>
 <p>GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very <em>low-level development facilities</em>, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ code against the library directly. Often you don’t need C++ and can use Python, and sometimes you can use R depending on what is exposed there. Sometimes you need to modify GDAL itself, and you can do anything you want then(!), which is how open source is supposed to work.</p>

@@ -1,0 +1,7 @@
+---
+title: "Degnerate Rectilinear (WIP)"
+author: "Michael D. Sumner"
+date: "2022-12-09"
+categories: [news, code]
+draft: true
+---

@@ -4,4 +4,8 @@
 /erddap-in-sf-and-ggplot2 /posts/2017-07-25_erddap-in-sf-and-ggplot2
 /gdal-in-r /posts/2017-09-01_gdal-in-r
 /recent-rgl-format-changes /posts/2019-05-29_recent-rgl-format-changes
+/blocks /posts/2022-04-05_gdal_raster_read_write_blocks
 /gdalwarper-in-R /posts/2022-04-25_gdalwarper-in-R
+/a /posts/2022-12-07_L3bin-chlor_a
+/netcdf-degenerate-rectilinear /posts/2022-12-09_netcdf-degenerate-rectilinear
+/tiles /posts/2023-04-22_gdal_image_tiles

@@ -2,6 +2,8 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2022-04-05_gdal_raster_read_write_blocks/index.html",
+      "/posts/2022-12-07_L3bin-chlor_a/readme.html",
       "/posts/2019-05-29_recent-rgl-format-changes/index.html",
       "/posts/2017-09-01_gdal-in-r/index.html",
       "/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html",
