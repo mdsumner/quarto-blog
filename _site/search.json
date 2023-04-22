@@ -21,13 +21,6 @@
     "text": "Structured vs. unstructured, topology vs. geometry\nArray-based data have a straight-forward relationship between a set of axes that have discrete steps. These are “structured grids”. Unstructured grids include triangulations, non-regularly binned histograms, tetrahedral meshes and ragged arrays.\nAn unstructured mesh (grid) is able to represent any data structure, but structured meshes have some advantages because of the regular indexing relationship between dimensions.\nGIS vector constructs “polygons”, “lines”, “points” are special case optimizations of the unstructured grid case. Polygons really are topologically identical to lines, and they are a dead-end in the broader scheme of dimensionality. Points and lines can are topologicaly 0-dimensional and 1-dimensional respectively, and this shape-constraint is the same no matter what geometric dimension they are defined in. A line can twist around a 4D space with x, y, z, t coordinates at its segment nodes or it can be constrained to single dimension with only one of those coordinates specifying its position. The topology of the line is completely independent of the geometry, if we treat the line as composed of topological primitives.\nPolygons are not composed of topological primitives, but they can be treated as being composed of line primitives."
   },
   {
-    "objectID": "a.html",
-    "href": "a.html",
-    "title": "Untitled",
-    "section": "",
-    "text": "import netCDF4 as nc\nimport xarray as xr\nal = xr.open_dataset(\"nwm.t00z.medium_range.land_1.f003.conus.nc\")\n\n\nfrom pyproj import Transformer\ntransformer = Transformer.from_crs(\"OGC:CRS84\", al.crs.spatial_ref)\np1 = transformer.transform(-87.840711, 33.003379)\np2 = transformer.transform(-87.065738, 33.609833)\n\n\nal_sel = al.FSNO.sel(x = p1[0], y = p1[1], method = \"nearest\")\nal_sel.plot()"
-  },
-  {
     "objectID": "index.html",
     "href": "index.html",
     "title": "hypertidy-blog",

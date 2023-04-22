@@ -1,7 +1,114 @@
 ---
-title: "Degnerate Rectilinear (WIP)"
+title: "GDAL and image tile, the {ceramic} package"
 author: "Michael D. Sumner"
 date: "2022-12-09"
 categories: [news, code]
 draft: true
 ---
+
+
+A new version of [{ceramic}](https://hypertidy.github.io/ceramic/) is now on CRAN, version 0.8.0. 
+
+
+The package exists for two purpose 
+
+1. to download tiles from image servers
+2. to load raster data from image servers
+
+
+NOTE: we need a Mapbox key for the Mapbox servers see, please see `r ?ceramic::get_api_key` at [get_api_key()](https://hypertidy.github.io/ceramic/reference/get_api_key.html). 
+
+
+The original versions of ceramic didn't really separate these tasks but the new version does. 
+
+
+## Get raster data from online
+
+We can read satellite imagery or elevation with a central point and a buffer (in metres). 
+
+
+```{r hobart-image}
+library(ceramic)
+pt <- cbind(147.3257, -42.8826)
+
+(im <- cc_location(pt, buffer = c(15000, 25000)))
+
+
+(el <- cc_elevation(pt, buffer = c(15000, 25000)))
+op <- par(mfcol = c(1, 2))
+plot(el, legend = F); plot(im, add = TRUE); plot(el, legend = F, 
+                                                 col = hcl.colors(64)[tail(seq_len(64), 45)])
+
+par(op)
+```
+
+These raster objects are in terra 'SpatRaster' format (older ceramic used raster package). 
+
+These use the Mapbox 'mapbox.satellite' and 'mapbox-terrain-rgb' tile servers. 
+
+## Get raster tiles from online
+
+If we want the actual tiles, we can use the original `get_tiles()` function. (In older versions `cc_location()` and `cc_elevation()` would *invoke* `get_tiles`, but no longer). 
+
+```{r hobart-tiles}
+pt <- cbind(147.3257, -42.8826)
+
+imtiles <- get_tiles(pt, buffer = c(15000, 25000))
+str(imtiles)
+
+eltiles <- get_tiles(pt, buffer = c(15000, 25000))
+head(gsub(ceramic::ceramic_cache(), "",  eltiles$files))
+```
+
+And to see what tiles we have we can materialize their footprint in [wk::rct()](https://paleolimbot.github.io/wk/reference/rct.html) form, this is way more efficient than having to use polygons.
+
+```{r rct}
+zoomtiles <- ceramic::ceramic_tiles(imtiles$tiles$zoom)
+## sub out the ones we just triggered
+zoomtiles <- dplyr::filter(zoomtiles, fullname %in% imtiles$files)
+rc <- ceramic::tiles_to_polygon(zoomtiles)
+plot(rc)
+plot(ext(im), add = TRUE)  ## see the image from above is not the tiles, but the buffer around a point
+plot(read_tiles(pt, buffer = c(15000, 25000)))  ## but we can read thos tiles exactly
+plot(rc, add = TRUE, border = "white")
+```
+
+
+## Diverse query inputs
+
+Finally, we can use a point and buffer to get imagery, or we can use a spatial object, currently supported are objects from {geos}, {wk}, {terra}, {sf}, {sp}, {raster}, and {stars}. 
+
+Here's an example. 
+
+```{r wk}
+wkarea <- wk::rct(xmin = -0, ymin = 15, xmax = 40, ymax = 55, crs = "OGC:CRS84")
+plot(cc_location(wkarea))
+
+plot(cc_elevation(wkarea), col = grey.colors(128))
+```
+
+Previous versions of `cc_location()` and `cc_elevation()` were stuck with only 'zoom' and 'max_tiles' arguments, these make sense when you restrict exactly to the available tiles but when you just want a given area and a resolution, 'dimension' is more appropriate. 
+
+By default, the dimension is chosen relative to the graphics device.  But, we can also specify exactly what we want. (Use zero for one of the dimensions to let the system figure out an appropriate size for the query you have). 
+
+```{r graphics}
+cc_location(wkarea)
+
+cc_location(wkarea, dimension = c(400, 700))
+
+cc_location(wkarea, c(1024, 0))
+
+```
+
+## Some other improvements
+
+
+* it's faster, for loading reads data from image servers directly with the GDAL warper API
+* we have separation of tile downloading and interaction from raster loading via GDAL
+* we don't materialize tiles as polygons, we have the tile description, or the compact `rct` representation
+* new functions `read_tiles()`, `unpack_rgb()`, 
+
+See the full list of changes here: https://hypertidy.github.io/ceramic/news/index.html
+
+ceramic is my final CRAN package that had direct dependencies on rgdal, rgeos, or maptools - in some ways it was the most challenging for me and had loomed as a problem for some time. But, I've progressed my own tool kit well in the time and I learnt a lot with this update. 
+
