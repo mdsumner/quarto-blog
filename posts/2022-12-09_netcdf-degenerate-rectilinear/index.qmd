@@ -3,7 +3,7 @@ title: "Degnerate Rectilinear (WIP)"
 author: "Michael D. Sumner"
 date: "2022-12-09"
 categories: [news, code]
-draft: true
+draft: false
 ---
 
 There are a lot of problems when it comes to array representation in data formats and software. There is a 
@@ -108,9 +108,10 @@ See? They just plod along with exactly the same delta between each, in this case
 
 ## What do you mean Degenerate? 
 
-Isn't this a bad word, pejorative? Well no, it means something very specific. 
+> Isn't this a bad word, pejorative? 
 
-<def>
+Well no, it means something very specific. 
+
 
 It means even though there is a quite a lot of data,  the *information* is confused or confounded. The required
 information could be expressed very compactly, but it's actually obscured by the details. 

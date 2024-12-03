@@ -3,28 +3,12 @@ title: "GDAL warper with R"
 author: "Michael D. Sumner"
 date: "2022-04-25"
 categories: [news, code]
-draft: true
+draft: false
 ---
 
 
-## CRUX
+## An unfinished post
 
-see what Jakub asked here: https://twitter.com/mdsumner/status/1520729901766430720?s=20&t=A9oCvSqLHZqEBTAH5-Flxg and what others have said in 
-that and related posts. 
-
-- a) your motivation to use the tools (R/gdal)
-- b) what is missing
-- c) what can be done to fix (b).
-
-- GDALDatasetH vs GDALDataset *
-- VRT as a way to augment, and to represent (like a table of files)
-- urls in place of files
-- tile servers that don't have georeferenceing, hence GDAL_WMS tags and the TMS minidrivers
-- what raadtools needs 
-- warper as general superceded
-- what's left? raster logic, rgdal-like package, helpers for native grid of  source vs. map of a user
-
------------------------------------------
 
 There's several meanings floating around when you say the "GDAL warper". It can mean
 

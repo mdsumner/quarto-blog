@@ -3,7 +3,6 @@ title: "GDAL and image tiles, the {ceramic} package"
 author: "Michael D. Sumner"
 date: "2023-04-22"
 categories: [news, code]
-draft: true
 ---
 
 
