@@ -4,9 +4,6 @@ image: profile.png
 about:
   template: trestles
   links:
-    - icon: twitter
-      text: Twitter
-      href: https://twitter.com/mdsumner
     - icon: github
       text: Github
       href: https://github.com/mdsumner
