@@ -7,7 +7,9 @@ about:
     - icon: github
       text: Github
       href: https://github.com/mdsumner
-
+    - icon: mastodon
+      text: Fediverse
+      href: https://rstats.me/@mdsumner
 ---
 
 
