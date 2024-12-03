@@ -14,8 +14,6 @@ website:
       - about.qmd
       - icon: github
         href: https://github.com/mdsumner
-      - icon: twitter
-        href: https://twitter.com/mdsumner
 format:
   html:
     theme: litera
