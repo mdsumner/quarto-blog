@@ -56,5 +56,7 @@ plotRGB(im)
 Do we have more, or less resolution than our device can handle?   This next plot shows that we have more, and the cropped raster is returned to match the device. 
 
 ```{r native-res}
+print(dim(im))
+print(dev.size("px"))
 plot_native(im)
 ```
