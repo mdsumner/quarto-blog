@@ -1,0 +1,17 @@
+{
+  "hash": "64b31d2697ed6e411cf680a874523639",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"Plot at native resolution, with R\"\nauthor: \"Michael D. Sumner\"\ndate: \"2024-12-04\"\ncategories: [news, code]\n---\n\n\n\nPlot native, something I should have done long ago. \n\n\n\n::: {.cell}\n\n```{.r .cell-code}\n#' Plot raster at native resolution\n#'\n#' Determines the current device size and plots the raster centred on its own\n#' middle to plot at native resolution. \n#'\n#' @param x as SpatRaster\n#' @param ... passed to terra::plot\n#'\n#' @return the input raster, cropped corresponding to the plot made\n#' @export\n#'\n#' @examples\n#' plot_native(terra::rast(volcano))\n#' plot_native(terra::disagg(terra::rast(volcano), 64))\nplot_native <- function(x, ...) {\n  ex <- as.vector(terra::ext(x))\n  at <- NULL\n  ## take the centre\n  if (is.null(at)) {\n    at <- apply(matrix(ex, 2), 2, mean)\n  }\n  dv <- dev.size(\"px\")\n  scl <- terra::res(x)\n  halfx <- dv[1]/2 * scl[1]\n  halfy <- dv[2]/2 * scl[2]\n  cropex <- c(at[1] - halfx, at[1] + halfx, at[2] - halfy, at[2] + halfy)\n  x <- terra::crop(x, terra::ext(cropex), extend = TRUE)\n  add <- FALSE\n  if (terra::nlyr(x) >= 3) terra::plotRGB(x, add = add) else plot(x, ..., add = add)\n  x\n}\n```\n:::\n\n\n\n\nSo as an example read this world imagery. \n\n\n\n::: {.cell}\n\n```{.r .cell-code}\ndsn <- \"<GDAL_WMS><Service name=\\\"TMS\\\"><ServerUrl>http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>17</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:900913</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><MaxConnections>10</MaxConnections><Cache /><ZeroBlockHttpCodes>204,404,403</ZeroBlockHttpCodes></GDAL_WMS>\"\n\nlibrary(terra)\n```\n\n::: {.cell-output .cell-output-stderr}\n\n```\nterra 1.7.83\n```\n\n\n:::\n\n```{.r .cell-code}\nim <- project(rast(dsn), rast(ext(-1, 1, -1, 1) * 1e6, res = 1000, crs = \"+proj=laea +lon_0=147 +lat_0=-42\"), by_util = TRUE)\nplotRGB(im)\n```\n\n::: {.cell-output-display}\n![](index_files/figure-html/image-1.png){width=672}\n:::\n:::\n\n\n\nDo we have more, or less resolution than our device can handle?   This next plot shows that we have more, and the cropped raster is returned to match the device. \n\n\n\n::: {.cell}\n\n```{.r .cell-code}\nplot_native(im)\n```\n\n::: {.cell-output-display}\n![](index_files/figure-html/native-res-1.png){width=672}\n:::\n\n::: {.cell-output .cell-output-stdout}\n\n```\nclass       : SpatRaster \ndimensions  : 960, 1344, 3  (nrow, ncol, nlyr)\nresolution  : 1000, 1000  (x, y)\nextent      : -672000, 672000, -480000, 480000  (xmin, xmax, ymin, ymax)\ncoord. ref. : +proj=laea +lat_0=-42 +lon_0=147 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs \nsource(s)   : memory\ncolors RGB  : 1, 2, 3 \nnames       : GDAL_WMS>_1, GDAL_WMS>_2, GDAL_WMS>_3 \nmin values  :           0,           0,           0 \nmax values  :         255,         237,         213 \n```\n\n\n:::\n:::\n",
+    "supporting": [
+      "index_files"
+    ],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
