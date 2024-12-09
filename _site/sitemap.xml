@@ -9,15 +9,35 @@
     <lastmod>2024-12-03T20:00:55.461Z</lastmod>
   </url>
   <url>
-    <loc>http://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
+    <loc>http://hypertidy.org/posts/2024-12-05_idea_update/idea-update.html</loc>
+    <lastmod>2024-12-09T23:09:01.014Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index.html</loc>
+    <lastmod>2024-12-04T00:26:28.844Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index.html</loc>
+    <lastmod>2024-12-03T20:12:28.477Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
+    <lastmod>2024-12-03T20:00:55.461Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/index.html</loc>
+    <lastmod>2024-12-03T20:08:37.036Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/data-raw/2024-12-05_science_branch-build/idea-update0.html</loc>
+    <lastmod>2024-12-09T19:40:54.726Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/data-raw/2022-12-07_L3bin-chlor_a/readme.html</loc>
     <lastmod>2024-12-03T20:00:55.465Z</lastmod>
   </url>
   <url>
-    <loc>http://hypertidy.org/posts/2024-12-04_plot_native/index.html</loc>
-    <lastmod>2024-12-04T00:34:31.811Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
+    <loc>http://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
     <lastmod>2024-12-03T20:00:55.461Z</lastmod>
   </url>
   <url>
@@ -25,28 +45,16 @@
     <lastmod>2024-12-03T20:00:55.461Z</lastmod>
   </url>
   <url>
-    <loc>http://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
+    <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
     <lastmod>2024-12-03T20:00:55.461Z</lastmod>
   </url>
   <url>
-    <loc>http://hypertidy.org/data-raw/2022-12-07_L3bin-chlor_a/readme.html</loc>
+    <loc>http://hypertidy.org/posts/2024-12-04_plot_native/index.html</loc>
+    <lastmod>2024-12-04T00:34:31.811Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
     <lastmod>2024-12-03T20:00:55.465Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/index.html</loc>
-    <lastmod>2024-12-03T20:08:37.036Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
-    <lastmod>2024-12-03T20:00:55.461Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index.html</loc>
-    <lastmod>2024-12-03T20:12:28.477Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index.html</loc>
-    <lastmod>2024-12-04T00:26:28.844Z</lastmod>
   </url>
   <url>
     <loc>http://hypertidy.org/posts/2022-04-25_gdalwarper-in-R/index.html</loc>
@@ -54,6 +62,6 @@
   </url>
   <url>
     <loc>http://hypertidy.org/about.html</loc>
-    <lastmod>2024-12-03T20:29:20.338Z</lastmod>
+    <lastmod>2024-12-04T08:08:29.011Z</lastmod>
   </url>
 </urlset>

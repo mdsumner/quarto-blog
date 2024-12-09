@@ -1,0 +1,104 @@
+---
+title: "IDEA - data and software"
+author: "Michael Sumner"
+format: revealjs
+title-slide-attributes: 
+  data-background-image: sentinel-rema.png
+  data-background-size: 70%
+  data-background-position: 54% 98%
+editor: source
+---
+
+
+##
+
+raadtools, software to extract maps of ocean properties and values at points-in-time
+
+![](raadtools_map_tseries.png){fig-align="center"}
+
+## raadtools \> 10 years old R package   {.smaller}
+
+| R function                 | Purpose                                        |
+|---------------------------|---------------------------------------------|
+| readsst()                  | global sea surface temperature                 |
+| readice()                  | polar sea ice concentrations                   |
+| readghrsst()               | high resolution sea surface temperature        |
+| read_adt/ugos/vgos_daily() | global altimetry, sea height, surface currents |
+| read_chla_daily()          | global ocean colour                            |
+| readtopo()                 | global or local bathymetry                     |
+| ...                        |                                                |
+
+
+
+      
+## software that is great   {.smaller}
+
+| features we want                    | raadtools 🤔 | \<new tool\> |
+|-------------------------------------|--------------|--------------|
+| users don't download files          | ✅           | ✅           |
+| we can add new data                 | ✅           | ✅           |
+| data is up to date                  | ✅           | ✅           |
+| use outside AAD without Mike or Ben | ❌           | ✅           |
+| use outside of R                    | ❌           | ✅           |
+| scale up on super computing         | ❌           | ✅           |
+| robust to research/local outage     | ❌           | ✅           |
+| available on Nuyina                 | ❌           | ??           |
+||||
+
+
+
+
+*"What we have is nice, but we need something very different."*
+
+   -- Robert Gentleman ( 2003)
+   
+   
+## Python support {.smaller}
+
+```python        
+import xarray
+so = {"endpoint_url": "https://projects.pawsey.org.au",  "anon": True}
+
+ds = xarray.open_dataset('s3://vzarr/SEALEVEL_GLO_PHY_L4.parquet', 
+
+       engine = "kerchunk", chunks = {}, 
+       storage_options={"target_options": so, "remote_options": so})
+```
+```
+<xarray.Dataset> Size: 574GB
+Dimensions:    (time: 11538, latitude: 720, longitude: 1440, nv: 2)
+Coordinates:
+  * latitude   (latitude) float32 3kB -89.88 -89.62 -89.38 ... 89.38 89.62 89.88
+  * longitude  (longitude) float32 6kB -179.9 -179.6 -179.4 ... 179.6 179.9
+  * time       (time) datetime64[ns] 92kB 1993-01-01 1993-01-02 ... 2024-11-25
+Dimensions without coordinates: nv
+Data variables:
+    adt        (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+    crs        (time) float64 92kB dask.array<chunksize=(11538,), meta=np.ndarray>
+    sla        (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+    ugos       (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+    ugosa      (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+    vgos       (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+    vgosa      (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
+Attributes: (12/44)
+    Conventions:                     CF-1.6
+    Metadata_Conventions:            Unidata Dataset Discovery v1.0
+    cdm_data_type:                   Grid
+    comment:                         Sea Surface Height measured by Altimetry...
+    contact:                         servicedesk.cmems@mercator-ocean.eu
+    creator_email:                   servicedesk.cmems@mercator-ocean.eu
+    ...                              ...
+    summary:                         SSALTO/DUACS Delayed-Time Level-4 sea su...
+    time_coverage_duration:          P1D
+    time_coverage_end:               1993-01-01T12:00:00Z
+    time_coverage_resolution:        P1D
+    time_coverage_start:             1992-12-31T12:00:00Z
+    title:                           DT merged all satellites Global Ocean Gr...
+```
+
+## How are we doing this
+
+-   Modern file object storage (cloud-native and efficient public-available files)
+-   Homegrown data library tools: {bowerbird} by Ben Raymond and [rOpenSci.org](https://ropensci.org/)
+-   Exploring best-practice usage in R and Python xarray, VirtualiZarr, terra, gdalraster
+-   Contributing to software libraries [GDAL.org](https://gdal.org/), and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica

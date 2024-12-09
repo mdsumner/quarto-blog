@@ -17,10 +17,10 @@ This is a [**quarto**](https://quarto.org/) website for the [**hypertidy**](http
 
 Hypertidy is an approach to spatial or multi-dimensional data in R based on the following principles: 
 
-* data sources are best managed with database *techniques*
+* data sources are best managed with *database techniques*, which mostly means managing what you have and using clever indexing
 * *spatial is not special*, user-interfaces, graphics and time-series all involve 'space'
 * raster and vector are not naturally distinct, high-dimensional, curvilinear, cell-based rasters, polygon grids and ragged-arrays all cross this boundary
-* 'mesh-based' or 'indexed' data structures are central, general data types while traditionally "geospatial" structures are domain-specific optimizations
+* 'mesh-based' or 'indexed' data structures are central, general data types while traditionally "geospatial" structures are domain-specific optimizations, for example vector and raster exist at extremes of a continuum defined by mesh structures
 * simple features left topology behind, resulting in fragmented and inefficient workarounds in the geo-spatial communities 
 * R spatial needs better APIs, a rich ecosystem of small, composable software modules
 * tidy data principles are about leveraging databases and database techniques
@@ -31,7 +31,7 @@ Examples of these principles are seen in these R packages.
 
 [**raadtools**](https://github.com/AustralianAntarcticDivision/raadtools) and  [**angstroms**](https://github.com/AustralianAntarcticDivision/angstroms)
 
-[**tidync**](https://github.com/ropensci/tidync), [**lazyrraster**](https://github.com/hypertidy/lazyraster), 
+[**tidync**](https://github.com/ropensci/tidync), [**lazyraster**](https://github.com/hypertidy/lazyraster), 
 
 [**silicate**](https://github.com/hypertidy/silicate), [**anglr**](https://github.com/hypertidy/anglr), [**rbgm**](https://github.com/AustralianAntarcticDivision/rbgm/)
 
