@@ -36,22 +36,17 @@ raadtools, software to extract maps of ocean properties and values at points-in-
 | features we want                    | raadtools 🤔 | \<new tool\> |
 |-------------------------------------|--------------|--------------|
 | users don't download files          | ✅           | ✅           |
-| we can add new data                 | ✅           | ✅           |
 | data is up to date                  | ✅           | ✅           |
+| we can add new data                 | ✅           | ✅           |
+| *you* can add new data                  | ❌           | ✅           |
 | use outside AAD without Mike or Ben | ❌           | ✅           |
 | use outside of R                    | ❌           | ✅           |
 | scale up on super computing         | ❌           | ✅           |
 | robust to research/local outage     | ❌           | ✅           |
 | available on Nuyina                 | ❌           | ??           |
-||||
 
 
 
-
-*"What we have is nice, but we need something very different."*
-
-   -- Robert Gentleman ( 2003)
-   
    
 ## Python support {.smaller}
 
