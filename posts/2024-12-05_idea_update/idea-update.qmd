@@ -14,7 +14,7 @@ editor: source
 
 raadtools, software to extract maps of ocean properties and values at points-in-time
 
-![](raadtools_map_tseries.png){fig-align="center"}
+![](Rplot.png){fig-align="center"}
 
 ## raadtools \> 10 years old R package   {.smaller}
 
@@ -29,72 +29,63 @@ raadtools, software to extract maps of ocean properties and values at points-in-
 | ...                        |                                                |
 
 
+other functions we don't have, yet ...
+
+
 
       
-## software that is great   {.smaller}
+## software we want   {.smaller}
 
 | features we want                    | raadtools 🤔 | \<new tool\> |
 |-------------------------------------|--------------|--------------|
 | users don't download files          | ✅           | ✅           |
 | data is up to date                  | ✅           | ✅           |
 | we can add new data                 | ✅           | ✅           |
-| *you* can add new data                  | ❌           | ✅           |
+| *you* can add new data              | ❌           | ✅           |
 | use outside AAD without Mike or Ben | ❌           | ✅           |
 | use outside of R                    | ❌           | ✅           |
 | scale up on super computing         | ❌           | ✅           |
 | robust to research/local outage     | ❌           | ✅           |
-| available on Nuyina                 | ❌           | ??           |
+| available offline on Nuyina         | ❌     |       ??           |
 
 
 
    
 ## Python support {.smaller}
 
+Address entire *data cubes*, with one line of code e.g. daily data 1993 to November 2024
+
 ```python        
-import xarray
-so = {"endpoint_url": "https://projects.pawsey.org.au",  "anon": True}
+import xarray; <some settings>
 
-ds = xarray.open_dataset('s3://vzarr/SEALEVEL_GLO_PHY_L4.parquet', 
-
-       engine = "kerchunk", chunks = {}, 
-       storage_options={"target_options": so, "remote_options": so})
+ds = xarray.open_dataset('s3://vzarr/SEALEVEL_GLO_PHY_L4.parquet', <more settings>)
 ```
+
+
+
 ```
 <xarray.Dataset> Size: 574GB
-Dimensions:    (time: 11538, latitude: 720, longitude: 1440, nv: 2)
+Dimensions:    (time: 11538, latitude: 720, longitude: 1440)
 Coordinates:
   * latitude   (latitude) float32 3kB -89.88 -89.62 -89.38 ... 89.38 89.62 89.88
   * longitude  (longitude) float32 6kB -179.9 -179.6 -179.4 ... 179.6 179.9
   * time       (time) datetime64[ns] 92kB 1993-01-01 1993-01-02 ... 2024-11-25
-Dimensions without coordinates: nv
 Data variables:
     adt        (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
-    crs        (time) float64 92kB dask.array<chunksize=(11538,), meta=np.ndarray>
     sla        (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
     ugos       (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
     ugosa      (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
     vgos       (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
     vgosa      (time, latitude, longitude) float64 96GB dask.array<chunksize=(1, 50, 50), meta=np.ndarray>
-Attributes: (12/44)
-    Conventions:                     CF-1.6
-    Metadata_Conventions:            Unidata Dataset Discovery v1.0
-    cdm_data_type:                   Grid
-    comment:                         Sea Surface Height measured by Altimetry...
-    contact:                         servicedesk.cmems@mercator-ocean.eu
-    creator_email:                   servicedesk.cmems@mercator-ocean.eu
-    ...                              ...
-    summary:                         SSALTO/DUACS Delayed-Time Level-4 sea su...
-    time_coverage_duration:          P1D
-    time_coverage_end:               1993-01-01T12:00:00Z
-    time_coverage_resolution:        P1D
-    time_coverage_start:             1992-12-31T12:00:00Z
-    title:                           DT merged all satellites Global Ocean Gr...
+Attributes: (12/44) ...
 ```
 
 ## How are we doing this
 
--   We respond and the tools reflect user-demand, tell us your ideas! 
+-   The old and new tools reflect user-demand, tell us your ideas! 
 -   Modern tech: cloud-native and efficient public-available files
--   Data curation and cataloguing tools: {bowerbird} by Ben Raymond and [rOpenSci.org](https://ropensci.org/)
--   Exploring best-practice usage in R and Python xarray, VirtualiZarr, terra, gdalraster
+-   Data curation and cataloguing tools: {bowerbird}, STAC, VirtualiZarr
+-   Exploring best-practice usage in Python xarray, odc, and in R terra, gdalraster, rsi
 -   Contributing to software libraries [GDAL.org](https://gdal.org/), and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica
+
+
