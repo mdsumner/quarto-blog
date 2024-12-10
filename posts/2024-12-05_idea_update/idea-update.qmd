@@ -93,7 +93,8 @@ Attributes: (12/44)
 
 ## How are we doing this
 
--   Modern file object storage (cloud-native and efficient public-available files)
--   Homegrown data library tools: {bowerbird} by Ben Raymond and [rOpenSci.org](https://ropensci.org/)
+-   We respond and the tools reflect user-demand, tell us your ideas! 
+-   Modern tech: cloud-native and efficient public-available files
+-   Data curation and cataloguing tools: {bowerbird} by Ben Raymond and [rOpenSci.org](https://ropensci.org/)
 -   Exploring best-practice usage in R and Python xarray, VirtualiZarr, terra, gdalraster
 -   Contributing to software libraries [GDAL.org](https://gdal.org/), and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica

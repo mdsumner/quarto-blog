@@ -39,7 +39,7 @@
     "href": "posts/2024-12-05_idea_update/idea-update.html#software-that-is-great",
     "title": "IDEA - data and software",
     "section": "software that is great",
-    "text": "software that is great\n\n\n\n\n\n\n\n\nfeatures we want\nraadtools 🤔\n&lt;new tool&gt;\n\n\n\n\nusers don’t download files\n✅\n✅\n\n\ndata is up to date\n✅\n✅\n\n\nwe can add new data\n✅\n✅\n\n\nyou can add new data\n❌\n✅\n\n\nuse outside AAD without Mike or Ben\n❌\n✅\n\n\nuse outside of R\n❌\n✅\n\n\nscale up on super computing\n❌\n✅\n\n\nrobust to research/local outage\n❌\n✅\n\n\navailable on Nuyina\n❌\n??\n\n\n\n\n\n\n\n\n“What we have is nice, but we need something very different.”\n– Robert Gentleman ( 2003)"
+    "text": "software that is great\n\n\n\n\n\n\n\n\nfeatures we want\nraadtools 🤔\n&lt;new tool&gt;\n\n\n\n\nusers don’t download files\n✅\n✅\n\n\ndata is up to date\n✅\n✅\n\n\nwe can add new data\n✅\n✅\n\n\nyou can add new data\n❌\n✅\n\n\nuse outside AAD without Mike or Ben\n❌\n✅\n\n\nuse outside of R\n❌\n✅\n\n\nscale up on super computing\n❌\n✅\n\n\nrobust to research/local outage\n❌\n✅\n\n\navailable on Nuyina\n❌\n??"
   },
   {
     "objectID": "posts/2024-12-05_idea_update/idea-update.html#python-support",
@@ -53,7 +53,7 @@
     "href": "posts/2024-12-05_idea_update/idea-update.html#how-are-we-doing-this",
     "title": "IDEA - data and software",
     "section": "How are we doing this",
-    "text": "How are we doing this\n\nModern file object storage (cloud-native and efficient public-available files)\nHomegrown data library tools: {bowerbird} by Ben Raymond and rOpenSci.org\nExploring best-practice usage in R and Python xarray, VirtualiZarr, terra, gdalraster\nContributing to software libraries GDAL.org, and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica"
+    "text": "How are we doing this\n\nWe respond and the tools reflect user-demand, tell us your ideas!\nModern tech: cloud-native and efficient public-available files\nData curation and cataloguing tools: {bowerbird} by Ben Raymond and rOpenSci.org\nExploring best-practice usage in R and Python xarray, VirtualiZarr, terra, gdalraster\nContributing to software libraries GDAL.org, and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica"
   },
   {
     "objectID": "posts/2022-12-09_netcdf-degenerate-rectilinear/index.html",
