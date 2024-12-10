@@ -1,10 +1,9 @@
 ---
 title: "Conservative regridding with GDAL (?)"
 author: "Michael Sumner"
-format: revealjs
 editor: source
-editor_options: 
-  chunk_output_type: console
+date: "2024-12-11"
+categories: [news, code]
 ---
 
 Can GDAL do conservative re-gridding?   For cases of regular grid to regular grid, yes I think it can. 
@@ -32,8 +31,8 @@ library(terra)
 Sys.setenv(GDAL_MEM_ENABLE_OPEN = "YES")
 
 
-## dsn::mem generates a Memory raster, gdal_raster_data is the warper, here we get identity
-## (always use mem() "live" to avoid the garbage collector, and only for Float64 I'm afraid)
+## dsn::mem generates a Memory raster, 
+## gdal_raster_data is the warper, here we get identity
 sg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"))
 
 unique(sg[[1]])
@@ -49,6 +48,9 @@ tor <- function(x) {
 
 r <- "sum"
 
+##   (always use mem() "live" to avoid the garbage collector, and only for Float64 I'm afraid)
+
+
 ## now use the same extent but reduce pixel size
 tg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"), target_ext = e1,
                          target_dim = dm * 8, resample = r)
@@ -56,7 +58,7 @@ tg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"), targ
 str(tg)
 ```
 
-So we have a lot more values as we resized from 2x2 to 64x64. 
+So we have a lot more values as we resized from 2x2 to 16x16. 
 
 It still looks the same, but the overall quantity has been distributed. 
 
@@ -73,15 +75,18 @@ unique(tg[[1]])
 
 Now a different example, an actual map projection change. 
 
+But, gawd ... there's a bug here. WIP
+
 ```{r reproj}  
 ## now try reprojecting our unit 1x1 longlat grid to LAEA centred a few degrees east and north
-crs <- "+proj=laea +lon_0=5 +lat_0=-4"
+crs <- "+proj=laea +lon_0=5 +lat_0=0"
 ## reproject the extent, we use a densified boundary to find the new extent
 prex <- reproj::reproj_extent(c(-1, 1, -1, 1), crs, source = "EPSG:4326")
 newg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"), 
-                         target_ext = prex, target_res = 10000, target_crs = crs, resample = "sum")
+                         target_ext = prex, target_res = c(10000, 10000), target_crs = crs, resample = "sum", options = "-tap")
 plot(tor(newg))
 sum(newg[[1]])
+
 
 ```
 
