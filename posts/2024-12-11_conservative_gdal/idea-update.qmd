@@ -1,0 +1,102 @@
+---
+title: "Conservative regridding with GDAL (?)"
+author: "Michael Sumner"
+format: revealjs
+editor: source
+editor_options: 
+  chunk_output_type: console
+---
+
+Can GDAL do conservative re-gridding?   For cases of regular grid to regular grid, yes I think it can. 
+
+Please note that I'm using tools I'm comfortable with, because I wrote them. I will reframe in other tools
+and other languages in time. For some reason I'd been blocked on understanding this issue. 
+
+
+## Simple grid with four values
+
+Take a grid, 2x2 with values 1,2,3,4 that sums to `10` and warp it to a new size. 
+
+```{r target}
+
+## target
+dm <- c(2, 2)
+
+g1 <- matrix(c(1, 2, 3, 4), dm[2], dm[1])
+e1 <- c(-1, 1, -1, 1)
+
+library(vapour)
+library(terra)
+  
+## we need this so we can use MEM: via dsn::mem()
+Sys.setenv(GDAL_MEM_ENABLE_OPEN = "YES")
+
+
+## dsn::mem generates a Memory raster, gdal_raster_data is the warper, here we get identity
+## (always use mem() "live" to avoid the garbage collector, and only for Float64 I'm afraid)
+sg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"))
+
+unique(sg[[1]])
+sum(sg[[1]])
+## spatialize for easy plotting
+tor <- function(x) {
+ 
+  dm <- attr(x, "dimension")[2:1]
+  r <- terra::rast(terra::ext(attr(x, "extent")), ncols = dm[1], nrows = dm[2], crs = attr(x, "projection"), 
+                   vals = x[[1]])
+  r
+}
+
+r <- "sum"
+
+## now use the same extent but reduce pixel size
+tg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"), target_ext = e1,
+                         target_dim = dm * 8, resample = r)
+
+str(tg)
+```
+
+So we have a lot more values as we resized from 2x2 to 64x64. 
+
+It still looks the same, but the overall quantity has been distributed. 
+
+```{r resize}
+plot(tor(tg), main = r)
+## draw boundaries on
+abline(v = vaster::x_corner(dm * 8, e1), h = vaster::y_corner(dm * 8, e1))
+
+print(sum(tg[[1]]))
+## our sum of 10 was distributed across 256 pixels
+unique(tg[[1]])
+
+```
+
+Now a different example, an actual map projection change. 
+
+```{r reproj}  
+## now try reprojecting our unit 1x1 longlat grid to LAEA centred a few degrees east and north
+crs <- "+proj=laea +lon_0=5 +lat_0=-4"
+## reproject the extent, we use a densified boundary to find the new extent
+prex <- reproj::reproj_extent(c(-1, 1, -1, 1), crs, source = "EPSG:4326")
+newg <- gdal_raster_data(dsn::mem(g1, extent = e1, projection = "EPSG:4326"), 
+                         target_ext = prex, target_res = 10000, target_crs = crs, resample = "sum")
+plot(tor(newg))
+sum(newg[[1]])
+
+```
+
+
+And what about trying to return, of course this can only be approximate (I want to know how this compares to other tools.)
+
+```{r reverse}
+
+## what if we go the other way, 
+
+newdm <- attr(newg, "dimension")
+newext <- attr(newg, "extent")
+x <- gdal_raster_data(dsn::mem(matrix(newg[[1]],newdm[2], byrow = TRUE),  extent = newext, projection = crs), 
+                 target_dim = dm, target_ext = e1, target_crs = "EPSG:4326", resample = "sum")
+plot(tor(x))
+sum(x[[1]])
+
+```
