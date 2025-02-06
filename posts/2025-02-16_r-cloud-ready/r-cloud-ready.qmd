@@ -1,0 +1,281 @@
+---
+title: "Integrated Digital East Antarctica, software and tools"
+author: "Michael Sumner"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+draft: true
+---
+
+## raadtools and bowerbird
+
+For some time the [{raadtools}](https://github.com/AustralianAntarcticDivision/raadtools) and [{bowerbird}](https://docs.ropensci.org/bowerbird/) packages have been used by data science admins at the Australian Antarctic Division.
+
+The adminstrator experience is one of maintaining a collection of data-getter configurations that results in a local copy of heavily-used environmental data products.
+
+The user experience is one of loading the raadtools package for access to functions that read time-steps from the data library of various environmental products. These products include sea surface temperature, sea ice concentration, ocean altimetry, ocean colour, bathymetry and topography, and ocean currents.
+
+The user can invoke functions such as 'readice()', 'readsst()', 'readghrsst()', 'read_adt_daily()' that by default return the latest available time step, or a specific time step. We can easily find the earliest available by setting `latest = FALSE`.
+
+```{r first}
+library(raadtools)
+readice()
+readsst()
+#readghrsst(latest = FALSE)
+read_adt_daily(latest = FALSE)
+read_adt_daily("2025-01-30")
+```
+
+These data objects are geospatial-standard raster layers, for extracting values at points, aggregating values under polygons and lines, and calculating other aggregate summaries over time. There are helpers specific to raadtools that will extract values at long,lat,time points, this is a convenience enabled by the geospatial-standard status of these layers (extent, shape, crs).
+
+```{r extract}
+nuyina$adt <- extract(read_adt_daily, nuyina)
+dplyr::sample_n(nuyina[, c("longitude", "latitude", "adt")], 100)
+
+```
+
+Just under the hood of raadtools are file-collection lists that implicitly define a "data cube" that exists for a given variable. These look like this:
+
+```{r files}
+(files <- sstfiles(returnfiles = TRUE))
+```
+
+The 'fullname' is the local path to the file, the 'date' is the derived time stamp of the data layer, and there's implicit 'band=1' for these where its assumed one-file is one-time-step. When that's not true we simply copy the file name and set explicity "band=*i*" for whatever local position in the file the time step lives.
+
+This relationship between the file set and the user-access function is informal, it's obviously not a general solution - we're assuming time series of 2D raster layers indexed by date, but this covers a huge amount of use cases and has been a helpful model for us.
+
+In most part we can update the local root '/rdsi/PUBLIC/raad/data' to 'https://' and that allows us to know where the source file was obtained from.
+
+Anyone can setup and run raadtools, but we are already in a post-download-data world. In practice it is used on curated cloud computing that we manage in a small-scale way. No on external can just install raadtools and use it. (Administrators can follow our lead, but again only a handful of people ever do this),
+
+Administrators manage the data library by setting up configurations such as this one, and {bowerbird} uses this to go-get the data every day. Files are downloaded if they are not already available locally, or if they have been updated at the source. There is an ongoing slow change in most datasets as they get reprocessed, added to, or conventions change orientation, resolution, coverage in time and space.
+
+The {blueant} package contains a set of pre-configured templates for data sets we use routinely.
+
+```{r configuration-of-sea-ice, warning=FALSE}
+mysrc <- blueant::sources("Sea Ice Concentrations from Nimbus-7 SMMR and DMSP SSM/I-SSMIS Passive Microwave Data, Version 2", hemisphere = "south",time_resolutions = "day")
+
+str(mysrc)
+```
+
+Each configuration contains details about the source, where to find the source urls, how to filter for files of interest, slots for authentication, and some provenance. This can be use to set up a spidering job as well, to simply find files that are available without downloading them.
+
+```{r auth-spider}
+library(bowerbird)
+## we won't download anything
+my_directory <- tempdir()
+cf <- bb_config(local_file_root = my_directory)
+
+mysrc <-  bb_modify_source(mysrc, user = Sys.getenv("EARTHDATA_USER"), password = Sys.getenv("EARTHDATA_PASS"),
+          method = list(accept_follow = "/(2025.02|2025.01)", accept_download = ".*nc$", no_host = FALSE))
+
+cf <- bb_add(cf, mysrc)
+result <- bb_sync(cf, dry_run = TRUE)
+```
+
+As a result we have a list of available files, ... (edit: leaving this as WIP for the moment).
+
+This blog post shows a more complete example of setting up a mini-raadtools environment from scratch: https://ropensci.org/blog/2018/11/13/antarctic/
+
+## Modern perspectives
+
+We recognize that this is a dated model and doesn't mesh well with modern practice.
+
+Data cubes: we now expect that "whole datasets" from the earliest time available to the very latest available can be loaded in one abstract object. This is a reasonable expectation and has been a long time coming.
+
+We also expect that non-aligned data can be streamed at use-time into a standardized grid, this has been most clearly demonstrated by STAC and use of Sentinel and Landsat, but is also true for any disparate sources of data that are measured for a given area. We can define an output grid for analysis, and regrid on-the-fly using GDAL's warp engine or tools like ESMF.
+
+We want to maintain a toolkit like this for our existing and future R users, but at every point we are reviewing how much commitment we make and what changes we will actually support. We can also provide python tooling, but that is well-defined and we just enable that usage where we need.
+
+## A prototype raadtools-replacement
+
+The most valuable thing we have from the bowerbird/raadtools system is bowerbird itself (a huge body of knowledge for spidering and downloading from a diverse set of data providers).
+
+{bowerbird} is really the magic behind this system, and as adminstrators and data-accessors we will continue to use it to discover data that is not already well catalogued in modern ways ...
+
+What would we update if raadtols as-is was to be upgraded?
+
+We should use {terra} as the default output format. (It is currently still {raster} which was born on top of {rgdal}/{sp}, down defunct and disfavoured respectively).
+
+Use of more GDAL VRT. There are tasks that can be easily replaced by VRT, that include
+
+-   augmenting missing metadata (netcdf typically doesn't store an explicit crs for longlat data)
+-   swapping hemispheres from 0,360 or -180,180 convention data
+-   augmenting incorrect georeferencing (GHRSST/MURSST benefits from an assigned geotransform, to fix the broken 1D coordinate arrays that aren't sufficiently precise in Float32)
+-   combining disparate layers, the two polar grids of sea ice concentration can be easily streamed into a global grid (transverse merctor, longlat)
+-   many others, specific to dataset vagaries
+
+We explored many of these options, and then developed quite a few of them into GDAL itself, if GDAL can recognized or workaround a problem data set then we can remove R code that understands them and it will also work in other programming languages. For us these included
+
+-   GRIB files that weren't recognized as being in polar projections
+-   issues with the warper when using degenerate rectlinear coordinates
+-   many new "gdal_translate" options for the "vrt://" connection that provides a general mechanism to easily inline "VRT fixes" in a single line of text.
+
+The resource should publically available on any machine. We could do this by exposing our data library via web services, but we have concerns about permission to do that and so we are working on a case-by-case basis to determine some of these overal questions.
+
+It should work as well in Python. R and Python are very different in terms of their assumed support for gridded data. They have a lot in common, but we can't assumed GDAL-layers via terra in Python (rasterio is close functionally but it wouldn't be sensible to equate a SpatRaster with active GDAL bindings to a rasterio object with active GDAL bindings, they are idiomatically different because of differences in how people have used those languages). This is a primary reason why we have settled on the barest-in-common features. What we can share seamlessly between R and Python is a set of data sources (files or objects) with some kind of catalogue.
+
+## Example of working with problem datasets
+
+On 20 November 2024 the 0.25 degree grids from Copernicus altimetry had finished being published. This means that there is a new dataset that is on a 0.125 degree grid, and these are now separate datasets.
+
+It looks like this in raadtools:
+
+``` r
+library(raadtools)
+read_adt_daily("2024-11-19")
+class      : RasterBrick 
+dimensions : 720, 1440, 1036800, 1  (nrow, ncol, ncell, nlayers)
+resolution : 0.25, 0.25  (x, y)
+extent     : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +a=6378136.3 +rf=298.257 +no_defs 
+source     : memory
+names      : Absolute.dynamic.topography 
+min values :                     -1.5285 
+max values :                      2.1569 
+time       : 2024-11-19 
+
+read_adt_daily("2024-11-20")
+class      : RasterBrick 
+dimensions : 1440, 2880, 4147200, 1  (nrow, ncol, ncell, nlayers)
+resolution : 0.125, 0.125  (x, y)
+extent     : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +a=6378136.3 +rf=298.257 +no_defs 
+source     : memory
+names      : Absolute.dynamic.topography 
+min values :                     -1.6685 
+max values :             
+```
+
+That is a huge problem if someone tries to read a multi-day dataset with this function, but otherwise won't cause problems for value extraction. It's a break in the assumptions our file-handling has made though and we need to fix it.
+
+If we get these files from our object storage we can do this now in a less language-specific way.
+
+(here we are accessing files that are otherwise available directly from Copernicus marine, but please treat this as an example of how we can increment support in our existing tools rather than as an example of "best practice" if we were to choose the best options off the shelf today)
+
+```{r objects}
+
+objects <- arrow::read_parquet("https://projects.pawsey.org.au/idea-objects/idea-curated-objects.parquet")
+## dataset identifier we want
+dsid <- "SEALEVEL_GLO_PHY_L4"
+
+(altimetryfiles <- dplyr::filter(objects, Dataset == dsid))
+
+
+
+```
+
+First a function to match input date/date-time/date-timestring to a set of reference dates. We won't go into the details of this here, but this captures all the logic used in raadtools to give a consistent and reasonable set of date-layers for user input.
+
+```{r date-norm}
+## validation for input dates (qdate) against reference dates (fdate)
+## returns the index of qdate within fdate where fdate are the actual time steps, strictly monotonic increasing
+## this function returns an index into fdate for every qdate that is 1) valid 2) near enough to an fdate (tolerance 2x minimum interval)
+## sort and uniqueness are forced on the input, returns 0-length quietly if none are valid 
+ifun <- function(qdate, fdate) {
+  if (length(qdate) < 1 || length(fdate) < 1) return(NULL)
+ qdate <-  try(as.POSIXct(qdate, tz = "UTC"), silent = TRUE)
+ fdate <- try(as.POSIXct(fdate, tz = "UTC"), silent = TRUE)
+ if (inherits(qdate, "try-error") || inherits(fdate, "try-error")) return(NULL)
+ mintimeres <- min(diff(unclass(as.POSIXct(fdate, tz = "UTC"))))
+ 
+ df <- data.frame(qdate = qdate, idate = findInterval(qdate, fdate))
+ df <- df[!is.na(df$idate), ]
+ df <- df[!duplicated(df$idate), ]
+ df <- df[order(df$idate), ]
+ idate <- df$idate
+ ## clamp index
+ idate[idate < 1] <- 1
+ idate[idate > length(fdate)] <- length(fdate)
+ difdate <- abs(unclass(fdate[idate]) - unclass(df$qdate))
+ ## now finally kill all matches that are different by 2x the minimum interval
+ bad <- difdate > (2 * mintimeres)
+ idate[!bad]
+}
+
+```
+
+Now, we can write a function to take user input and return the relevant files.
+
+```{r files-relevant}
+get_altimetry <- function(date) {
+  objects <- arrow::read_parquet("https://projects.pawsey.org.au/idea-objects/idea-curated-objects.parquet")
+  ## dataset identifier we want
+  dsid <- "SEALEVEL_GLO_PHY_L4"
+
+  altimetryfiles <- dplyr::filter(objects, Dataset == dsid)
+  index <- ifun(date, altimetryfiles$date)
+  if (length(index) < 1) stop("no input dates match available altimetry data")
+  
+  altimetryfiles[index, ]
+}
+
+get_altimetry("2024-11-11")
+
+get_altimetry(seq(as.Date("1994-01-01"), as.Date("2024-01-01"), by = "1 year"))
+
+get_altimetry("2025-01-01")$Key
+```
+
+We know that files with `0.125` in them are different grids to those with `0.25deg`, but as a workaround we can standardize the output to always be of the higher resolution.
+
+We do this for an example with only one of the available variables, `adt`. (absolute dynamic topography, which is sea surface height).
+
+```{r standardize}
+Sys.setenv("AWS_S3_ENDPOINT" = "projects.pawsey.org.au")
+Sys.setenv("AWS_VIRTUAL_HOSTING" = "FALSE")
+get_adt <- function(date) {
+  files <- get_altimetry(date)
+  sourcepath <- sprintf("/vsis3/%s/%s", files$Bucket, files$Key)
+  tibble::tibble(date = files$date, source = sprintf("vrt://%s?sd_name=adt&outsize=2880,1440", sourcepath))
+}
+get_adt("2003-01-01")$source
+get_adt("2025-01-01")$source
+
+
+## with which we can now write a standard and entirely lazy reader with geospatial tools
+read_adt <- function(date, grid = NULL) {
+  files <- get_adt(date)
+  if (!is.null(grid)) {
+    out <- terra::project(terra::rast(files$source), grid)
+  } else {
+    out <- terra::rast(files$source)
+  }
+  out
+}
+```
+
+## sooty demo
+
+Taking what we have back to its foundations, the set of files that we have knowledge of for each dataset is very general and cross-language. We can get the set of curated files for each dataset and then create an object-oriented interface like this in R.
+
+```{r oo-sooty}
+library(S7)
+dataset <- new_class(name = "dataset",                   
+                     properties = list(
+                       id = new_property(class = class_character, default = "id"),
+                       n = new_property(class = class_integer, getter = function(self) nrow(self@source)),
+                       mindate = new_property(class = class_POSIXct, getter = function(self) min(self@source$date)), 
+                       maxdate = new_property(class = class_POSIXct, getter = function(self) max(self@source$date)),
+                       source = new_property(
+                         class = class_data.frame,
+                         getter = function(self) {
+                           sooty::sooty_files(curated = TRUE) |> dplyr::filter(Dataset == self@id)
+                         } 
+                       ))
+                     
+)
+
+d <- dataset()
+
+d@id <- "NSIDC_SEAICE_PS_S25km"
+
+
+
+
+files <- d@source
+ifun(c("2025-02-02"), files$date)
+
+```
+

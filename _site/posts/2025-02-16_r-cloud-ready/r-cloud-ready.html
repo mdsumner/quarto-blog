@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.40">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+
+<title>Integrated Digital East Antarctica, software and tools – hypertidy-blog</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-f35fe1cd5327914ced924141ccf83654.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="quarto:status" content="draft">
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="Integrated Digital East Antarctica, software and tools – hypertidy-blog">
+<meta property="og:description" content="">
+<meta property="og:site_name" content="hypertidy-blog">
+<meta name="twitter:title" content="Integrated Digital East Antarctica, software and tools – hypertidy-blog">
+<meta name="twitter:description" content="">
+<meta name="twitter:creator" content="@mdsumner">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner"><div id="quarto-draft-alert" class="alert alert-warning"><i class="bi bi-pencil-square"></i>Draft</div>
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">hypertidy-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Integrated Digital East Antarctica, software and tools</h1>
+                      </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael Sumner </p>
+            </div>
+    </div>
+      
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="raadtools-and-bowerbird" class="level2">
+<h2 class="anchored" data-anchor-id="raadtools-and-bowerbird">raadtools and bowerbird</h2>
+<p>For some time the <a href="https://github.com/AustralianAntarcticDivision/raadtools">{raadtools}</a> and <a href="https://docs.ropensci.org/bowerbird/">{bowerbird}</a> packages have been used by data science admins at the Australian Antarctic Division.</p>
+<p>The adminstrator experience is one of maintaining a collection of data-getter configurations that results in a local copy of heavily-used environmental data products.</p>
+<p>The user experience is one of loading the raadtools package for access to functions that read time-steps from the data library of various environmental products. These products include sea surface temperature, sea ice concentration, ocean altimetry, ocean colour, bathymetry and topography, and ocean currents.</p>
+<p>The user can invoke functions such as ‘readice()’, ‘readsst()’, ‘readghrsst()’, ‘read_adt_daily()’ that by default return the latest available time step, or a specific time step. We can easily find the earliest available by setting <code>latest = FALSE</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raadtools)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: raster</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: sp</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>global option 'raadfiles.data.roots' set:
+'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/rdsi/PRIVATE/raad/data               
+ /rdsi/PRIVATE/raad/data_local         
+ /rdsi/PRIVATE/raad/data_staging       
+ /rdsi/PRIVATE/raad/data_deprecated    
+ /rdsi/PUBLIC/raad/data                </code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Uploading raad file cache as at 2025-02-06 12:04:40 (1649115 files listed) </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readice</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class      : RasterLayer 
+dimensions : 332, 316, 104912  (nrow, ncol, ncell)
+resolution : 25000, 25000  (x, y)
+extent     : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
+crs        : +proj=stere +lat_0=-90 +lat_ts=-70 +lon_0=0 +x_0=0 +y_0=0 +a=6378273 +rf=298.279411123061 +units=m +no_defs 
+source     : memory
+names      : layer 
+values     : 0.4, 100  (min, max)
+time       : 2025-02-03 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readsst</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class      : RasterLayer 
+dimensions : 720, 1440, 1036800  (nrow, ncol, ncell)
+resolution : 0.25, 0.25  (x, y)
+extent     : -180, 180, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +datum=WGS84 +no_defs 
+source     : memory
+names      : Daily.sea.surface.temperature 
+values     : -1.8, 32.79  (min, max)
+time       : 2025-02-03 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">#readghrsst(latest = FALSE)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">read_adt_daily</span>(<span class="at">latest =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class      : RasterBrick 
+dimensions : 720, 1440, 1036800, 1  (nrow, ncol, ncell, nlayers)
+resolution : 0.25, 0.25  (x, y)
+extent     : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +a=6378136.3 +rf=298.257 +no_defs 
+source     : memory
+names      : Absolute.dynamic.topography 
+min values :                     -1.5009 
+max values :                      1.6582 
+time       : 1993-01-01 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_adt_daily</span>(<span class="st">"2025-01-30"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class      : RasterBrick 
+dimensions : 1440, 2880, 4147200, 1  (nrow, ncol, ncell, nlayers)
+resolution : 0.125, 0.125  (x, y)
+extent     : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +a=6378136.3 +rf=298.257 +no_defs 
+source     : memory
+names      : Absolute.dynamic.topography 
+min values :                     -1.5703 
+max values :                      1.9685 
+time       : 2025-01-30 </code></pre>
+</div>
+</div>
+<p>These data objects are geospatial-standard raster layers, for extracting values at points, aggregating values under polygons and lines, and calculating other aggregate summaries over time. There are helpers specific to raadtools that will extract values at long,lat,time points, this is a convenience enabled by the geospatial-standard status of these layers (extent, shape, crs).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>nuyina<span class="sc">$</span>adt <span class="ot">&lt;-</span> <span class="fu">extract</span>(read_adt_daily, nuyina)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">sample_n</span>(nuyina[, <span class="fu">c</span>(<span class="st">"longitude"</span>, <span class="st">"latitude"</span>, <span class="st">"adt"</span>)], <span class="dv">100</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 100 × 3
+   longitude latitude    adt
+       &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;
+ 1      148.    -43.5  0.565
+ 2      129.    -53.2 -0.379
+ 3      147.    -42.9 NA    
+ 4      111.    -59.9 -1.12 
+ 5      140.    -47.0  0.569
+ 6      110.    -61.6 -1.26 
+ 7      131.    -52.1 -0.222
+ 8      151.    -45.4  0.575
+ 9      147.    -42.9 NA    
+10      117.    -58.7 -0.874
+# ℹ 90 more rows</code></pre>
+</div>
+</div>
+<p>Just under the hood of raadtools are file-collection lists that implicitly define a “data cube” that exists for a given variable. These look like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>(files <span class="ot">&lt;-</span> <span class="fu">sstfiles</span>(<span class="at">returnfiles =</span> <span class="cn">TRUE</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 15,862 × 3
+   date                fullname                                            root 
+   &lt;dttm&gt;              &lt;chr&gt;                                               &lt;chr&gt;
+ 1 1981-09-01 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 2 1981-09-02 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 3 1981-09-03 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 4 1981-09-04 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 5 1981-09-05 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 6 1981-09-06 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 7 1981-09-07 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 8 1981-09-08 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+ 9 1981-09-09 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+10 1981-09-10 00:00:00 /rdsi/PUBLIC/raad/data/www.ncei.noaa.gov/data/sea-… /rds…
+# ℹ 15,852 more rows</code></pre>
+</div>
+</div>
+<p>The ‘fullname’ is the local path to the file, the ‘date’ is the derived time stamp of the data layer, and there’s implicit ‘band=1’ for these where its assumed one-file is one-time-step. When that’s not true we simply copy the file name and set explicity “band=<em>i</em>” for whatever local position in the file the time step lives.</p>
+<p>This relationship between the file set and the user-access function is informal, it’s obviously not a general solution - we’re assuming time series of 2D raster layers indexed by date, but this covers a huge amount of use cases and has been a helpful model for us.</p>
+<p>In most part we can update the local root ‘/rdsi/PUBLIC/raad/data’ to ‘https://’ and that allows us to know where the source file was obtained from.</p>
+<p>Anyone can setup and run raadtools, but we are already in a post-download-data world. In practice it is used on curated cloud computing that we manage in a small-scale way. No on external can just install raadtools and use it. (Administrators can follow our lead, but again only a handful of people ever do this),</p>
+<p>Administrators manage the data library by setting up configurations such as this one, and {bowerbird} uses this to go-get the data every day. Files are downloaded if they are not already available locally, or if they have been updated at the source. There is an ongoing slow change in most datasets as they get reprocessed, added to, or conventions change orientation, resolution, coverage in time and space.</p>
+<p>The {blueant} package contains a set of pre-configured templates for data sets we use routinely.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>mysrc <span class="ot">&lt;-</span> blueant<span class="sc">::</span><span class="fu">sources</span>(<span class="st">"Sea Ice Concentrations from Nimbus-7 SMMR and DMSP SSM/I-SSMIS Passive Microwave Data, Version 2"</span>, <span class="at">hemisphere =</span> <span class="st">"south"</span>,<span class="at">time_resolutions =</span> <span class="st">"day"</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(mysrc)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>tibble [1 × 16] (S3: tbl_df/tbl/data.frame)
+ $ id                 : chr "10.5067/MPYG15WAA4WX"
+ $ name               : chr "Sea Ice Concentrations from Nimbus-7 SMMR and DMSP SSM/I-SSMIS Passive Microwave Data, Version 2"
+ $ description        : chr "Passive microwave estimates of sea ice concentration at 25km spatial resolution. Daily and monthly resolution, "| __truncated__
+ $ doc_url            : chr "https://nsidc.org/data/nsidc-0051/versions/2"
+ $ source_url         :List of 1
+  ..$ : chr "https://n5eil01u.ecs.nsidc.org/PM/NSIDC-0051.002/"
+ $ citation           : chr "DiGirolamo NE, Parkinson CL, Cavalieri DJ, Gloersen P, Zwally HJ (2022, updated yearly). Sea Ice Concentrations"| __truncated__
+ $ license            : chr "As a condition of using these data, you must include a citation."
+ $ comment            : chr NA
+ $ method             :List of 1
+  ..$ :List of 7
+  .. ..$                        : chr "bb_handler_earthdata"
+  .. ..$ relative               : logi TRUE
+  .. ..$ accept_follow          : chr "[[:digit:]]{4}\\.[[:digit:]]{2}\\.[[:digit:]]{2}/"
+  .. ..$ accept_download        : chr "PS_S25km.*\\.nc$"
+  .. ..$ reject_download        : chr "\\.(xml|png)$"
+  .. ..$ level                  : num 2
+  .. ..$ allow_unrestricted_auth: logi TRUE
+ $ postprocess        :List of 1
+  ..$ : list()
+ $ authentication_note: chr "Requires Earthdata login, see https://urs.earthdata.nasa.gov/. Note that you will also need to authorize the ap"| __truncated__
+ $ user               : chr ""
+ $ password           : chr ""
+ $ access_function    : chr "raadtools::readice"
+ $ data_group         : chr "Sea ice"
+ $ collection_size    : num 5</code></pre>
+</div>
+</div>
+<p>Each configuration contains details about the source, where to find the source urls, how to filter for files of interest, slots for authentication, and some provenance. This can be use to set up a spidering job as well, to simply find files that are available without downloading them.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bowerbird)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="do">## we won't download anything</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>my_directory <span class="ot">&lt;-</span> <span class="fu">tempdir</span>()</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>cf <span class="ot">&lt;-</span> <span class="fu">bb_config</span>(<span class="at">local_file_root =</span> my_directory)</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>mysrc <span class="ot">&lt;-</span>  <span class="fu">bb_modify_source</span>(mysrc, <span class="at">user =</span> <span class="fu">Sys.getenv</span>(<span class="st">"EARTHDATA_USER"</span>), <span class="at">password =</span> <span class="fu">Sys.getenv</span>(<span class="st">"EARTHDATA_PASS"</span>),</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>          <span class="at">method =</span> <span class="fu">list</span>(<span class="at">accept_follow =</span> <span class="st">"/(2025.02|2025.01)"</span>, <span class="at">accept_download =</span> <span class="st">".*nc$"</span>, <span class="at">no_host =</span> <span class="cn">FALSE</span>))</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>cf <span class="ot">&lt;-</span> <span class="fu">bb_add</span>(cf, mysrc)</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">bb_sync</span>(cf, <span class="at">dry_run =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>As a result we have a list of available files, … (edit: leaving this as WIP for the moment).</p>
+<p>This blog post shows a more complete example of setting up a mini-raadtools environment from scratch: https://ropensci.org/blog/2018/11/13/antarctic/</p>
+</section>
+<section id="modern-perspectives" class="level2">
+<h2 class="anchored" data-anchor-id="modern-perspectives">Modern perspectives</h2>
+<p>We recognize that this is a dated model and doesn’t mesh well with modern practice.</p>
+<p>Data cubes: we now expect that “whole datasets” from the earliest time available to the very latest available can be loaded in one abstract object. This is a reasonable expectation and has been a long time coming.</p>
+<p>We also expect that non-aligned data can be streamed at use-time into a standardized grid, this has been most clearly demonstrated by STAC and use of Sentinel and Landsat, but is also true for any disparate sources of data that are measured for a given area. We can define an output grid for analysis, and regrid on-the-fly using GDAL’s warp engine or tools like ESMF.</p>
+<p>We want to maintain a toolkit like this for our existing and future R users, but at every point we are reviewing how much commitment we make and what changes we will actually support. We can also provide python tooling, but that is well-defined and we just enable that usage where we need.</p>
+</section>
+<section id="a-prototype-raadtools-replacement" class="level2">
+<h2 class="anchored" data-anchor-id="a-prototype-raadtools-replacement">A prototype raadtools-replacement</h2>
+<p>The most valuable thing we have from the bowerbird/raadtools system is bowerbird itself (a huge body of knowledge for spidering and downloading from a diverse set of data providers).</p>
+<p>{bowerbird} is really the magic behind this system, and as adminstrators and data-accessors we will continue to use it to discover data that is not already well catalogued in modern ways …</p>
+<p>What would we update if raadtols as-is was to be upgraded?</p>
+<p>We should use {terra} as the default output format. (It is currently still {raster} which was born on top of {rgdal}/{sp}, down defunct and disfavoured respectively).</p>
+<p>Use of more GDAL VRT. There are tasks that can be easily replaced by VRT, that include</p>
+<ul>
+<li>augmenting missing metadata (netcdf typically doesn’t store an explicit crs for longlat data)</li>
+<li>swapping hemispheres from 0,360 or -180,180 convention data</li>
+<li>augmenting incorrect georeferencing (GHRSST/MURSST benefits from an assigned geotransform, to fix the broken 1D coordinate arrays that aren’t sufficiently precise in Float32)</li>
+<li>combining disparate layers, the two polar grids of sea ice concentration can be easily streamed into a global grid (transverse merctor, longlat)</li>
+<li>many others, specific to dataset vagaries</li>
+</ul>
+<p>We explored many of these options, and then developed quite a few of them into GDAL itself, if GDAL can recognized or workaround a problem data set then we can remove R code that understands them and it will also work in other programming languages. For us these included</p>
+<ul>
+<li>GRIB files that weren’t recognized as being in polar projections</li>
+<li>issues with the warper when using degenerate rectlinear coordinates</li>
+<li>many new “gdal_translate” options for the “vrt://” connection that provides a general mechanism to easily inline “VRT fixes” in a single line of text.</li>
+</ul>
+<p>The resource should publically available on any machine. We could do this by exposing our data library via web services, but we have concerns about permission to do that and so we are working on a case-by-case basis to determine some of these overal questions.</p>
+<p>It should work as well in Python. R and Python are very different in terms of their assumed support for gridded data. They have a lot in common, but we can’t assumed GDAL-layers via terra in Python (rasterio is close functionally but it wouldn’t be sensible to equate a SpatRaster with active GDAL bindings to a rasterio object with active GDAL bindings, they are idiomatically different because of differences in how people have used those languages). This is a primary reason why we have settled on the barest-in-common features. What we can share seamlessly between R and Python is a set of data sources (files or objects) with some kind of catalogue.</p>
+</section>
+<section id="example-of-working-with-problem-datasets" class="level2">
+<h2 class="anchored" data-anchor-id="example-of-working-with-problem-datasets">Example of working with problem datasets</h2>
+<p>On 20 November 2024 the 0.25 degree grids from Copernicus altimetry had finished being published. This means that there is a new dataset that is on a 0.125 degree grid, and these are now separate datasets.</p>
+<p>It looks like this in raadtools:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raadtools)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">read_adt_daily</span>(<span class="st">"2024-11-19"</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>class      <span class="sc">:</span> RasterBrick </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>dimensions <span class="sc">:</span> <span class="dv">720</span>, <span class="dv">1440</span>, <span class="dv">1036800</span>, <span class="dv">1</span>  (nrow, ncol, ncell, nlayers)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>resolution <span class="sc">:</span> <span class="fl">0.25</span>, <span class="fl">0.25</span>  (x, y)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>extent     <span class="sc">:</span> <span class="dv">0</span>, <span class="dv">360</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">90</span>  (xmin, xmax, ymin, ymax)</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>crs        <span class="sc">:</span> <span class="sc">+</span>proj<span class="ot">=</span>longlat <span class="sc">+</span>a<span class="ot">=</span><span class="fl">6378136.3</span> <span class="sc">+</span>rf<span class="ot">=</span><span class="fl">298.257</span> <span class="sc">+</span>no_defs </span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>source     <span class="sc">:</span> memory</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>names      <span class="sc">:</span> Absolute.dynamic.topography </span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>min values <span class="sc">:</span>                     <span class="sc">-</span><span class="fl">1.5285</span> </span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>max values <span class="sc">:</span>                      <span class="fl">2.1569</span> </span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>time       <span class="sc">:</span> <span class="dv">2024-11-19</span> </span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a><span class="fu">read_adt_daily</span>(<span class="st">"2024-11-20"</span>)</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>class      <span class="sc">:</span> RasterBrick </span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>dimensions <span class="sc">:</span> <span class="dv">1440</span>, <span class="dv">2880</span>, <span class="dv">4147200</span>, <span class="dv">1</span>  (nrow, ncol, ncell, nlayers)</span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>resolution <span class="sc">:</span> <span class="fl">0.125</span>, <span class="fl">0.125</span>  (x, y)</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>extent     <span class="sc">:</span> <span class="dv">0</span>, <span class="dv">360</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">90</span>  (xmin, xmax, ymin, ymax)</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>crs        <span class="sc">:</span> <span class="sc">+</span>proj<span class="ot">=</span>longlat <span class="sc">+</span>a<span class="ot">=</span><span class="fl">6378136.3</span> <span class="sc">+</span>rf<span class="ot">=</span><span class="fl">298.257</span> <span class="sc">+</span>no_defs </span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>source     <span class="sc">:</span> memory</span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>names      <span class="sc">:</span> Absolute.dynamic.topography </span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>min values <span class="sc">:</span>                     <span class="sc">-</span><span class="fl">1.6685</span> </span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>max values <span class="sc">:</span>             </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>That is a huge problem if someone tries to read a multi-day dataset with this function, but otherwise won’t cause problems for value extraction. It’s a break in the assumptions our file-handling has made though and we need to fix it.</p>
+<p>If we get these files from our object storage we can do this now in a less language-specific way.</p>
+<p>(here we are accessing files that are otherwise available directly from Copernicus marine, but please treat this as an example of how we can increment support in our existing tools rather than as an example of “best practice” if we were to choose the best options off the shelf today)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>objects <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://projects.pawsey.org.au/idea-objects/idea-curated-objects.parquet"</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="do">## dataset identifier we want</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>dsid <span class="ot">&lt;-</span> <span class="st">"SEALEVEL_GLO_PHY_L4"</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>(altimetryfiles <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(objects, Dataset <span class="sc">==</span> dsid))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 11,610 × 4
+   Bucket                                      Key   date                Dataset
+   &lt;chr&gt;                                       &lt;chr&gt; &lt;dttm&gt;              &lt;chr&gt;  
+ 1 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-01 00:00:00 SEALEV…
+ 2 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-02 00:00:00 SEALEV…
+ 3 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-03 00:00:00 SEALEV…
+ 4 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-04 00:00:00 SEALEV…
+ 5 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-05 00:00:00 SEALEV…
+ 6 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-06 00:00:00 SEALEV…
+ 7 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-07 00:00:00 SEALEV…
+ 8 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-08 00:00:00 SEALEV…
+ 9 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-09 00:00:00 SEALEV…
+10 idea-sealevel-glo-phy-l4-rep-observations-… data… 1993-01-10 00:00:00 SEALEV…
+# ℹ 11,600 more rows</code></pre>
+</div>
+</div>
+<p>First a function to match input date/date-time/date-timestring to a set of reference dates. We won’t go into the details of this here, but this captures all the logic used in raadtools to give a consistent and reasonable set of date-layers for user input.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="do">## validation for input dates (qdate) against reference dates (fdate)</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="do">## returns the index of qdate within fdate where fdate are the actual time steps, strictly monotonic increasing</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="do">## this function returns an index into fdate for every qdate that is 1) valid 2) near enough to an fdate (tolerance 2x minimum interval)</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="do">## sort and uniqueness are forced on the input, returns 0-length quietly if none are valid </span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>ifun <span class="ot">&lt;-</span> <span class="cf">function</span>(qdate, fdate) {</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(qdate) <span class="sc">&lt;</span> <span class="dv">1</span> <span class="sc">||</span> <span class="fu">length</span>(fdate) <span class="sc">&lt;</span> <span class="dv">1</span>) <span class="fu">return</span>(<span class="cn">NULL</span>)</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a> qdate <span class="ot">&lt;-</span>  <span class="fu">try</span>(<span class="fu">as.POSIXct</span>(qdate, <span class="at">tz =</span> <span class="st">"UTC"</span>), <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a> fdate <span class="ot">&lt;-</span> <span class="fu">try</span>(<span class="fu">as.POSIXct</span>(fdate, <span class="at">tz =</span> <span class="st">"UTC"</span>), <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a> <span class="cf">if</span> (<span class="fu">inherits</span>(qdate, <span class="st">"try-error"</span>) <span class="sc">||</span> <span class="fu">inherits</span>(fdate, <span class="st">"try-error"</span>)) <span class="fu">return</span>(<span class="cn">NULL</span>)</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a> mintimeres <span class="ot">&lt;-</span> <span class="fu">min</span>(<span class="fu">diff</span>(<span class="fu">unclass</span>(<span class="fu">as.POSIXct</span>(fdate, <span class="at">tz =</span> <span class="st">"UTC"</span>))))</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">qdate =</span> qdate, <span class="at">idate =</span> <span class="fu">findInterval</span>(qdate, fdate))</span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> df[<span class="sc">!</span><span class="fu">is.na</span>(df<span class="sc">$</span>idate), ]</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> df[<span class="sc">!</span><span class="fu">duplicated</span>(df<span class="sc">$</span>idate), ]</span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> df[<span class="fu">order</span>(df<span class="sc">$</span>idate), ]</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a> idate <span class="ot">&lt;-</span> df<span class="sc">$</span>idate</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a> <span class="do">## clamp index</span></span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a> idate[idate <span class="sc">&lt;</span> <span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a> idate[idate <span class="sc">&gt;</span> <span class="fu">length</span>(fdate)] <span class="ot">&lt;-</span> <span class="fu">length</span>(fdate)</span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a> difdate <span class="ot">&lt;-</span> <span class="fu">abs</span>(<span class="fu">unclass</span>(fdate[idate]) <span class="sc">-</span> <span class="fu">unclass</span>(df<span class="sc">$</span>qdate))</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a> <span class="do">## now finally kill all matches that are different by 2x the minimum interval</span></span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a> bad <span class="ot">&lt;-</span> difdate <span class="sc">&gt;</span> (<span class="dv">2</span> <span class="sc">*</span> mintimeres)</span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a> idate[<span class="sc">!</span>bad]</span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now, we can write a function to take user input and return the relevant files.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>get_altimetry <span class="ot">&lt;-</span> <span class="cf">function</span>(date) {</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  objects <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://projects.pawsey.org.au/idea-objects/idea-curated-objects.parquet"</span>)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="do">## dataset identifier we want</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  dsid <span class="ot">&lt;-</span> <span class="st">"SEALEVEL_GLO_PHY_L4"</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  altimetryfiles <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(objects, Dataset <span class="sc">==</span> dsid)</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  index <span class="ot">&lt;-</span> <span class="fu">ifun</span>(date, altimetryfiles<span class="sc">$</span>date)</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(index) <span class="sc">&lt;</span> <span class="dv">1</span>) <span class="fu">stop</span>(<span class="st">"no input dates match available altimetry data"</span>)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  altimetryfiles[index, ]</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="fu">get_altimetry</span>(<span class="st">"2024-11-11"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 4
+  Bucket                               Key           date                Dataset
+  &lt;chr&gt;                                &lt;chr&gt;         &lt;dttm&gt;              &lt;chr&gt;  
+1 idea-sealevel-glo-phy-l4-nrt-008-046 data.marine.… 2024-11-11 00:00:00 SEALEV…</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_altimetry</span>(<span class="fu">seq</span>(<span class="fu">as.Date</span>(<span class="st">"1994-01-01"</span>), <span class="fu">as.Date</span>(<span class="st">"2024-01-01"</span>), <span class="at">by =</span> <span class="st">"1 year"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 31 × 4
+   Bucket                                      Key   date                Dataset
+   &lt;chr&gt;                                       &lt;chr&gt; &lt;dttm&gt;              &lt;chr&gt;  
+ 1 idea-sealevel-glo-phy-l4-rep-observations-… data… 1994-01-01 00:00:00 SEALEV…
+ 2 idea-sealevel-glo-phy-l4-rep-observations-… data… 1995-01-01 00:00:00 SEALEV…
+ 3 idea-sealevel-glo-phy-l4-rep-observations-… data… 1996-01-01 00:00:00 SEALEV…
+ 4 idea-sealevel-glo-phy-l4-rep-observations-… data… 1997-01-01 00:00:00 SEALEV…
+ 5 idea-sealevel-glo-phy-l4-rep-observations-… data… 1998-01-01 00:00:00 SEALEV…
+ 6 idea-sealevel-glo-phy-l4-rep-observations-… data… 1999-01-01 00:00:00 SEALEV…
+ 7 idea-sealevel-glo-phy-l4-rep-observations-… data… 2000-01-01 00:00:00 SEALEV…
+ 8 idea-sealevel-glo-phy-l4-rep-observations-… data… 2001-01-01 00:00:00 SEALEV…
+ 9 idea-sealevel-glo-phy-l4-rep-observations-… data… 2002-01-01 00:00:00 SEALEV…
+10 idea-sealevel-glo-phy-l4-rep-observations-… data… 2003-01-01 00:00:00 SEALEV…
+# ℹ 21 more rows</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_altimetry</span>(<span class="st">"2025-01-01"</span>)<span class="sc">$</span>Key</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "data.marine.copernicus.eu/SEALEVEL_GLO_PHY_L4_NRT_008_046/cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D_202411/2025/01/nrt_global_allsat_phy_l4_20250101_20250104.nc"</code></pre>
+</div>
+</div>
+<p>We know that files with <code>0.125</code> in them are different grids to those with <code>0.25deg</code>, but as a workaround we can standardize the output to always be of the higher resolution.</p>
+<p>We do this for an example with only one of the available variables, <code>adt</code>. (absolute dynamic topography, which is sea surface height).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_S3_ENDPOINT"</span> <span class="ot">=</span> <span class="st">"projects.pawsey.org.au"</span>)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_VIRTUAL_HOSTING"</span> <span class="ot">=</span> <span class="st">"FALSE"</span>)</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>get_adt <span class="ot">&lt;-</span> <span class="cf">function</span>(date) {</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  files <span class="ot">&lt;-</span> <span class="fu">get_altimetry</span>(date)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  sourcepath <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"/vsis3/%s/%s"</span>, files<span class="sc">$</span>Bucket, files<span class="sc">$</span>Key)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">tibble</span>(<span class="at">date =</span> files<span class="sc">$</span>date, <span class="at">source =</span> <span class="fu">sprintf</span>(<span class="st">"vrt://%s?sd_name=adt&amp;outsize=2880,1440"</span>, sourcepath))</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a><span class="fu">get_adt</span>(<span class="st">"2003-01-01"</span>)<span class="sc">$</span>source</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "vrt:///vsis3/idea-sealevel-glo-phy-l4-rep-observations-008-047/data.marine.copernicus.eu/SEALEVEL_GLO_PHY_L4_MY_008_047/cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.25deg_P1D_202112/2003/01/dt_global_allsat_phy_l4_20030101_20210726.nc?sd_name=adt&amp;outsize=2880,1440"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_adt</span>(<span class="st">"2025-01-01"</span>)<span class="sc">$</span>source</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "vrt:///vsis3/idea-sealevel-glo-phy-l4-nrt-008-046/data.marine.copernicus.eu/SEALEVEL_GLO_PHY_L4_NRT_008_046/cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D_202411/2025/01/nrt_global_allsat_phy_l4_20250101_20250104.nc?sd_name=adt&amp;outsize=2880,1440"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="do">## with which we can now write a standard and entirely lazy reader with geospatial tools</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>read_adt <span class="ot">&lt;-</span> <span class="cf">function</span>(date, <span class="at">grid =</span> <span class="cn">NULL</span>) {</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  files <span class="ot">&lt;-</span> <span class="fu">get_adt</span>(date)</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(grid)) {</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    out <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">project</span>(terra<span class="sc">::</span><span class="fu">rast</span>(files<span class="sc">$</span>source), grid)</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>    out <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">rast</span>(files<span class="sc">$</span>source)</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>  out</span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="sooty-demo" class="level2">
+<h2 class="anchored" data-anchor-id="sooty-demo">sooty demo</h2>
+<p>Taking what we have back to its foundations, the set of files that we have knowledge of for each dataset is very general and cross-language. We can get the set of curated files for each dataset and then create an object-oriented interface like this in R.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(S7)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>dataset <span class="ot">&lt;-</span> <span class="fu">new_class</span>(<span class="at">name =</span> <span class="st">"dataset"</span>,                   </span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">properties =</span> <span class="fu">list</span>(</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>                       <span class="at">id =</span> <span class="fu">new_property</span>(<span class="at">class =</span> class_character, <span class="at">default =</span> <span class="st">"id"</span>),</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>                       <span class="at">n =</span> <span class="fu">new_property</span>(<span class="at">class =</span> class_integer, <span class="at">getter =</span> <span class="cf">function</span>(self) <span class="fu">nrow</span>(self<span class="sc">@</span>source)),</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>                       <span class="at">mindate =</span> <span class="fu">new_property</span>(<span class="at">class =</span> class_POSIXct, <span class="at">getter =</span> <span class="cf">function</span>(self) <span class="fu">min</span>(self<span class="sc">@</span>source<span class="sc">$</span>date)), </span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">maxdate =</span> <span class="fu">new_property</span>(<span class="at">class =</span> class_POSIXct, <span class="at">getter =</span> <span class="cf">function</span>(self) <span class="fu">max</span>(self<span class="sc">@</span>source<span class="sc">$</span>date)),</span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">source =</span> <span class="fu">new_property</span>(</span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>                         <span class="at">class =</span> class_data.frame,</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>                         <span class="at">getter =</span> <span class="cf">function</span>(self) {</span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a>                           sooty<span class="sc">::</span><span class="fu">sooty_files</span>(<span class="at">curated =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(Dataset <span class="sc">==</span> self<span class="sc">@</span>id)</span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a>                         } </span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a>                       ))</span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>                     </span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">dataset</span>()</span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-19"><a href="#cb38-19" aria-hidden="true" tabindex="-1"></a>d<span class="sc">@</span>id <span class="ot">&lt;-</span> <span class="st">"NSIDC_SEAICE_PS_S25km"</span></span>
+<span id="cb38-20"><a href="#cb38-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-22"><a href="#cb38-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-23"><a href="#cb38-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-24"><a href="#cb38-24" aria-hidden="true" tabindex="-1"></a>files <span class="ot">&lt;-</span> d<span class="sc">@</span>source</span>
+<span id="cb38-25"><a href="#cb38-25" aria-hidden="true" tabindex="-1"></a><span class="fu">ifun</span>(<span class="fu">c</span>(<span class="st">"2025-02-02"</span>), files<span class="sc">$</span>date)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 16896</code></pre>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("http:\/\/hypertidy\.org");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
