@@ -7,6 +7,13 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+```{r preamble, include =FALSE}
+library(gdalraster)
+library(reticulate)
+library(sf)
+library(osmdata)
+```
 ## The GDAL API
 
 I have been working on a better understanding of the [GDAL multidimensional model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) and to do that really needs a closer look at the GDAL API itself. 
@@ -52,9 +59,9 @@ GDAL has a multidimensional mode for data sources that aren't "imagery" in the t
 
 Multidimensional mode is avaible in the API via `OpenEx()` and declaring type `OF_MULTIDIM_RASTER`. 
 
-To actually load this python library we use {reticulate} `py_require()` which drives the awesome [Python uv](https://docs.astral.sh/uv/) package manager. 
+To actually load this python library we use [{reticulate} `py_require()`](https://posit.co/blog/reticulate-1-41/) which drives the awesome [Python uv](https://docs.astral.sh/uv/) package manager. 
 
-(For some reason the pypi name of the package is "gdal", but the actual model is obtained with "osgeo.gdal"). 
+(For some reason the pypi name of the package is "gdal", but the actual module is obtained with "osgeo.gdal"). 
 
 ```{r py_require}
 reticulate::py_require("gdal")
@@ -166,7 +173,7 @@ We see that the CRS information is in there, but sadly while the geotransform of
 
 A multidim raster can be converted to classic form, either in whole or after applying a `$GetView()` operation that acts like numpy '[:]' array subsetting. 
 
-When converting to classice we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order. 
+When converting to classic raster we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order.  (Note that dimension 0 is the "3rd" dimension in normal thinking, here that dimension is "band" or a dimension for each of red, green, blue in the quicklook image). 
 
 ```{r classic}
 cc <- md$AsClassicDataset(2L, 1L)
