@@ -7,37 +7,36 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 ```{r preamble, include =FALSE}
 library(gdalraster)
 library(reticulate)
 library(sf)
 library(osmdata)
 ```
+
 ## The GDAL API
 
-I have been working on a better understanding of the [GDAL multidimensional model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) and to do that really needs a closer look at the GDAL API itself. 
+I have been working on a better understanding of the [GDAL multidimensional model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) and to do that really needs a closer look at the GDAL API itself.
 
-This post demonstrates loading the GDAL API via its Python bindings into R. We connect to a modern "cloud-ready" ZARR dataset, find out some details about its contents and then convert from its native multidimensional form to a more classic 2D raster model, then use that to create a map from Sentinel 2 imagery. 
+This post demonstrates loading the GDAL API via its Python bindings into R. We connect to a modern "cloud-ready" ZARR dataset, find out some details about its contents and then convert from its native multidimensional form to a more classic 2D raster model, then use that to create a map from Sentinel 2 imagery.
 
-We don't go very deep into any part, but just want to show a quick tour of some parts of GDAL that don't get as much attention as deserved (IMO). 
-I'm using a very recent version of GDAL, which might mean some code doesn't work for you. If that's the case please let me know and I can explore alternatives and identify when/how the newer features will be more available. There are some echoes here of an older post I made about GDAL in R: https://www.hypertidy.org/posts/2017-09-01_gdal-in-r/
+We don't go very deep into any part, but just want to show a quick tour of some parts of GDAL that don't get as much attention as deserved (IMO). I'm using a very recent version of GDAL, which might mean some code doesn't work for you. If that's the case please let me know and I can explore alternatives and identify when/how the newer features will be more available. There are some echoes here of an older post I made about GDAL in R: https://www.hypertidy.org/posts/2017-09-01_gdal-in-r/
 
 ## ZARR and the European Space Agency (ESA)
 
-The ESA is moving Copernicus to [ZARR](https://zarr.dev), launching its [Earth Observation Processing Framework (EOPF) data format (Zarr)](https://zarr.eopf.copernicus.eu/). ZARR is "a community project to develop specifications and software for storage of large N-dimensional typed arrays".  
+The ESA is moving Copernicus to [ZARR](https://zarr.dev), launching its [Earth Observation Processing Framework (EOPF) data format (Zarr)](https://zarr.eopf.copernicus.eu/). ZARR is "a community project to develop specifications and software for storage of large N-dimensional typed arrays".
 
-A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set. 
+A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set.
 
-ZARR is usually in object storage, and loaded by datacube software such as [xarray](https://xarray.dev). It's not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set description (url, or S3 path, etc). 
+ZARR is usually in object storage, and loaded by datacube software such as [xarray](https://xarray.dev). It's not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set description (url, or S3 path, etc).
 
 ## ESA sample Zarr datasets
 
-The ESA provide a set of example ZARRs that are available in zip files: 
+The ESA provide a set of example ZARRs that are available in zip files:
 
 https://eopf-public.s3.sbg.perf.cloud.ovh.net/product.html
 
-We choose one that is described by this URL: 
+We choose one that is described by this URL:
 
 ```{r url}
 
@@ -46,8 +45,7 @@ url <- "https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230
 
 ## GDAL urls and zip files
 
-GDAL doesn't force us to download data, but we need some syntax to leverage its remote capabilities in the simplest way. The Virtual File System (VSI) allows
-us to declare special sources like zip files `/vsizip/` and urls `/vsicurl/`, which we can chain together. With ZARR we also need careful quoting of the description, and we declare the ZARR driver upfront. 
+GDAL doesn't force us to download data, but we need some syntax to leverage its remote capabilities in the simplest way. The Virtual File System (VSI) allows us to declare special sources like zip files `/vsizip/` and urls `/vsicurl/`, which we can chain together. With ZARR we also need careful quoting of the description, and we declare the ZARR driver upfront.
 
 ```{r sprintf}
 (dsn <- sprintf('ZARR:"/vsizip//vsicurl/%s"', url))
@@ -55,13 +53,13 @@ us to declare special sources like zip files `/vsizip/` and urls `/vsicurl/`, wh
 
 ## GDAL and multidimensional datasets
 
-GDAL has a multidimensional mode for data sources that aren't "imagery" in the traditional sense. (If we open one of these datasets in "classic" mode we end up with a lot of bands on a 2D raster, or potentially many bands on many *sub*datasets within a more general container. Zarr is a container format, much like HDF5 and NetCDF). 
+GDAL has a multidimensional mode for data sources that aren't "imagery" in the traditional sense. (If we open one of these datasets in "classic" mode we end up with a lot of bands on a 2D raster, or potentially many bands on many *sub*datasets within a more general container. Zarr is a container format, much like HDF5 and NetCDF).
 
-Multidimensional mode is avaible in the API via `OpenEx()` and declaring type `OF_MULTIDIM_RASTER`. 
+Multidimensional mode is avaible in the API via `OpenEx()` and declaring type `OF_MULTIDIM_RASTER`.
 
-To actually load this python library we use [{reticulate} `py_require()`](https://posit.co/blog/reticulate-1-41/) which drives the awesome [Python uv](https://docs.astral.sh/uv/) package manager. 
+To actually load this python library we use [{reticulate} `py_require()`](https://posit.co/blog/reticulate-1-41/) which drives the awesome [Python uv](https://docs.astral.sh/uv/) package manager.
 
-(For some reason the pypi name of the package is "gdal", but the actual module is obtained with "osgeo.gdal"). 
+(For some reason the pypi name of the package is "gdal", but the actual module is obtained with "osgeo.gdal").
 
 ```{r py_require}
 reticulate::py_require("gdal")
@@ -71,7 +69,7 @@ gdal$UseExceptions()
 sample(names(gdal), 40)  ## see that we have a huge coverage of the underlying API, 544 elements at time of writing
 ```
 
-The API elements chain in the usual way that works in python with 'object.element.thing.etc' syntax uses R's `$` accessor. 
+The API elements chain in the usual way that works in python with 'object.element.thing.etc' syntax uses R's `$` accessor.
 
 ```{r api}
 gdal$Dimension$GetIndexingVariable
@@ -79,17 +77,16 @@ gdal$Dimension$GetIndexingVariable
 
 ## Open the data
 
-It's not very exciting yet. 
-
+It's not very exciting yet.
 
 ```{r data}
 ds <- gdal$OpenEx(dsn, gdal$OF_MULTIDIM_RASTER)
 ds
 ```
 
-To actually find out what's in there we have to traverse a tree of potentially nested "groups" that organize actual datasets in a hierarchy. 
+To actually find out what's in there we have to traverse a tree of potentially nested "groups" that organize actual datasets in a hierarchy.
 
-Get the root group and dive in, it's very tediuous but shows some of what is there. There might be MDArrays in a group, or there might just be more groups. 
+Get the root group and dive in, it's very tediuous but shows some of what is there. There might be MDArrays in a group, or there might just be more groups.
 
 ```{r dive}
 rg <- ds$GetRootGroup()
@@ -109,9 +106,9 @@ g3$GetMDArrayNames()
 g3$GetGroupNames()
 ```
 
-Finally we got to actual data, we recognize 'tci' as being the quicklook RGB of Sentinel 2. 
+Finally we got to actual data, we recognize 'tci' as being the quicklook RGB of Sentinel 2.
 
-To avoid tedium write a quick recursive function to find all the MDArray, at each level use `GetFullName()` which provides the cumulative path to where we are in the tree. 
+To avoid tedium write a quick recursive function to find all the MDArray, at each level use `GetFullName()` which provides the cumulative path to where we are in the tree.
 
 ```{r recurse}
 get_all_mdnames <- function(rootgroup) {
@@ -126,12 +123,11 @@ get_all_mdnames <- function(rootgroup) {
 get_all_mdnames(ds$GetRootGroup())
 ```
 
-Happily, we see our target MDArray name in there `/quality/l1c_quicklook/r10m/tci`. 
-
+Happily, we see our target MDArray name in there `/quality/l1c_quicklook/r10m/tci`.
 
 ## Actual data
 
-Finally let's get some data out. We can obtain the MDArray now by full name and find out some properties. 
+Finally let's get some data out. We can obtain the MDArray now by full name and find out some properties.
 
 ```{r map}
 reticulate::py_require("gdal")
@@ -148,8 +144,7 @@ md$GetDimensionCount()
 
 ```
 
-
-Traverse the dimensions to get their sizes and names. 
+Traverse the dimensions to get their sizes and names.
 
 ```{r traverse}
 vapply(md$GetDimensions(), \(.d) .d$GetSize(), 0L)
@@ -158,8 +153,7 @@ vapply(md$GetDimensions(), \(.d) .d$GetName(), "")
 
 ```
 
-
-Explore some metadata attributes. 
+Explore some metadata attributes.
 
 ```{r meta}
 mnames <- vapply(md$GetAttributes(), \(.a) .a$GetName(), "")
@@ -168,12 +162,11 @@ mnames <- vapply(md$GetAttributes(), \(.a) .a$GetName(), "")
 
 ```
 
-We see that the CRS information is in there, but sadly while the geotransform of the data is maintained when we convert to classic raster the CRS does not make the journey (the geotransform is just the image bbox intermingled with its resolution in a mathematical abstraction used in matrix manipulation). 
+We see that the CRS information is in there, but sadly while the geotransform of the data is maintained when we convert to classic raster the CRS does not make the journey (the geotransform is just the image bbox intermingled with its resolution in a mathematical abstraction used in matrix manipulation).
 
+A multidim raster can be converted to classic form, either in whole or after applying a `$GetView()` operation that acts like numpy '\[:\]' array subsetting.
 
-A multidim raster can be converted to classic form, either in whole or after applying a `$GetView()` operation that acts like numpy '[:]' array subsetting. 
-
-When converting to classic raster we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order.  (Note that dimension 0 is the "3rd" dimension in normal thinking, here that dimension is "band" or a dimension for each of red, green, blue in the quicklook image). 
+When converting to classic raster we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order. (Note that dimension 0 is the "3rd" dimension in normal thinking, here that dimension is "band" or a dimension for each of red, green, blue in the quicklook image).
 
 ```{r classic}
 cc <- md$AsClassicDataset(2L, 1L)
@@ -184,14 +177,14 @@ crs <- cc$GetMetadata()[["proj:wkt2"]]
 
 ```
 
-Now, I used `reproj_extent` to convert the dataset's bbox to one in longlat, but I won't share that here, we'll just use the result so our map is a little more familiar.  The source data xy bbox is `xmin: 300000 ymin: 4490220  xmax: 409800 ymax:4600020`, and we take small section of that which is this in longitude latitude: 
+Now, I used `reproj_extent` to convert the dataset's bbox to one in longlat, but I won't share that here, we'll just use the result so our map is a little more familiar. The source data xy bbox is `xmin: 300000 ymin: 4490220  xmax: 409800 ymax:4600020`, and we take small section of that which is this in longitude latitude:
 
 ```{r longlat}
 # xmin,xmax,ymin,ymax converted below to bbox 
 ex <- c(31.689, 31.774, 40.665, 40.724)
 ```
 
-To warp the imagery to this region we first need to set the CRS properly on the dataset, so translate to a temporary VRT and use that dataset for the next step. 
+To warp the imagery to this region we first need to set the CRS properly on the dataset, so translate to a temporary VRT and use that dataset for the next step.
 
 ```{r augment}
 dsvrt <- gdal$Translate(tempfile(fileext = ".vrt", tmpdir = "/vsimem"), cc, options = c("-a_srs", crs))
@@ -201,8 +194,7 @@ ww$Close()
 
 ```
 
-
-Finally we can read the image, plot it, obtain some contextual data and be assured that our map is correct. 
+Finally we can read the image, plot it, obtain some contextual data and be assured that our map is correct.
 
 ```{r map1}
 library(gdalraster)
@@ -219,12 +211,42 @@ plot_raster(data)
 plot(x$osm_lines[0], add = TRUE, col = "hotpink")
 ```
 
-
 ## Summary
 
-We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context. 
+We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context.
 
-There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://github.com/USDAForestService/gdalraster), and in-development version of gdalraster to add the `GDALMultiDimRaster` class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew. 
+There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://github.com/USDAForestService/gdalraster), and in-development version of gdalraster to add the `GDALMultiDimRaster` class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew.
 
 Please get in touch if any of this is of interest!
 
+
+## Late Bonus Section: Bluelink ocean model
+
+This is something I want to use VRT to encapsulate as one whole dataset, here just a test on one file (there are 174 of these ocean_temp files, up to June 2024 at time of writing). 
+
+Note that we are using '/fileServer/' from Thredds, not '/dodsC/'. GDAL uses userfaultd as a trick to read NetCDF remotely. 
+
+```python
+from osgeo import gdal
+dsn = "/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc"
+ds = gdal.OpenEx(dsn, gdal.OF_MULTIDIM_RASTER)
+rg = ds.GetRootGroup()
+rg.GetMDArrayNames()
+# ['xt_ocean', 'yt_ocean', 'st_ocean', 'Time', 'nv', 'st_edges_ocean', 'average_T1', 'average_T2', 'average_DT', 'Time_bnds', 'temp']
+
+temp = rg.OpenMDArrayFromFullname("//temp")
+[d.GetName() for d in temp.GetDimensions()]
+#['Time', 'st_ocean', 'yt_ocean', 'xt_ocean']
+[d.GetSize() for d in temp.GetDimensions()]
+#[31, 51, 1500, 3600]
+
+```
+
+I don't know why xarray can seemingly read netcdf from S3, but not from normal url? Maybe just something fsspec I need to understand? 
+
+I also noticed that if the file is local the array names at root level are like this: 
+
+```
+['//xt_ocean', '//yt_ocean', '//st_ocean', '//Time', '//nv', '//st_edges_ocean', '//average_T1', '//average_T2', '//average_DT', '//Time_bnds', '//temp']
+
+```

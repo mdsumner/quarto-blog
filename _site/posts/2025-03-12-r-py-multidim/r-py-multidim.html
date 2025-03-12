@@ -235,53 +235,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] "TileIndexOptions"                       
- [2] "GDT_Int64"                              
- [3] "Translate"                              
- [4] "GetSignedURL"                           
- [5] "VSI_STAT_SET_ERROR_FLAG"                
- [6] "DMD_MIMETYPE"                           
- [7] "FileFromMemBuffer"                      
- [8] "ExceptionMgr"                           
- [9] "RegenerateOverview"                     
-[10] "GDAL_GCP_GCPPixel_set"                  
-[11] "GARIO_ERROR"                            
-[12] "CXT_Attribute"                          
-[13] "RasterizeLayer"                         
-[14] "CPLE_OutOfMemory"                       
-[15] "DCAP_DEFAULT_FIELDS"                    
-[16] "VectorTranslateOptions"                 
-[17] "CPLE_AssertionFailed"                   
-[18] "GCI_SWIRBand"                           
-[19] "DMD_MULTIDIM_DATASET_CREATIONOPTIONLIST"
-[20] "DIM_TYPE_TEMPORAL"                      
-[21] "GVM_Max"                                
-[22] "GARIO_COMPLETE"                         
-[23] "GOA2GetAuthorizationURL"                
-[24] "AllRegister"                            
-[25] "OpenShared"                             
-[26] "VSIErrorReset"                          
-[27] "GDAL_DMD_RELATIONSHIP_FLAGS"            
-[28] "CE_Warning"                             
-[29] "wrapper_GDALFootprintDestName"          
-[30] "GCI_SAR_Ku_Band"                        
-[31] "GFT_Integer"                            
-[32] "Attribute"                              
-[33] "GetDriver"                              
-[34] "CreateRasterAttributeTableFromMDArrays" 
-[35] "GetPaletteInterpretationName"           
-[36] "VSIFErrorL"                             
-[37] "GARIO_PENDING"                          
-[38] "PopErrorHandler"                        
-[39] "GDAL_GCP_Info_set"                      
-[40] "GCI_AlphaBand"                          </code></pre>
+<pre><code> [1] "GetDriver"                                         
+ [2] "ExtendedDataType_CreateCompound"                   
+ [3] "GRIORA_Gauss"                                      
+ [4] "GDAL_GCP_GCPX_get"                                 
+ [5] "GCI_AlphaBand"                                     
+ [6] "GFU_GreenMin"                                      
+ [7] "GVM_Min"                                           
+ [8] "DMD_NUMERIC_FIELD_WIDTH_INCLUDES_DECIMAL_SEPARATOR"
+ [9] "GCI_SWIRBand"                                      
+[10] "DMD_MULTIDIM_ATTRIBUTE_CREATIONOPTIONLIST"         
+[11] "VSIFTellL"                                         
+[12] "GCI_IR_End"                                        
+[13] "DMD_CREATION_FIELD_DOMAIN_TYPES"                   
+[14] "GRA_Q1"                                            
+[15] "SetFileMetadata"                                   
+[16] "VSIFTruncateL"                                     
+[17] "GVOT_MIN_TARGET_HEIGHT_FROM_GROUND"                
+[18] "GRA_Sum"                                           
+[19] "SuggestedWarpOutputFromOptions"                    
+[20] "VSI_STAT_SET_ERROR_FLAG"                           
+[21] "GDT_UInt16"                                        
+[22] "OF_VECTOR"                                         
+[23] "VSI_RANGE_STATUS_DATA"                             
+[24] "GetJPEG2000Structure"                              
+[25] "DIM_TYPE_HORIZONTAL_X"                             
+[26] "VSI_STAT_CACHE_ONLY"                               
+[27] "MultiDimTranslate"                                 
+[28] "DEMProcessing"                                     
+[29] "CPLES_XML"                                         
+[30] "GCI_GreenBand"                                     
+[31] "OF_RASTER"                                         
+[32] "NetworkStatsReset"                                 
+[33] "GFU_Blue"                                          
+[34] "GDsCUpdateRelationship"                            
+[35] "DCAP_NOTNULL_FIELDS"                               
+[36] "DEMProcessingInternal"                             
+[37] "DCAP_SUBCREATECOPY"                                
+[38] "VSI_RANGE_STATUS_UNKNOWN"                          
+[39] "GDAL_GCP_GCPPixel_set"                             
+[40] "GFU_RedMin"                                        </code></pre>
 </div>
 </div>
 <p>The API elements chain in the usual way that works in python with ‘object.element.thing.etc’ syntax uses R’s <code>$</code> accessor.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span>Dimension<span class="sc">$</span>GetIndexingVariable</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7f0422add760&gt;
+<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7f56a84fd760&gt;
  signature: (self, *args) -&gt; 'GDALMDArrayHS *'</code></pre>
 </div>
 </div>
@@ -293,7 +293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7f0422c6f420&gt; &gt;</code></pre>
+<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7f56a8683cf0&gt; &gt;</code></pre>
 </div>
 </div>
 <p>To actually find out what’s in there we have to traverse a tree of potentially nested “groups” that organize actual datasets in a hierarchy.</p>
@@ -566,6 +566,27 @@ $`proj:wkt2`
 <p>We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context.</p>
 <p>There is ongoing work to bring the full GDAL API to R in <a href="https://github.com/USDAForestService/gdalraster">{gdalraster}</a>, and in-development version of gdalraster to add the <code>GDALMultiDimRaster</code> class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew.</p>
 <p>Please get in touch if any of this is of interest!</p>
+</section>
+<section id="late-bonus-section-bluelink-ocean-model" class="level2">
+<h2 class="anchored" data-anchor-id="late-bonus-section-bluelink-ocean-model">Late Bonus Section: Bluelink ocean model</h2>
+<p>This is something I want to use VRT to encapsulate as one whole dataset, here just a test on one file (there are 174 of these ocean_temp files, up to June 2024 at time of writing).</p>
+<p>Note that we are using ‘/fileServer/’ from Thredds, not ‘/dodsC/’. GDAL uses userfaultd as a trick to read NetCDF remotely.</p>
+<div class="sourceCode" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> osgeo <span class="im">import</span> gdal</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>dsn <span class="op">=</span> <span class="st">"/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc"</span></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> gdal.OpenEx(dsn, gdal.OF_MULTIDIM_RASTER)</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>rg <span class="op">=</span> ds.GetRootGroup()</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>rg.GetMDArrayNames()</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="co"># ['xt_ocean', 'yt_ocean', 'st_ocean', 'Time', 'nv', 'st_edges_ocean', 'average_T1', 'average_T2', 'average_DT', 'Time_bnds', 'temp']</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>temp <span class="op">=</span> rg.OpenMDArrayFromFullname(<span class="st">"//temp"</span>)</span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>[d.GetName() <span class="cf">for</span> d <span class="kw">in</span> temp.GetDimensions()]</span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a><span class="co">#['Time', 'st_ocean', 'yt_ocean', 'xt_ocean']</span></span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>[d.GetSize() <span class="cf">for</span> d <span class="kw">in</span> temp.GetDimensions()]</span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a><span class="co">#[31, 51, 1500, 3600]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>I don’t know why xarray can seemingly read netcdf from S3, but not from normal url? Maybe just something fsspec I need to understand?</p>
+<p>I also noticed that if the file is local the array names at root level are like this:</p>
+<pre><code>['//xt_ocean', '//yt_ocean', '//st_ocean', '//Time', '//nv', '//st_edges_ocean', '//average_T1', '//average_T2', '//average_DT', '//Time_bnds', '//temp']
+</code></pre>
 
 
 </section>
