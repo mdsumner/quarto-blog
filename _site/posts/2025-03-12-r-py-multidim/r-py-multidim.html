@@ -201,7 +201,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="zarr-and-the-european-space-agency-esa">ZARR and the European Space Agency (ESA)</h2>
 <p>The ESA is moving Copernicus to <a href="https://zarr.dev">ZARR</a>, launching its <a href="https://zarr.eopf.copernicus.eu/">Earth Observation Processing Framework (EOPF) data format (Zarr)</a>. ZARR is “a community project to develop specifications and software for storage of large N-dimensional typed arrays”.</p>
 <p>A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set.</p>
-<p>ZARR is usually in object storage, and loaded by datacube software such as <a href="https://xarray.dev">xarray</a>. It’s not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set desription (url, or S3 path, etc).</p>
+<p>ZARR is usually in object storage, and loaded by datacube software such as <a href="https://xarray.dev">xarray</a>. It’s not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set description (url, or S3 path, etc).</p>
 </section>
 <section id="esa-sample-zarr-datasets" class="level2">
 <h2 class="anchored" data-anchor-id="esa-sample-zarr-datasets">ESA sample Zarr datasets</h2>
@@ -235,33 +235,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] "GCI_SAR_Start"                     "Dimension"                        
- [3] "GetDriverCount"                    "ContourGenerate"                  
- [5] "DCAP_CREATE_MULTIDIMENSIONAL"      "GDALDestroyDriverManager"         
- [7] "GCI_PanBand"                       "DEMProcessingInternal"            
- [9] "GridOptions"                       "wrapper_GDALFootprintDestDS"      
-[11] "CPLE_AWSSignatureDoesNotMatch"     "GPI_CMYK"                         
-[13] "GRA_Bilinear"                      "GRT_COMPOSITE"                    
-[15] "GDALTranslateOptions"              "GCI_BlueBand"                     
-[17] "Mkdir"                             "GDAL_GCP_Info_set"                
-[19] "wrapper_GDALVectorTranslateDestDS" "GCI_SAR_P_Band"                   
-[21] "GF_Read"                           "EscapeString"                     
-[23] "GridInternal"                      "GDT_UInt32"                       
-[25] "GMF_ALPHA"                         "OF_THREAD_SAFE"                   
-[27] "GDT_UInt16"                        "VSIFEofL"                         
-[29] "GCI_GrayIndex"                     "GA_Update"                        
-[31] "ConfigurePythonLogging"            "StatBuf"                          
-[33] "Polygonize"                        "ViewshedGenerate"                 
-[35] "GRTT_THEMATIC"                     "ColorEntry"                       
-[37] "GetLastErrorMsg"                   "GARIO_PENDING"                    
-[39] "DCAP_REORDER_FIELDS"               "GARIO_ERROR"                      </code></pre>
+<pre><code> [1] "TermProgress_nocb"                                 
+ [2] "Rename"                                            
+ [3] "GDAL_GCP_GCPY_set"                                 
+ [4] "DIM_TYPE_TEMPORAL"                                 
+ [5] "DIM_TYPE_HORIZONTAL_Y"                             
+ [6] "DCAP_CREATE"                                       
+ [7] "Rasterize"                                         
+ [8] "GCI_SAR_Ku_Band"                                   
+ [9] "GFU_GreenMin"                                      
+[10] "GVM_Edge"                                          
+[11] "GetThreadLocalConfigOption"                        
+[12] "SetCacheMax"                                       
+[13] "GCI_AlphaBand"                                     
+[14] "GARIO_UPDATE"                                      
+[15] "VSI_STAT_SET_ERROR_FLAG"                           
+[16] "PushFinderLocation"                                
+[17] "GRA_Q3"                                            
+[18] "CPLES_SQLI"                                        
+[19] "VectorTranslate"                                   
+[20] "wrapper_GDALRasterizeDestName"                     
+[21] "GetCacheUsed"                                      
+[22] "ParseXMLString"                                    
+[23] "GRA_Med"                                           
+[24] "IdentifyDriverEx"                                  
+[25] "GA_ReadOnly"                                       
+[26] "DMD_NUMERIC_FIELD_WIDTH_INCLUDES_DECIMAL_SEPARATOR"
+[27] "GDsCAddRelationship"                               
+[28] "VSIFTellL"                                         
+[29] "GCI_SAR_P_Band"                                    
+[30] "GCI_SAR_L_Band"                                    
+[31] "contextlib"                                        
+[32] "GCI_LightnessBand"                                 
+[33] "GRIORA_Cubic"                                      
+[34] "VectorTranslateOptions"                            
+[35] "SubdatasetInfo"                                    
+[36] "ExtendedDataType"                                  
+[37] "EscapeString"                                      
+[38] "CPLES_XML"                                         
+[39] "CPLHexToBinary"                                    
+[40] "GDAL_DCAP_DELETE_RELATIONSHIP"                     </code></pre>
 </div>
 </div>
 <p>The API elements chain in the usual way that works in python with ‘object.element.thing.etc’ syntax uses R’s <code>$</code> accessor.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span>Dimension<span class="sc">$</span>GetIndexingVariable</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7fcc58dc9760&gt;
+<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7fd752b41760&gt;
  signature: (self, *args) -&gt; 'GDALMDArrayHS *'</code></pre>
 </div>
 </div>
@@ -273,7 +293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7fcc58f5b3f0&gt; &gt;</code></pre>
+<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7fd752cd33f0&gt; &gt;</code></pre>
 </div>
 </div>
 <p>To actually find out what’s in there we have to traverse a tree of potentially nested “groups” that organize actual datasets in a hierarchy.</p>
@@ -543,6 +563,8 @@ $`proj:wkt2`
 </section>
 <section id="summary" class="level2">
 <h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context.</p>
+<p>There is ongoing work to bring the full GDAL API to R in <a href="https://github/USDAForestService/gdalrastter">{gdalraster}</a>, and in in-development version of gdalraster to add the <code>GDALMultiDimRaster</code> class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew.</p>
 <p>Please get in touch if any of this is of interest!</p>
 
 

@@ -29,7 +29,7 @@ The ESA is moving Copernicus to [ZARR](https://zarr.dev), launching its [Earth O
 
 A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set. 
 
-ZARR is usually in object storage, and loaded by datacube software such as [xarray](https://xarray.dev). It's not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set desription (url, or S3 path, etc). 
+ZARR is usually in object storage, and loaded by datacube software such as [xarray](https://xarray.dev). It's not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set description (url, or S3 path, etc). 
 
 ## ESA sample Zarr datasets
 
@@ -221,6 +221,10 @@ plot(x$osm_lines[0], add = TRUE, col = "hotpink")
 
 
 ## Summary
+
+We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context. 
+
+There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://github/USDAForestService/gdalrastter), and in in-development version of gdalraster to add the `GDALMultiDimRaster` class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew. 
 
 Please get in touch if any of this is of interest!
 
