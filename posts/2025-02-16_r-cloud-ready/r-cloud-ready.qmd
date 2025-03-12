@@ -278,4 +278,3 @@ files <- d@source
 ifun(c("2025-02-02"), files$date)
 
 ```
-

@@ -1,0 +1,220 @@
+---
+title: "GDAL multidim and cloud-ready ZARR"
+author: "Michael Sumner"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## The GDAL API
+
+I have been working on a better understanding of the [GDAL multidimensional model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) and to do that really needs a closer look at the GDAL API itself. 
+
+This post demonstrates loading the GDAL API via its Python bindings into R. We connect to a modern "cloud-ready" ZARR dataset, find out some details about its contents and then convert from its native multidimensional form to a more classic 2D raster model, then use that to create a map from Sentinel 2 imagery. 
+
+We don't go very deep into any part, but just want to show a quick tour of some parts of GDAL that don't get as much attention as deserved (IMO). 
+I'm using a very recent version of GDAL, which might mean some code doesn't work for you. If that's the case please let me know and I can explore alternatives and identify when/how the newer features will be more available. There are some echoes here of an older post I made about GDAL in R: https://www.hypertidy.org/posts/2017-09-01_gdal-in-r/
+
+## ZARR and the European Space Agency (ESA)
+
+The ESA is moving Copernicus to [ZARR](https://zarr.dev), launching its [Earth Observation Processing Framework (EOPF) data format (Zarr)](https://zarr.eopf.copernicus.eu/). ZARR is "a community project to develop specifications and software for storage of large N-dimensional typed arrays".  
+
+A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set. 
+
+ZARR is usually in object storage, and loaded by datacube software such as [xarray](https://xarray.dev). It's not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set desription (url, or S3 path, etc). 
+
+## ESA sample Zarr datasets
+
+The ESA provide a set of example ZARRs that are available in zip files: 
+
+https://eopf-public.s3.sbg.perf.cloud.ovh.net/product.html
+
+We choose one that is described by this URL: 
+
+```{r url}
+
+url <- "https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230629T063559_0000_A064_T3A5.zarr.zip"
+```
+
+## GDAL urls and zip files
+
+GDAL doesn't force us to download data, but we need some syntax to leverage its remote capabilities in the simplest way. The Virtual File System (VSI) allows
+us to declare special sources like zip files `/vsizip/` and urls `/vsicurl/`, which we can chain together. With ZARR we also need careful quoting of the description, and we declare the ZARR driver upfront. 
+
+```{r sprintf}
+(dsn <- sprintf('ZARR:"/vsizip//vsicurl/%s"', url))
+```
+
+## GDAL and multidimensional datasets
+
+GDAL has a multidimensional mode for data sources that aren't "imagery" in the traditional sense. (If we open one of these datasets in "classic" mode we end up with a lot of bands on a 2D raster.)
+
+Multidimensional mode is avaible in the API via `OpenEx()` and declaring type `OF_MULTIDIM_RASTER`. 
+
+To actually load this python library we use {reticulate} `py_require()` which drives the awesome [Python uv](https://docs.astral.sh/uv/) package manager. 
+
+(For some reason the pypi name of the package is "gdal", but the actual model is obtained with "osgeo.gdal"). 
+
+```{r py_require}
+reticulate::py_require("gdal")
+gdal <- reticulate::import("osgeo.gdal")
+gdal$UseExceptions()
+
+sample(names(gdal), 40)  ## see that we have a huge coverage of the underlying API, 544 elements at time of writing
+```
+
+The API elements chain in the usual way that works in python with 'object.element.thing.etc' syntax uses R's `$` accessor. 
+
+```{r api}
+gdal$Dimension$GetIndexingVariable
+```
+
+## Open the data
+
+It's not very exciting yet. 
+
+
+```{r data}
+ds <- gdal$OpenEx(dsn, gdal$OF_MULTIDIM_RASTER)
+ds
+```
+
+To actually find out what's in there we have to traverse a tree of potentially nested "groups" that organize actual datasets in a hierarchy. 
+
+Get the root group and dive in, it's very tediuous but shows some of what is there. There might be MDArrays in a group, or there might just be more groups. 
+
+```{r dive}
+rg <- ds$GetRootGroup()
+rg$GetMDArrayNames()
+rg$GetGroupNames()
+
+g1 <- rg$OpenGroup("quality")
+g1$GetMDArrayNames()
+g1$GetGroupNames()
+
+g2 <- g1$OpenGroup("l1c_quicklook")
+g2$GetMDArrayNames()
+g2$GetGroupNames()
+
+g3 <- g2$OpenGroup("r10m")
+g3$GetMDArrayNames()
+g3$GetGroupNames()
+```
+
+Finally we got to actual data, we recognize 'tci' as being the quicklook RGB of Sentinel 2. 
+
+To avoid tedium write a quick recursive function to find all the MDArray, at each level use `GetFullName()` which provides the cumulative path to where we are in the tree. 
+
+```{r recurse}
+get_all_mdnames <- function(rootgroup) {
+  groups <- rootgroup$GetGroupNames()
+  groupname <- rootgroup$GetFullName()
+  amd <- rootgroup$GetMDArrayNames()
+  md <- sprintf("%s/%s", groupname, amd)
+  md <- c(md, unlist(lapply(groups, \(.g) get_all_mdnames(rootgroup$OpenGroup(.g)))))
+  md
+}
+
+get_all_mdnames(ds$GetRootGroup())
+```
+
+Happily, we see our target MDArray name in there `/quality/l1c_quicklook/r10m/tci`. 
+
+
+## Actual data
+
+Finally let's get some data out. We can obtain the MDArray now by full name and find out some properties. 
+
+```{r map}
+reticulate::py_require("gdal")
+gdal <- reticulate::import("osgeo.gdal")
+gdal$UseExceptions()
+
+dsn <- "ZARR:\"/vsizip//vsicurl/https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230629T063559_0000_A064_T3A5.zarr.zip\""
+
+ds <- gdal$OpenEx(dsn, gdal$OF_MULTIDIM_RASTER)
+rg <- ds$GetRootGroup()
+mdname <- "/quality/l1c_quicklook/r10m/tci"
+md <- rg$OpenMDArrayFromFullname(mdname)
+md$GetDimensionCount()
+
+```
+
+
+Traverse the dimensions to get their sizes and names. 
+
+```{r traverse}
+vapply(md$GetDimensions(), \(.d) .d$GetSize(), 0L)
+
+vapply(md$GetDimensions(), \(.d) .d$GetName(), "")
+
+```
+
+
+Explore some metadata attributes. 
+
+```{r meta}
+mnames <- vapply(md$GetAttributes(), \(.a) .a$GetName(), "")
+
+(meta <- setNames(lapply(md$GetAttributes(), \(.a) unlist(.a$Read())), mnames))
+
+```
+
+We see that the CRS information is in there, but sadly while the geotransform of the data is maintained when we convert to classic raster the CRS does not make the journey (the geotransform is just the image bbox intermingled with its resolution in a mathematical abstraction used in matrix manipulation). 
+
+
+A multidim raster can be converted to classic form, either in whole or after applying a `$GetView()` operation that acts like numpy '[:]' array subsetting. 
+
+When converting to classice we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order. 
+
+```{r classic}
+cc <- md$AsClassicDataset(2L, 1L)
+tr <- unlist(cc$GetGeoTransform())
+dm <- c(cc$RasterXSize, cc$RasterYSize)
+cc$GetSpatialRef() ## empty, so we retrieve from the attributes
+crs <- cc$GetMetadata()[["proj:wkt2"]]
+
+```
+
+Now, I used `reproj_extent` to convert the dataset's bbox to one in longlat, but I won't share that here, we'll just use the result so our map is a little more familiar.  The source data xy bbox is `xmin: 300000 ymin: 4490220  xmax: 409800 ymax:4600020`, and we take small section of that which is this in longitude latitude: 
+
+```{r longlat}
+# xmin,xmax,ymin,ymax converted below to bbox 
+ex <- c(31.689, 31.774, 40.665, 40.724)
+```
+
+To warp the imagery to this region we first need to set the CRS properly on the dataset, so translate to a temporary VRT and use that dataset for the next step. 
+
+```{r augment}
+dsvrt <- gdal$Translate(tempfile(fileext = ".vrt", tmpdir = "/vsimem"), cc, options = c("-a_srs", crs))
+tf <- tf <- "/vsimem/result.tif"
+ww <- gdal$Warp(tf, dsvrt,  dstSRS = "EPSG:4326", outputBounds = ex[c(1, 3, 2, 4)])
+ww$Close()
+
+```
+
+
+Finally we can read the image, plot it, obtain some contextual data and be assured that our map is correct. 
+
+```{r map1}
+library(gdalraster)
+data <- read_ds(new(GDALRaster, tf))
+
+```
+
+```{r osm}
+library(osmdata)
+x <- opq(ex[c(1, 3, 2, 4)]) |> add_osm_feature(key = "highway") |> osmdata_sf()
+
+library(sf)
+plot_raster(data)
+plot(x$osm_lines[0], add = TRUE, col = "hotpink")
+```
+
+
+
+## Summary
+
+Please get in touch if any of this is of interest!
+

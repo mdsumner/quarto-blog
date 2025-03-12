@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.40">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+
+<title>GDAL multidim and cloud-ready ZARR – hypertidy-blog</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-f35fe1cd5327914ced924141ccf83654.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="GDAL multidim and cloud-ready ZARR – hypertidy-blog">
+<meta property="og:description" content="">
+<meta property="og:image" content="http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
+<meta property="og:site_name" content="hypertidy-blog">
+<meta property="og:image:height" content="960">
+<meta property="og:image:width" content="1344">
+<meta name="twitter:title" content="GDAL multidim and cloud-ready ZARR – hypertidy-blog">
+<meta name="twitter:description" content="">
+<meta name="twitter:image" content="http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
+<meta name="twitter:creator" content="@mdsumner">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image-height" content="960">
+<meta name="twitter:image-width" content="1344">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">hypertidy-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">GDAL multidim and cloud-ready ZARR</h1>
+                      </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael Sumner </p>
+            </div>
+    </div>
+      
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="the-gdal-api" class="level2">
+<h2 class="anchored" data-anchor-id="the-gdal-api">The GDAL API</h2>
+<p>I have been working on a better understanding of the <a href="https://gdal.org/en/stable/user/multidim_raster_data_model.html">GDAL multidimensional model</a> and to do that really needs a closer look at the GDAL API itself.</p>
+<p>This post demonstrates loading the GDAL API via its Python bindings into R. We connect to a modern “cloud-ready” ZARR dataset, find out some details about its contents and then convert from its native multidimensional form to a more classic 2D raster model, then use that to create a map from Sentinel 2 imagery.</p>
+<p>We don’t go very deep into any part, but just want to show a quick tour of some parts of GDAL that don’t get as much attention as deserved (IMO).</p>
+</section>
+<section id="zarr-and-the-european-space-agency-esa" class="level2">
+<h2 class="anchored" data-anchor-id="zarr-and-the-european-space-agency-esa">ZARR and the European Space Agency (ESA)</h2>
+<p>The ESA is moving Copernicus to <a href="https://zarr.dev">ZARR</a>, launching its <a href="https://zarr.eopf.copernicus.eu/">Earth Observation Processing Framework (EOPF) data format (Zarr)</a>. ZARR is “a community project to develop specifications and software for storage of large N-dimensional typed arrays”.</p>
+<p>A ZARR is a dataset consisting of trees of array chunks stored (usually) in object storage and indexed by fairly simple JSON metadata that describes how those chunks align together in one potentially very large array. The idea is that all the metadata lives upfront in instantly readable JSON, and changes made to the dataset (extending it each day as new data arrives) affects only the relevant chunks and the small parts of the JSON. This is different to a long list of NetCDFs that grows every day, where the metadata is self-contained for each file and there is no overarching abstraction for the entire file set.</p>
+<p>ZARR is usually in object storage, and loaded by datacube software such as <a href="https://xarray.dev">xarray</a>. It’s not intended to be zipped into a huge file and downloaded or read, the real power lies in the entire dataset being lazy, and understood by software that needs just one data set desription (url, or S3 path, etc).</p>
+</section>
+<section id="esa-sample-zarr-datasets" class="level2">
+<h2 class="anchored" data-anchor-id="esa-sample-zarr-datasets">ESA sample Zarr datasets</h2>
+<p>The ESA provide a set of example ZARRs that are available in zip files:</p>
+<p>https://eopf-public.s3.sbg.perf.cloud.ovh.net/product.html</p>
+<p>We choose one that is described by this URL:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>url <span class="ot">&lt;-</span> <span class="st">"https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230629T063559_0000_A064_T3A5.zarr.zip"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="gdal-urls-and-zip-files" class="level2">
+<h2 class="anchored" data-anchor-id="gdal-urls-and-zip-files">GDAL urls and zip files</h2>
+<p>GDAL doesn’t force us to download data, but we need some syntax to leverage its remote capabilities in the simplest way. The Virtual File System (VSI) allows us to declare special sources like zip files <code>/vsizip/</code> and urls <code>/vsicurl/</code>, which we can chain together. With ZARR we also need careful quoting of the description, and we declare the ZARR driver upfront.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>(dsn <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">'ZARR:"/vsizip//vsicurl/%s"'</span>, url))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ZARR:\"/vsizip//vsicurl/https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230629T063559_0000_A064_T3A5.zarr.zip\""</code></pre>
+</div>
+</div>
+</section>
+<section id="gdal-and-multidimensional-datasets" class="level2">
+<h2 class="anchored" data-anchor-id="gdal-and-multidimensional-datasets">GDAL and multidimensional datasets</h2>
+<p>GDAL has a multidimensional mode for data sources that aren’t “imagery” in the traditional sense. (If we open one of these datasets in “classic” mode we end up with a lot of bands on a 2D raster.)</p>
+<p>Multidimensional mode is avaible in the API via <code>OpenEx()</code> and declaring type <code>OF_MULTIDIM_RASTER</code>.</p>
+<p>To actually load this python library we use {reticulate} <code>py_require()</code> which drives the awesome <a href="https://docs.astral.sh/uv/">Python uv</a> package manager.</p>
+<p>(For some reason the pypi name of the package is “gdal”, but the actual model is obtained with “osgeo.gdal”).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>reticulate<span class="sc">::</span><span class="fu">py_require</span>(<span class="st">"gdal"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>gdal <span class="ot">&lt;-</span> reticulate<span class="sc">::</span><span class="fu">import</span>(<span class="st">"osgeo.gdal"</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span><span class="fu">UseExceptions</span>()</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "ReprojectImage"                                    
+ [2] "CXT_Literal"                                       
+ [3] "wrapper_GDALWarpDestDS"                            
+ [4] "OF_RASTER"                                         
+ [5] "DataTypeUnion"                                     
+ [6] "OF_READONLY"                                       
+ [7] "GCI_LWIRBand"                                      
+ [8] "Sync"                                              
+ [9] "DCAP_CURVE_GEOMETRIES"                             
+[10] "GRA_Bilinear"                                      
+[11] "osr"                                               
+[12] "DCAP_OPEN"                                         
+[13] "GetCacheMax"                                       
+[14] "DecToDMS"                                          
+[15] "CPLE_NotSupported"                                 
+[16] "GCI_YCbCr_CrBand"                                  
+[17] "CreateRasterAttributeTableFromMDArrays"            
+[18] "CE_Fatal"                                          
+[19] "TileIndexInternalNames"                            
+[20] "DCAP_GNM"                                          
+[21] "GetSubdatasetInfo"                                 
+[22] "GARIO_PENDING"                                     
+[23] "MkdirRecursive"                                    
+[24] "GCI_SAR_P_Band"                                    
+[25] "DMD_NUMERIC_FIELD_WIDTH_INCLUDES_DECIMAL_SEPARATOR"
+[26] "AutoCreateWarpedVRT"                               
+[27] "GMF_ALPHA"                                         
+[28] "GDAL_GCP_GCPZ_get"                                 
+[29] "GDT_CInt32"                                        
+[30] "VectorInfoInternal"                                
+[31] "GCI_YCbCr_YBand"                                   
+[32] "GRA_Max"                                           
+[33] "Driver"                                            
+[34] "GDALInfoOptions"                                   
+[35] "TranslateInternal"                                 
+[36] "GARIO_COMPLETE"                                    
+[37] "GFU_PixelCount"                                    
+[38] "GetDataTypeByName"                                 
+[39] "SieveFilter"                                       
+[40] "GDAL_DMD_RELATIONSHIP_FLAGS"                       </code></pre>
+</div>
+</div>
+<p>The API elements chain in the usual way that works in python with ‘object.element.thing.etc’ syntax uses R’s <code>$</code> accessor.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span>Dimension<span class="sc">$</span>GetIndexingVariable</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7f0d83c71760&gt;
+ signature: (self, *args) -&gt; 'GDALMDArrayHS *'</code></pre>
+</div>
+</div>
+</section>
+<section id="open-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="open-the-data">Open the data</h2>
+<p>It’s not very exciting yet.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7f0d8be973f0&gt; &gt;</code></pre>
+</div>
+</div>
+<p>To actually find out what’s in there we have to traverse a tree of potentially nested “groups” that organize actual datasets in a hierarchy.</p>
+<p>Get the root group and dive in, it’s very tediuous but shows some of what is there. There might be MDArrays in a group, or there might just be more groups.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>rg <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">GetRootGroup</span>()</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>rg<span class="sc">$</span><span class="fu">GetMDArrayNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>list()</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>rg<span class="sc">$</span><span class="fu">GetGroupNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "conditions"   "measurements" "quality"     </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>g1 <span class="ot">&lt;-</span> rg<span class="sc">$</span><span class="fu">OpenGroup</span>(<span class="st">"quality"</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>g1<span class="sc">$</span><span class="fu">GetMDArrayNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>list()</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>g1<span class="sc">$</span><span class="fu">GetGroupNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "l1c_quicklook" "mask"         </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>g2 <span class="ot">&lt;-</span> g1<span class="sc">$</span><span class="fu">OpenGroup</span>(<span class="st">"l1c_quicklook"</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>g2<span class="sc">$</span><span class="fu">GetMDArrayNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>list()</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>g2<span class="sc">$</span><span class="fu">GetGroupNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "r10m"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>g3 <span class="ot">&lt;-</span> g2<span class="sc">$</span><span class="fu">OpenGroup</span>(<span class="st">"r10m"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>g3<span class="sc">$</span><span class="fu">GetMDArrayNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "band" "x"    "y"    "tci" </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>g3<span class="sc">$</span><span class="fu">GetGroupNames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>list()</code></pre>
+</div>
+</div>
+<p>Finally we got to actual data, we recognize ‘tci’ as being the quicklook RGB of Sentinel 2.</p>
+<p>To avoid tedium write a quick recursive function to find all the MDArray, at each level use <code>GetFullName()</code> which provides the cumulative path to where we are in the tree.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>get_all_mdnames <span class="ot">&lt;-</span> <span class="cf">function</span>(rootgroup) {</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  groups <span class="ot">&lt;-</span> rootgroup<span class="sc">$</span><span class="fu">GetGroupNames</span>()</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  groupname <span class="ot">&lt;-</span> rootgroup<span class="sc">$</span><span class="fu">GetFullName</span>()</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  amd <span class="ot">&lt;-</span> rootgroup<span class="sc">$</span><span class="fu">GetMDArrayNames</span>()</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  md <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"%s/%s"</span>, groupname, amd)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  md <span class="ot">&lt;-</span> <span class="fu">c</span>(md, <span class="fu">unlist</span>(<span class="fu">lapply</span>(groups, \(.g) <span class="fu">get_all_mdnames</span>(rootgroup<span class="sc">$</span><span class="fu">OpenGroup</span>(.g)))))</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  md</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="fu">get_all_mdnames</span>(ds<span class="sc">$</span><span class="fu">GetRootGroup</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  [1] "/conditions/geometry/angle"                        
+  [2] "/conditions/geometry/band"                         
+  [3] "/conditions/geometry/detector"                     
+  [4] "/conditions/geometry/x"                            
+  [5] "/conditions/geometry/y"                            
+  [6] "/conditions/geometry/mean_sun_angles"              
+  [7] "/conditions/geometry/mean_viewing_incidence_angles"
+  [8] "/conditions/geometry/sun_angles"                   
+  [9] "/conditions/geometry/viewing_incidence_angles"     
+ [10] "/conditions/mask/detector_footprint/r10m/x"        
+ [11] "/conditions/mask/detector_footprint/r10m/y"        
+ [12] "/conditions/mask/detector_footprint/r10m/b02"      
+ [13] "/conditions/mask/detector_footprint/r10m/b03"      
+ [14] "/conditions/mask/detector_footprint/r10m/b04"      
+ [15] "/conditions/mask/detector_footprint/r10m/b08"      
+ [16] "/conditions/mask/detector_footprint/r20m/x"        
+ [17] "/conditions/mask/detector_footprint/r20m/y"        
+ [18] "/conditions/mask/detector_footprint/r20m/b05"      
+ [19] "/conditions/mask/detector_footprint/r20m/b06"      
+ [20] "/conditions/mask/detector_footprint/r20m/b07"      
+ [21] "/conditions/mask/detector_footprint/r20m/b11"      
+ [22] "/conditions/mask/detector_footprint/r20m/b12"      
+ [23] "/conditions/mask/detector_footprint/r20m/b8a"      
+ [24] "/conditions/mask/detector_footprint/r60m/x"        
+ [25] "/conditions/mask/detector_footprint/r60m/y"        
+ [26] "/conditions/mask/detector_footprint/r60m/b01"      
+ [27] "/conditions/mask/detector_footprint/r60m/b09"      
+ [28] "/conditions/mask/detector_footprint/r60m/b10"      
+ [29] "/conditions/mask/l1c_classification/r60m/x"        
+ [30] "/conditions/mask/l1c_classification/r60m/y"        
+ [31] "/conditions/mask/l1c_classification/r60m/b00"      
+ [32] "/conditions/meteorology/cams/latitude"             
+ [33] "/conditions/meteorology/cams/longitude"            
+ [34] "/conditions/meteorology/cams/aod1240"              
+ [35] "/conditions/meteorology/cams/aod469"               
+ [36] "/conditions/meteorology/cams/aod550"               
+ [37] "/conditions/meteorology/cams/aod670"               
+ [38] "/conditions/meteorology/cams/aod865"               
+ [39] "/conditions/meteorology/cams/bcaod550"             
+ [40] "/conditions/meteorology/cams/duaod550"             
+ [41] "/conditions/meteorology/cams/isobaricInhPa"        
+ [42] "/conditions/meteorology/cams/number"               
+ [43] "/conditions/meteorology/cams/omaod550"             
+ [44] "/conditions/meteorology/cams/ssaod550"             
+ [45] "/conditions/meteorology/cams/step"                 
+ [46] "/conditions/meteorology/cams/suaod550"             
+ [47] "/conditions/meteorology/cams/surface"              
+ [48] "/conditions/meteorology/cams/time"                 
+ [49] "/conditions/meteorology/cams/valid_time"           
+ [50] "/conditions/meteorology/cams/z"                    
+ [51] "/conditions/meteorology/ecmwf/latitude"            
+ [52] "/conditions/meteorology/ecmwf/longitude"           
+ [53] "/conditions/meteorology/ecmwf/isobaricInhPa"       
+ [54] "/conditions/meteorology/ecmwf/msl"                 
+ [55] "/conditions/meteorology/ecmwf/number"              
+ [56] "/conditions/meteorology/ecmwf/r"                   
+ [57] "/conditions/meteorology/ecmwf/step"                
+ [58] "/conditions/meteorology/ecmwf/surface"             
+ [59] "/conditions/meteorology/ecmwf/tco3"                
+ [60] "/conditions/meteorology/ecmwf/tcwv"                
+ [61] "/conditions/meteorology/ecmwf/time"                
+ [62] "/conditions/meteorology/ecmwf/u10"                 
+ [63] "/conditions/meteorology/ecmwf/v10"                 
+ [64] "/conditions/meteorology/ecmwf/valid_time"          
+ [65] "/measurements/reflectance/r10m/x"                  
+ [66] "/measurements/reflectance/r10m/y"                  
+ [67] "/measurements/reflectance/r10m/b02"                
+ [68] "/measurements/reflectance/r10m/b03"                
+ [69] "/measurements/reflectance/r10m/b04"                
+ [70] "/measurements/reflectance/r10m/b08"                
+ [71] "/measurements/reflectance/r20m/x"                  
+ [72] "/measurements/reflectance/r20m/y"                  
+ [73] "/measurements/reflectance/r20m/b05"                
+ [74] "/measurements/reflectance/r20m/b06"                
+ [75] "/measurements/reflectance/r20m/b07"                
+ [76] "/measurements/reflectance/r20m/b11"                
+ [77] "/measurements/reflectance/r20m/b12"                
+ [78] "/measurements/reflectance/r20m/b8a"                
+ [79] "/measurements/reflectance/r60m/x"                  
+ [80] "/measurements/reflectance/r60m/y"                  
+ [81] "/measurements/reflectance/r60m/b01"                
+ [82] "/measurements/reflectance/r60m/b09"                
+ [83] "/measurements/reflectance/r60m/b10"                
+ [84] "/quality/l1c_quicklook/r10m/band"                  
+ [85] "/quality/l1c_quicklook/r10m/x"                     
+ [86] "/quality/l1c_quicklook/r10m/y"                     
+ [87] "/quality/l1c_quicklook/r10m/tci"                   
+ [88] "/quality/mask/r10m/x"                              
+ [89] "/quality/mask/r10m/y"                              
+ [90] "/quality/mask/r10m/b02"                            
+ [91] "/quality/mask/r10m/b03"                            
+ [92] "/quality/mask/r10m/b04"                            
+ [93] "/quality/mask/r10m/b08"                            
+ [94] "/quality/mask/r20m/x"                              
+ [95] "/quality/mask/r20m/y"                              
+ [96] "/quality/mask/r20m/b05"                            
+ [97] "/quality/mask/r20m/b06"                            
+ [98] "/quality/mask/r20m/b07"                            
+ [99] "/quality/mask/r20m/b11"                            
+[100] "/quality/mask/r20m/b12"                            
+[101] "/quality/mask/r20m/b8a"                            
+[102] "/quality/mask/r60m/x"                              
+[103] "/quality/mask/r60m/y"                              
+[104] "/quality/mask/r60m/b01"                            
+[105] "/quality/mask/r60m/b09"                            
+[106] "/quality/mask/r60m/b10"                            </code></pre>
+</div>
+</div>
+<p>Happily, we see our target MDArray name in there <code>/quality/l1c_quicklook/r10m/tci</code>.</p>
+</section>
+<section id="actual-data" class="level2">
+<h2 class="anchored" data-anchor-id="actual-data">Actual data</h2>
+<p>Finally let’s get some data out. We can obtain the MDArray now by full name and find out some properties.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>reticulate<span class="sc">::</span><span class="fu">py_require</span>(<span class="st">"gdal"</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>gdal <span class="ot">&lt;-</span> reticulate<span class="sc">::</span><span class="fu">import</span>(<span class="st">"osgeo.gdal"</span>)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span><span class="fu">UseExceptions</span>()</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>dsn <span class="ot">&lt;-</span> <span class="st">"ZARR:</span><span class="sc">\"</span><span class="st">/vsizip//vsicurl/https://eopf-public.s3.sbg.perf.cloud.ovh.net/eoproducts/S02MSIL1C_20230629T063559_0000_A064_T3A5.zarr.zip</span><span class="sc">\"</span><span class="st">"</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>rg <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">GetRootGroup</span>()</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>mdname <span class="ot">&lt;-</span> <span class="st">"/quality/l1c_quicklook/r10m/tci"</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>md <span class="ot">&lt;-</span> rg<span class="sc">$</span><span class="fu">OpenMDArrayFromFullname</span>(mdname)</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>md<span class="sc">$</span><span class="fu">GetDimensionCount</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+</div>
+<p>Traverse the dimensions to get their sizes and names.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vapply</span>(md<span class="sc">$</span><span class="fu">GetDimensions</span>(), \(.d) .d<span class="sc">$</span><span class="fu">GetSize</span>(), <span class="dv">0</span>L)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]     3 10980 10980</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vapply</span>(md<span class="sc">$</span><span class="fu">GetDimensions</span>(), \(.d) .d<span class="sc">$</span><span class="fu">GetName</span>(), <span class="st">""</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "band" "y"    "x"   </code></pre>
+</div>
+</div>
+<p>Explore some metadata attributes.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>mnames <span class="ot">&lt;-</span> <span class="fu">vapply</span>(md<span class="sc">$</span><span class="fu">GetAttributes</span>(), \(.a) .a<span class="sc">$</span><span class="fu">GetName</span>(), <span class="st">""</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>(meta <span class="ot">&lt;-</span> <span class="fu">setNames</span>(<span class="fu">lapply</span>(md<span class="sc">$</span><span class="fu">GetAttributes</span>(), \(.a) <span class="fu">unlist</span>(.a<span class="sc">$</span><span class="fu">Read</span>())), mnames))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$long_name
+[1] "TCI: True Color Image"
+
+$`proj:bbox`
+[1]  300000 4490220  409800 4600020
+
+$`proj:epsg`
+[1] 32636
+
+$`proj:shape`
+[1] 10980 10980
+
+$`proj:transform`
+[1]      10       0  300000       0     -10 4600020       0       0       1
+
+$`proj:wkt2`
+[1] "PROJCS[\"WGS 84 / UTM zone 36N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",0],PARAMETER[\"central_meridian\",33],PARAMETER[\"scale_factor\",0.9996],PARAMETER[\"false_easting\",500000],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"32636\"]]"</code></pre>
+</div>
+</div>
+<p>We see that the CRS information is in there, but sadly while the geotransform of the data is maintained when we convert to classic raster the CRS does not make the journey (the geotransform is just the image bbox intermingled with its resolution in a mathematical abstraction used in matrix manipulation).</p>
+<p>A multidim raster can be converted to classic form, either in whole or after applying a <code>$GetView()</code> operation that acts like numpy ‘[:]’ array subsetting.</p>
+<p>When converting to classice we specify the x, then y dimensions of the dataset, which from multdim convention are in reverse order.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>cc <span class="ot">&lt;-</span> md<span class="sc">$</span><span class="fu">AsClassicDataset</span>(<span class="dv">2</span>L, <span class="dv">1</span>L)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>tr <span class="ot">&lt;-</span> <span class="fu">unlist</span>(cc<span class="sc">$</span><span class="fu">GetGeoTransform</span>())</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>dm <span class="ot">&lt;-</span> <span class="fu">c</span>(cc<span class="sc">$</span>RasterXSize, cc<span class="sc">$</span>RasterYSize)</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>cc<span class="sc">$</span><span class="fu">GetSpatialRef</span>() <span class="do">## empty, so we retrieve from the attributes</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>crs <span class="ot">&lt;-</span> cc<span class="sc">$</span><span class="fu">GetMetadata</span>()[[<span class="st">"proj:wkt2"</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now, I used <code>reproj_extent</code> to convert the dataset’s bbox to one in longlat, but I won’t share that here, we’ll just use the result so our map is a little more familiar. The source data xy bbox is <code>xmin: 300000 ymin: 4490220  xmax: 409800 ymax:4600020</code>, and we take small section of that which is this in longitude latitude:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># xmin,xmax,ymin,ymax converted below to bbox </span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">31.689</span>, <span class="fl">31.774</span>, <span class="fl">40.665</span>, <span class="fl">40.724</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To warp the imagery to this region we first need to set the CRS properly on the dataset, so translate to a temporary VRT and use that dataset for the next step.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>dsvrt <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">Translate</span>(<span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".vrt"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), cc, <span class="at">options =</span> <span class="fu">c</span>(<span class="st">"-a_srs"</span>, crs))</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>tf <span class="ot">&lt;-</span> tf <span class="ot">&lt;-</span> <span class="st">"/vsimem/result.tif"</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>ww <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">Warp</span>(tf, dsvrt,  <span class="at">dstSRS =</span> <span class="st">"EPSG:4326"</span>, <span class="at">outputBounds =</span> ex[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>, <span class="dv">4</span>)])</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>ww<span class="sc">$</span><span class="fu">Close</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0</code></pre>
+</div>
+</div>
+<p>Finally we can read the image, plot it, obtain some contextual data and be assured that our map is correct.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalraster)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>GDAL 3.11.0dev-dd6009a0eb, released 2018/99/99, GEOS 3.13.0, PROJ 9.6.0</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(osmdata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Data (c) OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">opq</span>(ex[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>, <span class="dv">4</span>)]) <span class="sc">|&gt;</span> <span class="fu">add_osm_feature</span>(<span class="at">key =</span> <span class="st">"highway"</span>) <span class="sc">|&gt;</span> <span class="fu">osmdata_sf</span>()</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Linking to GEOS 3.13.0, GDAL 3.11.0dev-dd6009a0eb, PROJ 9.6.0; sf_use_s2() is
+TRUE</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>WARNING: different compile-time and runtime versions for GEOS found:</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Linked against: 3.13.0-CAPI-1.19.0 compiled against: 3.8.0-CAPI-1.13.1</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>It is probably a good idea to reinstall sf (and maybe lwgeom too)</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_raster</span>(data)</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(x<span class="sc">$</span>osm_lines[<span class="dv">0</span>], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">col =</span> <span class="st">"hotpink"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="r-py-multidim_files/figure-html/osm-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("http:\/\/hypertidy\.org");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
