@@ -1,11 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim.html</loc>
-    <lastmod>2025-03-12T02:46:56.452Z</lastmod>
+    <loc>http://hypertidy.org/about.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
   </url>
   <url>
-    <loc>http://hypertidy.org/about.html</loc>
+    <loc>http://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2024-12-04_plot_native/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-09-01_gdal-in-r/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim.html</loc>
+    <lastmod>2025-03-12T02:56:58.989Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-04-25_gdalwarper-in-R/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2024-12-11_conservative_gdal/conservative_regrid.html</loc>
+    <lastmod>2025-02-06T00:42:23.113Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2014-04-17_r-matrices-and-image/index.html</loc>
+    <lastmod>2025-02-06T00:42:23.101Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/posts/2024-12-05_idea_update/idea-update.html</loc>
+    <lastmod>2025-02-06T00:42:23.105Z</lastmod>
+  </url>
+  <url>
+    <loc>http://hypertidy.org/index.html</loc>
     <lastmod>2025-02-06T00:42:23.101Z</lastmod>
   </url>
 </urlset>

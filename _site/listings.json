@@ -1,0 +1,21 @@
+[
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/2025-03-12-r-py-multidim/r-py-multidim.html",
+      "/posts/2024-12-05_idea_update/idea-update.html",
+      "/posts/2024-12-11_conservative_gdal/conservative_regrid.html",
+      "/posts/2024-12-04_plot_native/index.html",
+      "/posts/2023-04-22_gdal_image_tiles/index.html",
+      "/posts/2022-12-09_netcdf-degenerate-rectilinear/index.html",
+      "/posts/2022-04-05_gdal_raster_blocks/index.html",
+      "/posts/2022-04-25_gdalwarper-in-R/index.html",
+      "/posts/2019-05-29_recent-rgl-format-changes/index.html",
+      "/posts/2017-09-01_gdal-in-r/index.html",
+      "/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html",
+      "/posts/2017-01-10_r-spatial-2017/index.html",
+      "/posts/2015-12-28_gis3d/index.html",
+      "/posts/2014-04-17_r-matrices-and-image/index.html"
+    ]
+  }
+]
