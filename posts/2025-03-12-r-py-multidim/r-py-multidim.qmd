@@ -220,7 +220,6 @@ plot(x$osm_lines[0], add = TRUE, col = "hotpink")
 ```
 
 
-
 ## Summary
 
 Please get in touch if any of this is of interest!
