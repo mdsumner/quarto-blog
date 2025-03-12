@@ -250,3 +250,12 @@ I also noticed that if the file is local the array names at root level are like 
 ['//xt_ocean', '//yt_ocean', '//st_ocean', '//Time', '//nv', '//st_edges_ocean', '//average_T1', '//average_T2', '//average_DT', '//Time_bnds', '//temp']
 
 ```
+
+
+```{r versions}
+gdalraster::gdal_version()
+
+devtools::session_info()
+
+reticulate::py_require()
+```
