@@ -55,7 +55,7 @@ us to declare special sources like zip files `/vsizip/` and urls `/vsicurl/`, wh
 
 ## GDAL and multidimensional datasets
 
-GDAL has a multidimensional mode for data sources that aren't "imagery" in the traditional sense. (If we open one of these datasets in "classic" mode we end up with a lot of bands on a 2D raster.)
+GDAL has a multidimensional mode for data sources that aren't "imagery" in the traditional sense. (If we open one of these datasets in "classic" mode we end up with a lot of bands on a 2D raster, or potentially many bands on many *sub*datasets within a more general container. Zarr is a container format, much like HDF5 and NetCDF). 
 
 Multidimensional mode is avaible in the API via `OpenEx()` and declaring type `OF_MULTIDIM_RASTER`. 
 

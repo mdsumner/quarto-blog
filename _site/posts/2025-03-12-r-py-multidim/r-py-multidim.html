@@ -224,7 +224,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="gdal-and-multidimensional-datasets" class="level2">
 <h2 class="anchored" data-anchor-id="gdal-and-multidimensional-datasets">GDAL and multidimensional datasets</h2>
-<p>GDAL has a multidimensional mode for data sources that aren’t “imagery” in the traditional sense. (If we open one of these datasets in “classic” mode we end up with a lot of bands on a 2D raster.)</p>
+<p>GDAL has a multidimensional mode for data sources that aren’t “imagery” in the traditional sense. (If we open one of these datasets in “classic” mode we end up with a lot of bands on a 2D raster, or potentially many bands on many <em>sub</em>datasets within a more general container. Zarr is a container format, much like HDF5 and NetCDF).</p>
 <p>Multidimensional mode is avaible in the API via <code>OpenEx()</code> and declaring type <code>OF_MULTIDIM_RASTER</code>.</p>
 <p>To actually load this python library we use <a href="https://posit.co/blog/reticulate-1-41/">{reticulate} <code>py_require()</code></a> which drives the awesome <a href="https://docs.astral.sh/uv/">Python uv</a> package manager.</p>
 <p>(For some reason the pypi name of the package is “gdal”, but the actual module is obtained with “osgeo.gdal”).</p>
@@ -235,53 +235,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] "TermProgress_nocb"                                 
- [2] "Rename"                                            
- [3] "GDAL_GCP_GCPY_set"                                 
- [4] "DIM_TYPE_TEMPORAL"                                 
- [5] "DIM_TYPE_HORIZONTAL_Y"                             
- [6] "DCAP_CREATE"                                       
- [7] "Rasterize"                                         
- [8] "GCI_SAR_Ku_Band"                                   
- [9] "GFU_GreenMin"                                      
-[10] "GVM_Edge"                                          
-[11] "GetThreadLocalConfigOption"                        
-[12] "SetCacheMax"                                       
-[13] "GCI_AlphaBand"                                     
-[14] "GARIO_UPDATE"                                      
-[15] "VSI_STAT_SET_ERROR_FLAG"                           
-[16] "PushFinderLocation"                                
-[17] "GRA_Q3"                                            
-[18] "CPLES_SQLI"                                        
-[19] "VectorTranslate"                                   
-[20] "wrapper_GDALRasterizeDestName"                     
-[21] "GetCacheUsed"                                      
-[22] "ParseXMLString"                                    
-[23] "GRA_Med"                                           
-[24] "IdentifyDriverEx"                                  
-[25] "GA_ReadOnly"                                       
-[26] "DMD_NUMERIC_FIELD_WIDTH_INCLUDES_DECIMAL_SEPARATOR"
-[27] "GDsCAddRelationship"                               
-[28] "VSIFTellL"                                         
-[29] "GCI_SAR_P_Band"                                    
-[30] "GCI_SAR_L_Band"                                    
-[31] "contextlib"                                        
-[32] "GCI_LightnessBand"                                 
-[33] "GRIORA_Cubic"                                      
-[34] "VectorTranslateOptions"                            
-[35] "SubdatasetInfo"                                    
-[36] "ExtendedDataType"                                  
-[37] "EscapeString"                                      
-[38] "CPLES_XML"                                         
-[39] "CPLHexToBinary"                                    
-[40] "GDAL_DCAP_DELETE_RELATIONSHIP"                     </code></pre>
+<pre><code> [1] "SetErrorHandler"                          
+ [2] "GRTT_THEMATIC"                            
+ [3] "SubdatasetInfo"                           
+ [4] "GetNextDirEntry"                          
+ [5] "GDT_Unknown"                              
+ [6] "DontUseExceptions"                        
+ [7] "GDT_Int64"                                
+ [8] "ApplyVerticalShiftGrid"                   
+ [9] "SetConfigOption"                          
+[10] "GDAL_GCP_GCPX_get"                        
+[11] "GetColorInterpretationName"               
+[12] "GCI_LWIRBand"                             
+[13] "RasterizeOptions"                         
+[14] "VirtualMem"                               
+[15] "ReadDirRecursive"                         
+[16] "GCI_OtherIRBand"                          
+[17] "CE_Fatal"                                 
+[18] "DCAP_NOTNULL_GEOMFIELDS"                  
+[19] "Relationship"                             
+[20] "UseExceptions"                            
+[21] "GFU_MinMax"                               
+[22] "GRA_Sum"                                  
+[23] "DIM_TYPE_PARAMETRIC"                      
+[24] "GDALFootprintOptions"                     
+[25] "CreatePansharpenedVRT"                    
+[26] "GDAL_DMD_RELATIONSHIP_RELATED_TABLE_TYPES"
+[27] "CE_Failure"                               
+[28] "GCI_HueBand"                              
+[29] "DMD_NUMERIC_FIELD_WIDTH_INCLUDES_SIGN"    
+[30] "MajorObject"                              
+[31] "wrapper_GDALFootprintDestName"            
+[32] "GFU_Generic"                              
+[33] "GEDTC_COMPOUND"                           
+[34] "GRA_Max"                                  
+[35] "GDAL_DCAP_CREATE_RELATIONSHIP"            
+[36] "DMD_MULTIDIM_GROUP_CREATIONOPTIONLIST"    
+[37] "GRC_ONE_TO_MANY"                          
+[38] "DMD_CREATION_FIELD_DOMAIN_TYPES"          
+[39] "GRIORA_Average"                           
+[40] "DMD_ALTER_GEOM_FIELD_DEFN_FLAGS"          </code></pre>
 </div>
 </div>
 <p>The API elements chain in the usual way that works in python with ‘object.element.thing.etc’ syntax uses R’s <code>$</code> accessor.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span>Dimension<span class="sc">$</span>GetIndexingVariable</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7fd752b41760&gt;
+<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7f690c8f5760&gt;
  signature: (self, *args) -&gt; 'GDALMDArrayHS *'</code></pre>
 </div>
 </div>
@@ -293,7 +293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7fd752cd33f0&gt; &gt;</code></pre>
+<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7f690ca873f0&gt; &gt;</code></pre>
 </div>
 </div>
 <p>To actually find out what’s in there we have to traverse a tree of potentially nested “groups” that organize actual datasets in a hierarchy.</p>
