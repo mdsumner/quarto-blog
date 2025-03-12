@@ -224,7 +224,7 @@ plot(x$osm_lines[0], add = TRUE, col = "hotpink")
 
 We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context. 
 
-There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://github/USDAForestService/gdalraster), and in in-development version of gdalraster to add the `GDALMultiDimRaster` class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew. 
+There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://github.com/USDAForestService/gdalraster), and in-development version of gdalraster to add the `GDALMultiDimRaster` class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew. 
 
 Please get in touch if any of this is of interest!
 

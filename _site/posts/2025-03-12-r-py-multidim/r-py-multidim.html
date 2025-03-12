@@ -235,53 +235,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] "CE_None"                                  
- [2] "ParseCommandLine"                         
- [3] "GCI_GreenBand"                            
- [4] "GFU_MinMax"                               
- [5] "DMD_MULTIDIM_DIMENSION_CREATIONOPTIONLIST"
- [6] "SetCacheMax"                              
- [7] "GRA_RMS"                                  
- [8] "GCI_AlphaBand"                            
- [9] "GCI_SWIRBand"                             
-[10] "Mkdir"                                    
-[11] "GRA_Bilinear"                             
-[12] "sys"                                      
-[13] "DCAP_RELATIONSHIPS"                       
-[14] "VirtualMem"                               
-[15] "CPLHexToBinary"                           
-[16] "GRA_Q3"                                   
-[17] "CPLE_AppDefined"                          
-[18] "GRC_MANY_TO_ONE"                          
-[19] "VSI_STAT_CACHE_ONLY"                      
-[20] "GFU_RedMax"                               
-[21] "byteorders"                               
-[22] "DCAP_FIELD_DOMAINS"                       
-[23] "GCI_LWIRBand"                             
-[24] "ContourGenerate"                          
-[25] "Open"                                     
-[26] "GVM_Max"                                  
-[27] "GFU_RedMin"                               
-[28] "MultipartUploadAddPart"                   
-[29] "PopErrorHandler"                          
-[30] "DMD_CREATIONFIELDDATATYPES"               
-[31] "DMD_EXTENSION"                            
-[32] "GetDriver"                                
-[33] "FillNodata"                               
-[34] "GMF_NODATA"                               
-[35] "config_option"                            
-[36] "CPLE_UserInterrupt"                       
-[37] "VersionInfo"                              
-[38] "MultiDimTranslate"                        
-[39] "GRA_Lanczos"                              
-[40] "CPLE_OpenFailed"                          </code></pre>
+<pre><code> [1] "TileIndexOptions"                       
+ [2] "GDT_Int64"                              
+ [3] "Translate"                              
+ [4] "GetSignedURL"                           
+ [5] "VSI_STAT_SET_ERROR_FLAG"                
+ [6] "DMD_MIMETYPE"                           
+ [7] "FileFromMemBuffer"                      
+ [8] "ExceptionMgr"                           
+ [9] "RegenerateOverview"                     
+[10] "GDAL_GCP_GCPPixel_set"                  
+[11] "GARIO_ERROR"                            
+[12] "CXT_Attribute"                          
+[13] "RasterizeLayer"                         
+[14] "CPLE_OutOfMemory"                       
+[15] "DCAP_DEFAULT_FIELDS"                    
+[16] "VectorTranslateOptions"                 
+[17] "CPLE_AssertionFailed"                   
+[18] "GCI_SWIRBand"                           
+[19] "DMD_MULTIDIM_DATASET_CREATIONOPTIONLIST"
+[20] "DIM_TYPE_TEMPORAL"                      
+[21] "GVM_Max"                                
+[22] "GARIO_COMPLETE"                         
+[23] "GOA2GetAuthorizationURL"                
+[24] "AllRegister"                            
+[25] "OpenShared"                             
+[26] "VSIErrorReset"                          
+[27] "GDAL_DMD_RELATIONSHIP_FLAGS"            
+[28] "CE_Warning"                             
+[29] "wrapper_GDALFootprintDestName"          
+[30] "GCI_SAR_Ku_Band"                        
+[31] "GFT_Integer"                            
+[32] "Attribute"                              
+[33] "GetDriver"                              
+[34] "CreateRasterAttributeTableFromMDArrays" 
+[35] "GetPaletteInterpretationName"           
+[36] "VSIFErrorL"                             
+[37] "GARIO_PENDING"                          
+[38] "PopErrorHandler"                        
+[39] "GDAL_GCP_Info_set"                      
+[40] "GCI_AlphaBand"                          </code></pre>
 </div>
 </div>
 <p>The API elements chain in the usual way that works in python with ‘object.element.thing.etc’ syntax uses R’s <code>$</code> accessor.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdal<span class="sc">$</span>Dimension<span class="sc">$</span>GetIndexingVariable</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7ff118f01760&gt;
+<pre><code>&lt;function Dimension.GetIndexingVariable at 0x7f0422add760&gt;
  signature: (self, *args) -&gt; 'GDALMDArrayHS *'</code></pre>
 </div>
 </div>
@@ -293,7 +293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> gdal<span class="sc">$</span><span class="fu">OpenEx</span>(dsn, gdal<span class="sc">$</span>OF_MULTIDIM_RASTER)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7ff1190933f0&gt; &gt;</code></pre>
+<pre><code>&lt;osgeo.gdal.Dataset; proxy of &lt;Swig Object of type 'GDALDatasetShadow *' at 0x7f0422c6f420&gt; &gt;</code></pre>
 </div>
 </div>
 <p>To actually find out what’s in there we have to traverse a tree of potentially nested “groups” that organize actual datasets in a hierarchy.</p>
@@ -564,7 +564,7 @@ $`proj:wkt2`
 <section id="summary" class="level2">
 <h2 class="anchored" data-anchor-id="summary">Summary</h2>
 <p>We had a look at GDAL multidimensional API, converting a 3D dataset to classic raster, augmenting the missing CRS information on a virtual copy and then warping an image to a familiar map context.</p>
-<p>There is ongoing work to bring the full GDAL API to R in <a href="https://github/USDAForestService/gdalraster">{gdalraster}</a>, and in in-development version of gdalraster to add the <code>GDALMultiDimRaster</code> class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew.</p>
+<p>There is ongoing work to bring the full GDAL API to R in <a href="https://github.com/USDAForestService/gdalraster">{gdalraster}</a>, and in-development version of gdalraster to add the <code>GDALMultiDimRaster</code> class and helpers: https://github.com/mdsumner/gdalraster/tree/multidimnew.</p>
 <p>Please get in touch if any of this is of interest!</p>
 
 
