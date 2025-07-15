@@ -56,9 +56,25 @@ storage and use - but the other problem is that in (naive) tabular form we also
 don't have any explicit understanding of the underlying array logic. (BUT THIS
 DEAR READER IS EXACTLY THE PROBLEM OF DEGENERACY THAT WE ARE PROSECUTING HERE).
 
+## The overall logic of the representation does not matter
+
 The fact is it really doesn't matter if we use tabular or array storage, what
 matters is how we 1) effectively represent the underlying array logic and 2)
 efficiently save on storage, avoid information loss, and 3) have tooling to
 generate whatever representation/s we need.
+
+There are efficient tabular representations of imagery, there are "tiled tables" for rasters
+in Manifold GIS, in PostGIS, in Geopackage, and (I will fight on this) in virtualized Zarr. It doesn't matter where the bytes are, this is as true for Zarr as any DB approach. A virtualized Zarr has a set of *byte references*, an address at which the bytes start and where the bytes end. There's an implicit or explicit chunk-index for each, and so we have an inherently tuple type: 
+
+```
+(str: "array.index.label", str: "address", int: start, int: end)
+```
+
+The array index may be implicit or explicit, and its meaning is handled at a higher level. This is no different than in the tiled raster tables of Manifold and others. There the overall dataset has coordinate-extent that is compactly specified as ncol, nrow, xmin, xmax, ymin, ymax (or it might be xmin,ymin, xscale, yscale). We tend not to specify both, and traditionally the "transform" is used in case of shear/skew in a pair of dimensions. So maximum 8 values remove the need for coordinates (minimum 6). 
+
+Arrow is tumbling towards a tabular representation of encoded raster chunks, I think this is exciting  - there's got to be some kind of marriage of Zarr and Arrow, and an ability for non-materalized storage (bytes anywhere) that is transferrable from an Arrow table to a virtualized Zarr. 
+
+
+
 
 
