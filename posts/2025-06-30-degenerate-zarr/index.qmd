@@ -1,0 +1,64 @@
+---
+title: "Degeneracy in array formats"
+author: "Michael Sumner"
+editor: source
+date: "2025-06-30"
+categories: [news, code]
+draft: true
+---
+
+Degeneracy in array formats presents serious problems in earth observation. There is a lowest common denominator data structure that we can call "labelled arrays". 
+
+At the very lowest level this means if we have a grid, we also have to store its coordinates which can imply combinatorial explosion except: 
+
+* we don't need a copy of the coordinates for every variable
+* we may not need every combination of the grid coordinates, examples  listed below
+* we may have a very compact formulaic representation, where coordinates are implicit
+
+Please note that all of these exist, and can exist in mixed or cryptic form in individual datasets.
+
+If we don't need very combination of coordinates, common examples include include longitude/latitude cells are common across every other dimension and so they can become decoupled. This decoupling is a general concept, and we tend to have paired dimensions (x,y), and decoupled ones dimensions (depth, or time) that can be stored individually as 1D arrays. There are many intermediate cases, including sigma-depths that are defined *relatively* between a constant start (0) and stop (depth at each x,y). 
+
+If the coordinates are paired (or exist in higher coupled-sets) they are truly *curvilinear*. If they are 1D arrays there are two kinds of cases: the first is an information-rich set of coordinates, the second is information-poor. For the first we need to store every coordinate, and this is as far as the general array formats (NetCDF and Zarr can stand-in for my generalization here) will go. Every coordinate in a dimension contributes information and is stored and used explicitly. 
+
+(Other constrints like ordered monotonic increasing are ripples on this story, not major themes within it - if you disagree let me know!). 
+
+These communities don't go further, even if for a coordinate we only need a start and step-size and we  can reduce the coordinates to a rule or formula (the second case). The array world just did not go there in broad terms. 
+
+This was established largely in modelling communities largely using Fortran, Matlab, IDL, NetCDF, HDF, and GRIB. There is a much bigger story here (point to Deepak talk for an xarray perspective). 
+
+## When does this matter
+
+* Rasterizing polygons and lines. (Actually, this is related to the next one) 
+* Extracting values from grids. (Actually, this is related to the previous one)
+* Calculating group-by operations (actually, this is where the first two are related)
+* When we don't need a lowest common denominator approach (i.e. existing tools work fine). 
+* When coordinate arrays are not just degenerate but also *broken*, i.e. incorrectly specified or lossy. 
+
+Lossy representations beget more loss downstream, and this should be fixed as
+high up as possible. I don't think that is controversial.
+
+
+
+## Opinionated aside on tabular vs array representations
+
+If we stored every combination of every coordinate for every variable we would
+be crazy. That would be a long-form tabular representation that is "tidy", and
+bang up for analysis.
+
+If we stored every combination of every coordinate just once we could put the
+variables alongside in a wide format tabular representation that is not tidy,
+requiring gather operations to produce a Cartesian product and be bang up for
+analysis like the previous case.
+
+No one is this crazy. Both of these cases is way too large for materialized
+storage and use - but the other problem is that in (naive) tabular form we also
+don't have any explicit understanding of the underlying array logic. (BUT THIS
+DEAR READER IS EXACTLY THE PROBLEM OF DEGENERACY THAT WE ARE PROSECUTING HERE).
+
+The fact is it really doesn't matter if we use tabular or array storage, what
+matters is how we 1) effectively represent the underlying array logic and 2)
+efficiently save on storage, avoid information loss, and 3) have tooling to
+generate whatever representation/s we need.
+
+
