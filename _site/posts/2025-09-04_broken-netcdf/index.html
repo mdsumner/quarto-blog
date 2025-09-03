@@ -107,13 +107,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link rel="stylesheet" href="../../styles.css">
 <meta property="og:title" content="Coordinates broken in NetCDF – hypertidy-blog">
 <meta property="og:description" content="">
-<meta property="og:image" content="http://hypertidy.org/posts/2025-09-04-broken-netcdf/index_files/figure-html/coords-1.png">
+<meta property="og:image" content="http://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/coords-1.png">
 <meta property="og:site_name" content="hypertidy-blog">
 <meta property="og:image:height" content="960">
 <meta property="og:image:width" content="1344">
 <meta name="twitter:title" content="Coordinates broken in NetCDF – hypertidy-blog">
 <meta name="twitter:description" content="">
-<meta name="twitter:image" content="http://hypertidy.org/posts/2025-09-04-broken-netcdf/index_files/figure-html/coords-1.png">
+<meta name="twitter:image" content="http://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/coords-1.png">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image-height" content="960">
@@ -223,21 +223,7 @@ variables:
         double lon(y, x) ;
                 lon:long_name = "longitude" ;
                 lon:units = "degrees_east" ;
-        double snow_freeboard(time, y, x) ;
-                snow_freeboard:least_significant_digit = 4LL ;
-                snow_freeboard:units = "m" ;
-                snow_freeboard:standard_name = "snow_freeboard" ;
-                snow_freeboard:description = "Mean snow (total) freeboard in grid cell" ;
-        double ice_freeboard(time, y, x) ;
-                ice_freeboard:least_significant_digit = 4LL ;
-                ice_freeboard:units = "m" ;
-                ice_freeboard:standard_name = "ice_freeboard" ;
-                ice_freeboard:description = "Mean ice freeboard in grid cell" ;
-        double snow_depth(time, y, x) ;
-                snow_depth:least_significant_digit = 4LL ;
-                snow_depth:units = "m" ;
-                snow_depth:standard_name = "snow_depth" ;
-                snow_depth:description = "Mean snow depth on sea ice in grid cell" ;
+...
         double sea_ice_concentration(time, y, x) ;
                 sea_ice_concentration:least_significant_digit = 4LL ;
                 sea_ice_concentration:units = "1" ;
@@ -250,49 +236,15 @@ variables:
                 :history = "File created on November 15, 2022, 12:09:06" ;
 
 group: sea_ice_thickness {
-  variables:
-        double sea_ice_thickness(time, y, x) ;
-                sea_ice_thickness:least_significant_digit = 4LL ;
-                sea_ice_thickness:units = "m" ;
-                sea_ice_thickness:standard_name = "sea_ice_thickness" ;
-                sea_ice_thickness:description = "Mean sea ice thickness in grid cell" ;
-        double sea_ice_thickness_70percent_threshold(time, y, x) ;
-                sea_ice_thickness_70percent_threshold:least_significant_digit = 4LL ;
-                sea_ice_thickness_70percent_threshold:units = "m" ;
-                sea_ice_thickness_70percent_threshold:standard_name = "sea_ice_thickness_70percent_threshold" ;
-                sea_ice_thickness_70percent_threshold:description = "Mean sea ice thickness in grid cell found using the 70% power threshold retracking algorithm" ;
-        double sea_ice_thickness_zero_icefreeboard(time, y, x) ;
-                sea_ice_thickness_zero_icefreeboard:least_significant_digit = 4LL ;
-                sea_ice_thickness_zero_icefreeboard:units = "m" ;
-                sea_ice_thickness_zero_icefreeboard:standard_name = "sea_ice_thickness_zero_icefreeboard" ;
-                sea_ice_thickness_zero_icefreeboard:description = "Mean sea ice thickness in grid cell found using the zero-ice-freeboard assumption" ;
-        double sea_ice_thickness_uncertainty(time, y, x) ;
-                sea_ice_thickness_uncertainty:least_significant_digit = 4LL ;
-                sea_ice_thickness_uncertainty:units = "m" ;
-                sea_ice_thickness_uncertainty:standard_name = "sea_ice_thickness_uncertainty" ;
-                sea_ice_thickness_uncertainty:description = "Mean systematic sea ice thickness uncertainty in grid cell" ;
-  } // group sea_ice_thickness
-
+  ...
 group: density {
   variables:
         double ice_density(time, y, x) ;
                 ice_density:least_significant_digit = 4LL ;
-                ice_density:units = "kg m-3" ;
-                ice_density:standard_name = "seasonal_sea_ice_density" ;
-                ice_density:description = "Seasonal value of sea ice density" ;
-        double snow_density(time, y, x) ;
-                snow_density:least_significant_digit = 4LL ;
-                snow_density:units = "kg m-3" ;
-                snow_density:standard_name = "seasonal_snow_density" ;
-                snow_density:description = "Seasonal value of snow density" ;
-        double seawater_density(time, y, x) ;
-                seawater_density:least_significant_digit = 4LL ;
-                seawater_density:units = "kg m-3" ;
-                seawater_density:standard_name = "seasonal_seawater_density" ;
-                seawater_density:description = "Seasonal value of seawater density" ;
+ ...
   } // group density
 }</code></pre>
-<p>There’s a root group with two variables defined in time,y,x and another two groups with further variables on that same grid.</p>
+<p>There’s a root group with four variables defined in time,y,x and another two groups with further variables on that same grid.</p>
 <p>Each data array is 316x332x1 and we can tell that every lon,lat pair is stored explicitly. This fits a convention in NetCDF where time is “unlimited” and we’re only looking at a subset of an overall time series, that could well be continually generated day to day still now.</p>
 <p>Let’s investigate the coordinates. We’ll use GDAL via a commonly used wrapper in R, its ‘vsicurl’ protocol to stream from the internet, and declare the driver explicitly (lest we get the less sophisticated HDF5 interpretation).</p>
 <div class="cell">
@@ -303,20 +255,16 @@ group: density {
 <pre><code>terra 1.8.62</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>lon <span class="ot">&lt;-</span> <span class="fu">rast</span>(dsn, <span class="st">"lon"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Error in R_nc4_open: No such file or directory</code></pre>
-</div>
 <div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. Cells not equally spaced?</code></pre>
+<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
+help</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>lat <span class="ot">&lt;-</span> <span class="fu">rast</span>(dsn, <span class="st">"lat"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Error in R_nc4_open: No such file or directory</code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>lat <span class="ot">&lt;-</span> <span class="fu">rast</span>(dsn, <span class="st">"lat"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. Cells not equally spaced?</code></pre>
+<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
+help</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">c</span>(lon, lat))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">c</span>(lon, lat))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -328,14 +276,12 @@ group: density {
 <p>We get a message from terra about “cells not equally spaced”, which means that when reading an array the geospatial context in GDAL didn’t find anything specifying a compact representation of coordinates, but lon and lat <em>are the coordinates</em> <strong>as data</strong>, so we can safely ignore this message. (There’s another message about ncdf4, but ignore that too it’s terra try(ing) stuff. )</p>
 <p>We won’t pay attention to “time”, because our file only has one time step. We’re interested in these lon,lat coordinates. What does the data itself look like? Again we choose one of the 3D variables (with degenerate 3rd dimension ‘time’) by name.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>ice <span class="ot">&lt;-</span> <span class="fu">rast</span>(dsn, <span class="st">"sea_ice_concentration"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Error in R_nc4_open: No such file or directory</code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>ice <span class="ot">&lt;-</span> <span class="fu">rast</span>(dsn, <span class="st">"sea_ice_concentration"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. Cells not equally spaced?</code></pre>
+<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
+help</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ice)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ice)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -347,9 +293,9 @@ group: density {
 <p>That should look familiar, though notice that we don’t have any spatial information it’s just a matrix in its own index coordinates, 0,316 for x and 0,332 for y.</p>
 <p>Let’s plot the coordinates. Now we can see our data in a much more spatial-ish context.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>xyz <span class="ot">&lt;-</span> <span class="fu">values</span>(<span class="fu">c</span>(lon, lat, ice))</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xyz[,<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>], <span class="at">pch =</span> <span class="st">"."</span>, <span class="at">col =</span> palr<span class="sc">::</span><span class="fu">d_pal</span>(xyz[,<span class="dv">3</span>]), <span class="at">asp =</span> <span class="dv">2</span>)</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>maps<span class="sc">::</span><span class="fu">map</span>(<span class="st">"world2"</span>, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>xyz <span class="ot">&lt;-</span> <span class="fu">values</span>(<span class="fu">c</span>(lon, lat, ice))</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xyz[,<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>], <span class="at">pch =</span> <span class="st">"."</span>, <span class="at">col =</span> palr<span class="sc">::</span><span class="fu">d_pal</span>(xyz[,<span class="dv">3</span>]), <span class="at">asp =</span> <span class="dv">2</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>maps<span class="sc">::</span><span class="fu">map</span>(<span class="st">"world2"</span>, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -361,12 +307,12 @@ group: density {
 <p>We now don’t have a nice gridded dataset, it’s points in longitude latitude. What can we do to plot it in that nice polar aspect with proper spatial referencing?</p>
 <p>Let’s have a look at this dataset from a GDAL perspective. Now we use the API package <code>gdalraster</code> which gives a lot more control over GDAL itself. I’m going to skip over interrogating the syntax for a particular array, like we did with terra and ‘sea_ice_concentration’ above, I construct the subdataset syntax to open.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="st">"NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="st">"NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>sds <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"%s:sea_ice_concentration"</span>, dsn)</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalraster)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>sds <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"%s:sea_ice_concentration"</span>, dsn)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalraster)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>GDAL 3.12.0dev-4e2b27da8f (released 2025-08-26), GEOS 3.12.1, PROJ 9.3.1</code></pre>
 </div>
@@ -379,8 +325,8 @@ Attaching package: 'gdalraster'</code></pre>
 
     rasterize</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> <span class="fu">new</span>(GDALRaster, sds)</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">info</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> <span class="fu">new</span>(GDALRaster, sds)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">info</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Driver: netCDF/Network Common Data Format
 Files: ../CS2WFA_25km_201007.nc
@@ -428,14 +374,14 @@ Band 1 Block=316x332 Type=Float64, ColorInterp=Undefined
     NETCDF_DIM_time=126</code></pre>
 </div>
 </div>
-<p>The interesting part of that output is under “Geolocation:”. We can see that while GDAL doesn’t have spatial referencing for this array, it does seem to know that’s it’s possible because of the X_DATASET and Y_DATASET. These can be used by the GDAL warper API (warp means “reprojection” or “reshaping” for an image) in order to resolve to a spatial dataset. So let’s warp.</p>
-<p>We don’t have to specifying the geolocation arrays, we saw that GDAL already knows this. We’ll write conveniently to a temporary virtual “file” so we can avoid more cleanup.</p>
+<p>The interesting part of that output is under “Geolocation:”. We can see that while GDAL doesn’t have spatial referencing for this array, it does seem to know that’s it’s possible because of the X_DATASET and Y_DATASET. These can be used by the GDAL warper API (warp means “reprojection” or “reshaping” for an image) in order to resolve to a <em>new</em> spatial gridded dataset … but also note, the same facilities used to “reproject” one regular grid to another are also the same that can be used to generate a regular grid from irregular geolocation coordinates (we have a point for every data point, but those coordinates might be less dense, or might be GCPs or RCPs, and no matter what coordinate system those latent coordinates are using, we can warp to whatever spatial grid we like). So let’s warp.</p>
+<p>We don’t have to specifying the geolocation arrays, we saw that GDAL already knows this. We’ll write our new gridded dataset conveniently to a temporary virtual “file” so we can avoid more cleanup.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -443,25 +389,25 @@ Band 1 Block=316x332 Type=Float64, ColorInterp=Undefined
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 127, 902, 1  (nrow, ncol, nlyr)
 resolution  : 0.398722, 0.3987662  (x, y)
 extent      : 0.164645, 359.8119, -89.80441, -39.1611  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb833358a66fe0.tif 
-name        : fileb833358a66fe0 </code></pre>
+source      : filedb3943dea1d4.tif 
+name        : filedb3943dea1d4 </code></pre>
 </div>
 </div>
 <p>We indeed now have a spatial grid, a raster. But perhaps we don’t like the 0,360 convention. We can set the target extent, GDAL had to figure one out from the input geolocation arrays, and it will usually do a good job but it’s really our responsibility to specify what we want for reproducibility in later workflows.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>, </span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span><span class="dv">180</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">39</span>, <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>, </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span><span class="dv">180</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">39</span>, <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -469,26 +415,27 @@ name        : fileb833358a66fe0 </code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 194, 1371, 1  (nrow, ncol, nlyr)
 resolution  : 0.2625821, 0.2628866  (x, y)
 extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb83331998b3c1.tif 
-name        : fileb83331998b3c1 </code></pre>
+source      : filedb394444fc021.tif 
+name        : filedb394444fc021 </code></pre>
 </div>
 </div>
-<p>Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this an extent are all interlinked so we augment our bounding box / extent setting with a nice clean resolution.</p>
+<p>Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this and extent (or bbox, bounding box) are all interlinked so we augment our bounding box / extent setting with a nice clean resolution.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>, </span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span><span class="dv">180</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">39</span>, <span class="st">"-tr"</span>, <span class="fl">0.25</span>, <span class="fl">0.25</span>,</span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:4326"</span>, </span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span><span class="dv">180</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">39</span>, <span class="st">"-tr"</span>, <span class="fl">0.25</span>, <span class="fl">0.25</span>,</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(icegrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>maps<span class="sc">::</span><span class="fu">map</span>(<span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -496,32 +443,33 @@ name        : fileb83331998b3c1 </code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>icegrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 204, 1440, 1  (nrow, ncol, nlyr)
 resolution  : 0.25, 0.25  (x, y)
 extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb8333650693df.tif 
-name        : fileb8333650693df </code></pre>
+source      : filedb39443fd3375.tif 
+name        : filedb39443fd3375 </code></pre>
 </div>
 </div>
 <p>That is all well and nice, and we’ve quietly demonstrated some of the key powers of GDAL:</p>
 <ul>
-<li>virtualization</li>
+<li>virtualization, streaming read, read a particular variable</li>
+<li>investigate GDAL logic (coordinates are linked to data via latent “geolocation” arrays)</li>
 <li>warping with heuristics to a CRS</li>
 <li>warping with a grid specification, and using geolocation arrays to guide the grid-resolving process</li>
 <li>setting grid specification with any of crs, extent(bbox), resolution, dimension, and allowing GDAL to internally wrap from 0,360 context to -180,180</li>
 </ul>
 <p>But, we still don’t have that nice polar aspect we saw from the raw array above. So we change CRS. ‘EPSG:3412’ is a Polar Stereographic map projection on the south pole, commonly used for standard sea ice products. As a grid this has nice properties, that don’t require edge-wrap for a matrix model, it’s true scale at approximately where the coastline of Antarctica is, and it preserves shape (this means not all cells are exactly the same size, but they’re close enough for where the sea ice is).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
-<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -529,25 +477,25 @@ name        : fileb8333650693df </code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 348, 332, 1  (nrow, ncol, nlyr)
 resolution  : 24999.84, 24999.84  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb83334e8575d1.tif 
-name        : fileb83334e8575d1 </code></pre>
+source      : filedb39427e3e998.tif 
+name        : filedb39427e3e998 </code></pre>
 </div>
 </div>
 <p>To make sure let’s get some spatial data to plot with this.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">vect</span>(<span class="st">"/vsizip//vsicurl/https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/CGAZ/geoBoundariesCGAZ_ADM0.zip"</span>, </span>
-<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">query =</span> <span class="st">"SELECT shapeGroup FROM geoBoundariesCGAZ_ADM0 WHERE shapeGroup IN ('ATA')"</span>)</span>
-<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">crop</span>(v, <span class="fu">ext</span>(<span class="sc">-</span><span class="dv">180</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">84</span>, <span class="dv">0</span>)) <span class="do">## small hack to remove the pole seam</span></span>
-<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">project</span>(v, <span class="st">"EPSG:3412"</span>)</span>
-<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid)</span>
-<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">vect</span>(<span class="st">"/vsizip//vsicurl/https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/CGAZ/geoBoundariesCGAZ_ADM0.zip"</span>, </span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">query =</span> <span class="st">"SELECT shapeGroup FROM geoBoundariesCGAZ_ADM0 WHERE shapeGroup IN ('ATA')"</span>)</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">crop</span>(v, <span class="fu">ext</span>(<span class="sc">-</span><span class="dv">180</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">84</span>, <span class="dv">0</span>)) <span class="do">## small hack to remove the pole seam</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">project</span>(v, <span class="st">"EPSG:3412"</span>)</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid)</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -559,7 +507,7 @@ name        : fileb83334e8575d1 </code></pre>
 <p>Looks good! We’ve plotted the original data in the correct polar aspect.</p>
 <p>But, the data aren’t exactly the same, we’ve added pixels in the heuristic used by GDAL to determine the grid specification from the extent and resolution of the geolocation array longitude and latitudes.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>ice</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>ice</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 332, 316, 1  (nrow, ncol, nlyr)
@@ -571,43 +519,43 @@ varname     : sea_ice_concentration (sea_ice_area_fraction)
 name        : sea_ice_concentration 
 unit        :                     1 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 348, 332, 1  (nrow, ncol, nlyr)
 resolution  : 24999.84, 24999.84  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb83334e8575d1.tif 
-name        : fileb83334e8575d1 </code></pre>
+source      : filedb39427e3e998.tif 
+name        : filedb39427e3e998 </code></pre>
 </div>
 </div>
 <p>So, let’s try to use the same grid.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
-<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-ts"</span>, <span class="dv">316</span>, <span class="dv">332</span>,</span>
-<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>                           </span>
-<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-ts"</span>, <span class="dv">316</span>, <span class="dv">332</span>,</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>                           </span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf)</span>
-<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf)</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 332, 316, 1  (nrow, ncol, nlyr)
 resolution  : 26265.66, 26204.65  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb8333755a1d6f.tif 
-name        : fileb8333755a1d6f </code></pre>
+source      : filedb394ad7590c.tif 
+name        : filedb394ad7590c </code></pre>
 </div>
 </div>
 <p>We can’t do that without giving them the same extent, but we still don’t know what that is for the original data. So let’s calculate it.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>xy <span class="ot">&lt;-</span> <span class="fu">project</span>(<span class="fu">values</span>(<span class="fu">c</span>(lon, lat)), <span class="at">to =</span> <span class="st">"EPSG:3412"</span>, <span class="at">from =</span> <span class="st">"EPSG:4326"</span>)</span>
-<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(xy[,<span class="dv">2</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>xy <span class="ot">&lt;-</span> <span class="fu">project</span>(<span class="fu">values</span>(<span class="fu">c</span>(lon, lat)), <span class="at">to =</span> <span class="st">"EPSG:3412"</span>, <span class="at">from =</span> <span class="st">"EPSG:4326"</span>)</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(xy[,<span class="dv">2</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] -3937527  4337533</code></pre>
 </div>
@@ -615,20 +563,21 @@ name        : fileb8333755a1d6f </code></pre>
 </section>
 <section id="throw-all-that-away-ignore-everything-above." class="level2">
 <h2 class="anchored" data-anchor-id="throw-all-that-away-ignore-everything-above.">Throw all that away, ignore everything above.</h2>
+<p>You should never ever do the above for a dataset that doesn’t need it. This is a major problem in array computation worlds, there’s a lowest common denominator that will work but why not be smart about it, and keep fidelity with the original scheme for a dataset.</p>
 <p>The problem here is that we can’t reconstruct the actual grid in the file, we have to treat it as points in geolocation arrays, and infer something about the grid. Here’s the answer:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">xmin =</span> <span class="sc">-</span><span class="dv">3950000</span>,  <span class="at">xmax =</span> <span class="dv">3950000</span>, <span class="at">ymin  =</span> <span class="sc">-</span><span class="dv">3950000</span>, <span class="at">ymax =</span> <span class="dv">4350000</span>)</span>
-<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a><span class="fu">diff</span>(ex)[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>)] <span class="sc">/</span> <span class="fu">c</span>(<span class="dv">316</span>, <span class="dv">332</span>)  <span class="do">## look familiar?</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">xmin =</span> <span class="sc">-</span><span class="dv">3950000</span>,  <span class="at">xmax =</span> <span class="dv">3950000</span>, <span class="at">ymin  =</span> <span class="sc">-</span><span class="dv">3950000</span>, <span class="at">ymax =</span> <span class="dv">4350000</span>)</span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="fu">diff</span>(ex)[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>)] <span class="sc">/</span> <span class="fu">c</span>(<span class="dv">316</span>, <span class="dv">332</span>)  <span class="do">## look familiar?</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code> xmax  ymax 
 25000 25000 </code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>set_ext <span class="ot">&lt;-</span> <span class="cf">function</span>(x, ex) {terra<span class="sc">::</span><span class="fu">ext</span>(x) <span class="ot">&lt;-</span> ex; x}</span>
-<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">set_ext</span>(ice, <span class="fu">ext</span>(ex)))</span>
-<span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v, <span class="at">add =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>set_ext <span class="ot">&lt;-</span> <span class="cf">function</span>(x, ex) {terra<span class="sc">::</span><span class="fu">ext</span>(x) <span class="ot">&lt;-</span> ex; x}</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">set_ext</span>(ice, <span class="fu">ext</span>(ex)))</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v, <span class="at">add =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -636,7 +585,7 @@ name        : fileb8333755a1d6f </code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid); <span class="fu">plot</span>(v, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(polargrid); <span class="fu">plot</span>(v, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -647,26 +596,26 @@ name        : fileb8333755a1d6f </code></pre>
 </div>
 <p>Now finally, we get exactly the same answer.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
-<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-ts"</span>, <span class="dv">316</span>, <span class="dv">332</span>, <span class="st">"-te"</span>, ex[<span class="dv">1</span>], ex[<span class="dv">3</span>], ex[<span class="dv">2</span>], ex[<span class="dv">4</span>],</span>
-<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a>                           </span>
-<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">warp</span>(sds,  tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">".tif"</span>, <span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>), <span class="at">t_srs =</span> <span class="st">"EPSG:3412"</span>, </span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-ts"</span>, <span class="dv">316</span>, <span class="dv">332</span>, <span class="st">"-te"</span>, ex[<span class="dv">1</span>], ex[<span class="dv">3</span>], ex[<span class="dv">2</span>], ex[<span class="dv">4</span>],</span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>                           </span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"-to"</span>, <span class="st">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf)</span>
-<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="ot">&lt;-</span> <span class="fu">rast</span>(tf)</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>polargrid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>class       : SpatRaster 
 size        : 332, 316, 1  (nrow, ncol, nlyr)
 resolution  : 25000, 25000  (x, y)
 extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb833318ec58b9.tif 
-name        : fileb833318ec58b9 </code></pre>
+source      : filedb3946450fee3.tif 
+name        : filedb3946450fee3 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="sc">-</span> <span class="fu">set_ext</span>(ice, <span class="fu">ext</span>(ex))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="sc">-</span> <span class="fu">set_ext</span>(ice, <span class="fu">ext</span>(ex))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: [-] CRS do not match</code></pre>
 </div>
@@ -677,24 +626,41 @@ resolution  : 25000, 25000  (x, y)
 extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
 source(s)   : memory
-varname     : fileb833318ec58b9 
-name        : fileb833318ec58b9 
+varname     : filedb3946450fee3 
+name        : filedb3946450fee3 
 min value   :                 0 
 max value   :                 0 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster </span></span>
-<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 332, 316, 1  (nrow, ncol, nlyr)</span></span>
-<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a><span class="co"># resolution  : 25000, 25000  (x, y)</span></span>
-<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a><span class="co"># extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)</span></span>
-<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a><span class="co"># coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) </span></span>
-<span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a><span class="co"># source(s)   : memory</span></span>
-<span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a><span class="co"># varname     : fileb328ade0cec2 </span></span>
-<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a><span class="co"># name        : fileb328ade0cec2 </span></span>
-<span id="cb67-9"><a href="#cb67-9" aria-hidden="true" tabindex="-1"></a><span class="co"># min value   :                0 </span></span>
-<span id="cb67-10"><a href="#cb67-10" aria-hidden="true" tabindex="-1"></a><span class="co"># max value   :                0 </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster </span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 332, 316, 1  (nrow, ncol, nlyr)</span></span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a><span class="co"># resolution  : 25000, 25000  (x, y)</span></span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a><span class="co"># extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)</span></span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="co"># coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) </span></span>
+<span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a><span class="co"># source(s)   : memory</span></span>
+<span id="cb64-7"><a href="#cb64-7" aria-hidden="true" tabindex="-1"></a><span class="co"># varname     : fileb328ade0cec2 </span></span>
+<span id="cb64-8"><a href="#cb64-8" aria-hidden="true" tabindex="-1"></a><span class="co"># name        : fileb328ade0cec2 </span></span>
+<span id="cb64-9"><a href="#cb64-9" aria-hidden="true" tabindex="-1"></a><span class="co"># min value   :                0 </span></span>
+<span id="cb64-10"><a href="#cb64-10" aria-hidden="true" tabindex="-1"></a><span class="co"># max value   :                0 </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>But how did we do that? We plucked some magic numbers out of the air. We can’t obtain those four numbers from the lon lat arrays, we can’t find them in the file, they aren’t in the metadata or the website. We just know, because NSIDC sea ice products are standard on a 3412 grid at 25km resolution.</p>
+<p>These four numbers: -3950000, 3950000, -3950000, 4350000 are entirely cryptic in the data store itself, and require an expert to notice the problem. We can throw away 332 * 316 * 2 values <em>from every file</em>, replace them with these four values and we have a better and more faithful representation of the original data.</p>
 <p>This is an entropy problem.</p>
+<p>I refer to this kind of problem as “cryptic curvilinear”. The data present as an irregular grid with curvlinear coordinates, but they are entirely unnecessary, we can replace them with 4 values that anyone can remember and we have the following easy ways to fix, roughly in increasing difficulty and decreasing utility:</p>
+<ul>
+<li>set “-a_srs”, and -a_ullr” in gdal raster convert, or via “vrt://{dsn}?a_ullr=,,,” syntax</li>
+<li>OR set “-a_srs”, and “-a_gt” in gdal raster convert, or via “vrt://{dsn}?a_gt=,,,,,” syntax</li>
+<li>set extent with terra in R and set the crs</li>
+<li>open with rasterio and set geotransform and set spatial ref (same as set extent with R)</li>
+<li>modify the coordinates in xarray, and set the crs</li>
+</ul>
+</section>
+<section id="oh-but-sure-there-are-bad-files-out-there" class="level2">
+<h2 class="anchored" data-anchor-id="oh-but-sure-there-are-bad-files-out-there">Oh, but sure there are bad files out there</h2>
+<p>There are so many.</p>
+<ul>
+<li>GHRSST noisy, low precision degenerate rectilinear coordinates</li>
+<li>OISST and NSIDC, have degenerate rectilinear coordinates that don’t cause problems</li>
+</ul>
 
 
 </section>

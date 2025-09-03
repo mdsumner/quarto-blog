@@ -35,21 +35,7 @@ variables:
         double lon(y, x) ;
                 lon:long_name = "longitude" ;
                 lon:units = "degrees_east" ;
-        double snow_freeboard(time, y, x) ;
-                snow_freeboard:least_significant_digit = 4LL ;
-                snow_freeboard:units = "m" ;
-                snow_freeboard:standard_name = "snow_freeboard" ;
-                snow_freeboard:description = "Mean snow (total) freeboard in grid cell" ;
-        double ice_freeboard(time, y, x) ;
-                ice_freeboard:least_significant_digit = 4LL ;
-                ice_freeboard:units = "m" ;
-                ice_freeboard:standard_name = "ice_freeboard" ;
-                ice_freeboard:description = "Mean ice freeboard in grid cell" ;
-        double snow_depth(time, y, x) ;
-                snow_depth:least_significant_digit = 4LL ;
-                snow_depth:units = "m" ;
-                snow_depth:standard_name = "snow_depth" ;
-                snow_depth:description = "Mean snow depth on sea ice in grid cell" ;
+...
         double sea_ice_concentration(time, y, x) ;
                 sea_ice_concentration:least_significant_digit = 4LL ;
                 sea_ice_concentration:units = "1" ;
@@ -62,51 +48,17 @@ variables:
                 :history = "File created on November 15, 2022, 12:09:06" ;
 
 group: sea_ice_thickness {
-  variables:
-        double sea_ice_thickness(time, y, x) ;
-                sea_ice_thickness:least_significant_digit = 4LL ;
-                sea_ice_thickness:units = "m" ;
-                sea_ice_thickness:standard_name = "sea_ice_thickness" ;
-                sea_ice_thickness:description = "Mean sea ice thickness in grid cell" ;
-        double sea_ice_thickness_70percent_threshold(time, y, x) ;
-                sea_ice_thickness_70percent_threshold:least_significant_digit = 4LL ;
-                sea_ice_thickness_70percent_threshold:units = "m" ;
-                sea_ice_thickness_70percent_threshold:standard_name = "sea_ice_thickness_70percent_threshold" ;
-                sea_ice_thickness_70percent_threshold:description = "Mean sea ice thickness in grid cell found using the 70% power threshold retracking algorithm" ;
-        double sea_ice_thickness_zero_icefreeboard(time, y, x) ;
-                sea_ice_thickness_zero_icefreeboard:least_significant_digit = 4LL ;
-                sea_ice_thickness_zero_icefreeboard:units = "m" ;
-                sea_ice_thickness_zero_icefreeboard:standard_name = "sea_ice_thickness_zero_icefreeboard" ;
-                sea_ice_thickness_zero_icefreeboard:description = "Mean sea ice thickness in grid cell found using the zero-ice-freeboard assumption" ;
-        double sea_ice_thickness_uncertainty(time, y, x) ;
-                sea_ice_thickness_uncertainty:least_significant_digit = 4LL ;
-                sea_ice_thickness_uncertainty:units = "m" ;
-                sea_ice_thickness_uncertainty:standard_name = "sea_ice_thickness_uncertainty" ;
-                sea_ice_thickness_uncertainty:description = "Mean systematic sea ice thickness uncertainty in grid cell" ;
-  } // group sea_ice_thickness
-
+  ...
 group: density {
   variables:
         double ice_density(time, y, x) ;
                 ice_density:least_significant_digit = 4LL ;
-                ice_density:units = "kg m-3" ;
-                ice_density:standard_name = "seasonal_sea_ice_density" ;
-                ice_density:description = "Seasonal value of sea ice density" ;
-        double snow_density(time, y, x) ;
-                snow_density:least_significant_digit = 4LL ;
-                snow_density:units = "kg m-3" ;
-                snow_density:standard_name = "seasonal_snow_density" ;
-                snow_density:description = "Seasonal value of snow density" ;
-        double seawater_density(time, y, x) ;
-                seawater_density:least_significant_digit = 4LL ;
-                seawater_density:units = "kg m-3" ;
-                seawater_density:standard_name = "seasonal_seawater_density" ;
-                seawater_density:description = "Seasonal value of seawater density" ;
+ ...
   } // group density
 }
 ```
 
-There's a root group with two variables defined in time,y,x and another two groups with further variables on that same grid. 
+There's a root group with four variables defined in time,y,x and another two groups with further variables on that same grid. 
 
 Each data array is 316x332x1 and we can tell that every lon,lat pair is stored explicitly. This fits a convention in NetCDF where time is "unlimited" and we're only looking
 at a subset of an overall time series, that could well be continually generated day to day still now. 
@@ -158,9 +110,9 @@ ds <- new(GDALRaster, sds)
 ds$info()
 ```
 
-The interesting part of that output is under "Geolocation:". We can see that while GDAL doesn't have spatial referencing for this array, it does seem to know that's it's possible because of the X_DATASET and Y_DATASET. These can be used by the GDAL warper API (warp means "reprojection" or "reshaping" for an image) in order to resolve to a spatial dataset. So let's warp. 
+The interesting part of that output is under "Geolocation:". We can see that while GDAL doesn't have spatial referencing for this array, it does seem to know that's it's possible because of the X_DATASET and Y_DATASET. These can be used by the GDAL warper API (warp means "reprojection" or "reshaping" for an image) in order to resolve to a *new* spatial gridded dataset ... but also note, the same facilities used to "reproject" one regular grid to another are also the same that can be used to generate a regular grid from irregular geolocation coordinates (we have a point for every data point, but those coordinates might be less dense, or might be GCPs or RCPs, and no matter what coordinate system those latent coordinates are using, we can warp to whatever spatial grid we like).  So let's warp. 
 
-We don't have to specifying the geolocation arrays, we saw that GDAL already knows this. We'll write conveniently to a temporary virtual "file" so we can avoid more cleanup. 
+We don't have to specifying the geolocation arrays, we saw that GDAL already knows this. We'll write our new gridded dataset conveniently to a temporary virtual "file" so we can avoid more cleanup. 
 
 ```{r warp}
 gdalraster::warp(sds,  tf <- tempfile(fileext = ".tif", tmpdir = "/vsimem"), t_srs = "EPSG:4326")
@@ -179,7 +131,7 @@ plot(icegrid <- rast(tf))
 icegrid
 ```
 
-Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this an extent are all interlinked so we augment our bounding box / extent setting with a nice clean resolution. 
+Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this and extent (or bbox, bounding box) are all interlinked so we augment our bounding box / extent setting with a nice clean resolution. 
 
 ```{r extent2}
 gdalraster::warp(sds,  tf <- tempfile(fileext = ".tif", tmpdir = "/vsimem"), t_srs = "EPSG:4326", 
@@ -187,12 +139,14 @@ gdalraster::warp(sds,  tf <- tempfile(fileext = ".tif", tmpdir = "/vsimem"), t_s
                             "-to", "GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"))
 
 plot(icegrid <- rast(tf))
+maps::map(add = TRUE)
 icegrid
 ```
 
 That is all well and nice, and we've quietly demonstrated some of the key powers of GDAL: 
 
-- virtualization
+- virtualization, streaming read, read a particular variable
+- investigate GDAL logic (coordinates are linked to data via latent "geolocation" arrays)
 - warping with heuristics to a CRS
 - warping with a grid specification, and using geolocation arrays to guide the grid-resolving process
 - setting grid specification with any of crs, extent(bbox), resolution, dimension, and allowing GDAL to internally wrap from 0,360 context to -180,180
@@ -253,6 +207,8 @@ range(xy[,2])
 
 ## Throw all that away, ignore everything above.
 
+You should never ever do the above for a dataset that doesn't need it. This is a major problem in array computation worlds, there's a lowest common denominator that will work but why not be smart about it, and keep fidelity with the original scheme for a dataset. 
+
 The problem here is that we can't reconstruct the actual grid in the file, we have to treat it as points in geolocation arrays, and infer something about the grid. Here's the answer: 
 
 ```{r answer}
@@ -297,6 +253,23 @@ polargrid - set_ext(ice, ext(ex))
 
 But how did we do that? We plucked some magic numbers out of the air. We can't obtain those four numbers from the lon lat arrays, we can't find them in the file, they aren't in the metadata or the website. We just know, because NSIDC sea ice products are standard on a 3412 grid at 25km resolution. 
 
-This is an entropy problem. 
+ These four numbers: -3950000, 3950000, -3950000, 4350000 are entirely cryptic in the data store itself, and require an expert to notice the problem.  We can throw away 332 * 316 * 2 values *from every file*, replace them with these four values and we have a better and more faithful representation of the original data. 
 
+This is an entropy problem.
+
+I refer to this kind of problem as "cryptic curvilinear". The data present as an irregular grid with curvlinear coordinates, but they are entirely unnecessary, we can replace them with 4 values that anyone can remember and we have the following easy ways to fix, roughly in increasing difficulty and decreasing utility: 
+
+
+- set "-a_srs", and -a_ullr" in gdal raster convert, or via "vrt://{dsn}?a_ullr=,,," syntax
+- OR set "-a_srs", and "-a_gt" in gdal raster convert, or via "vrt://{dsn}?a_gt=,,,,," syntax
+- set extent with terra in R and set the crs
+- open with rasterio and set geotransform and set spatial ref (same as set extent with R)
+- modify the coordinates in xarray, and set the crs
+
+## Oh, but sure there are bad files out there
+
+There are so many. 
+
+- GHRSST noisy, low precision degenerate rectilinear coordinates
+- OISST and NSIDC, have degenerate rectilinear coordinates that don't cause problems
 

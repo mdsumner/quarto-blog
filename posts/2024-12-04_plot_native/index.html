@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Michael D. Sumner">
-<meta name="dcterms.date" content="2017-01-10">
+<meta name="dcterms.date" content="2024-12-04">
 
-<title>R spatial in 2017 – hypertidy-blog</title>
+<title>Plot at native resolution, with R – hypertidy-blog</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -21,6 +21,40 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -71,13 +105,19 @@ ul.task-list li input[type="checkbox"] {
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="R spatial in 2017 – hypertidy-blog">
+<meta property="og:title" content="Plot at native resolution, with R – hypertidy-blog">
 <meta property="og:description" content="">
+<meta property="og:image" content="http://hypertidy.org/posts/2024-12-04_plot_native/index_files/figure-html/image-1.png">
 <meta property="og:site_name" content="hypertidy-blog">
-<meta name="twitter:title" content="R spatial in 2017 – hypertidy-blog">
+<meta property="og:image:height" content="960">
+<meta property="og:image:width" content="1344">
+<meta name="twitter:title" content="Plot at native resolution, with R – hypertidy-blog">
 <meta name="twitter:description" content="">
+<meta name="twitter:image" content="http://hypertidy.org/posts/2024-12-04_plot_native/index_files/figure-html/image-1.png">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image-height" content="960">
+<meta name="twitter:image-width" content="1344">
 </head>
 
 <body class="nav-fixed fullcontent">
@@ -122,7 +162,7 @@ ul.task-list li input[type="checkbox"] {
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">R spatial in 2017</h1>
+      <h1 class="title">Plot at native resolution, with R</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">news</div>
                 <div class="quarto-category">code</div>
@@ -143,7 +183,7 @@ ul.task-list li input[type="checkbox"] {
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">January 10, 2017</p>
+        <p class="date">December 4, 2024</p>
       </div>
     </div>
     
@@ -162,91 +202,91 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<p>This document is a broad overview of what I see as most relevant to future spatial, for 2017 and beyond. I’ve tried to be as broad as possible, without going into too much detail, but it’s also quite personal and opinionated.</p>
-<section id="the-state-of-things" class="level2">
-<h2 class="anchored" data-anchor-id="the-state-of-things">The state of things</h2>
-<p>An enormous amount of activity has been going on in R spatial. The keystone activity is the new <em>simple features for R</em> package <code>sf</code>, and the many responses to “supporting sf” in various packages but there are many other non-obvious linkages.</p>
-<p>Personally, I have learnt quite a lot recently about the broader context within R and I’m keen to help consolidate some of the “non-central” tools that we use. There are also some surprisingly helpful implications of the new simple features support both for within the central package, and for the ecosystem around it.</p>
-<ul>
-<li>simple features for R via the <code>sf</code> package</li>
-<li>upcoming replacement for <code>raster</code></li>
-<li>point clouds</li>
-<li>mapview and leaflet</li>
-<li>simple features in other packages</li>
-<li>“exotic types” in sf</li>
-<li>spatial data that simple features cannot support</li>
-<li>htmlwidgets and plotly</li>
-</ul>
-</section>
-<section id="sf" class="level2">
-<h2 class="anchored" data-anchor-id="sf">sf</h2>
-<p>The simple features package <code>sf</code> was one of the first supported projects of the RConsortium and has been created by Edzer Pebesma. This package replaces <code>sp</code> vector data completely, includes a replacement for <code>rgdal</code> and <code>rgeos</code> and there is a long list of important improvements. These are described in full in the <a href="https://CRAN.r-project.org/package=sf">package vignettes</a> and <a href="http://r-spatial.org/">blog posts</a>.</p>
-<p>The key changes relevant here are</p>
-<ul>
-<li>no S4 classes, everything is S3 and so is more immediately manipulable/accessible</li>
-<li>much better methods support overall, for printing/summary etc.</li>
-<li>the key objects are list-vectors, and data frames</li>
-<li>support for simple features standard, no more ambiguity for multi-polygons/holes, mixed types, NULL geometry, XYZ-M support</li>
-<li>native support for dplyr verbs, tibbles (some is WIP but group_by/summarize reprojection and geometric union are good examples that already work)</li>
-<li>reprojection and geometry manipulation and file format support is now GDAL 2.0 and GEOS(?), modernized, more reliable, easier</li>
-</ul>
-<p>I strongly recommend getting familiar with the sf data structures, it’s really important to understand the hierarchy levels and the ways the vectors (POINT) and matrices (everything else) are stored. POINT is a vector, MULTIPOINT is a matrix, POLYGON is a list of matrices (one island, zero or more holes), LINESTRING is a matrix (same as m-point), MULTIPOLYGON is a list of lists of matrices (a list of POLYGONs, effectively), and MULTILINESTRING is a list of matrices (a list of LINESTRINGs, effectively and structurally the same as a POLYGON).</p>
-<p>If you want to see how to convert between sf forms and extract the raw coordinates I would look at <code>st_cast</code> in, and the leaflet approach here:</p>
-<p>https://github.com/rstudio/leaflet/blob/master/R/normalize-sf.R</p>
-</section>
-<section id="rasters" class="level2">
-<h2 class="anchored" data-anchor-id="rasters">rasters</h2>
-<p>The <code>raster</code> package is apparently being significantly upgraded and Edzer has plans for this as well.</p>
-<p>http://r-spatial.org/r/2016/09/26/future.html</p>
-<p>There are some very interesting extensions to raster on CRAN recently, notably <a href="https://CRAN.R-project.org/package=velox">velox</a>, <a href="https://CRAN.R-project.org/package=fasteraster">fasteraster</a>, and the unrelated but very nice <a href="https://CRAN.R-project.org/package=dggridR">dggridR</a>.</p>
-<p>HDF5 is now fully supported by <code>rhdf5</code> on Bioconductor, this could also replace many of the NetCDF4 formats supported by <code>ncdf4</code>, and notably can be used to read NetCDF4 files with compound types.</p>
-</section>
-<section id="point-clouds" class="level2">
-<h2 class="anchored" data-anchor-id="point-clouds">Point clouds</h2>
-<p>A recent contribution on CRAN is <a href="https://CRAN.R-project.org/package=rlas">rlas</a> and <a href="https://CRAN.R-project.org/package=lidR">lidR</a> for the LiDaR LAS format, and algorithms for working with point clouds. It is trivial to push these data into <code>sf</code> types, but it won’t always make sense to do so. You could have a MULTIPOINT with X, Y, Z, and M (but none of the other point attributes) or a point (XYZ) with all the attributes in one sf data frame. This package will be useful for driving interest in the exotic <code>sf</code> types.</p>
-<p>It’s easy and readily doable right now to read LIDAR data with <code>rlas</code>, and plot it interactively with RGB styling and so in with plotly. Keen to try writing a “detect ground” algorithm? Try it! What does st_triangulate do with a XYZ multipoint? (hmm, it fails noisily - you aren’t supposed to do that).</p>
-</section>
-<section id="mapview-and-leaflet" class="level2">
-<h2 class="anchored" data-anchor-id="mapview-and-leaflet">mapview and leaflet</h2>
-<p><code>mapview</code> has support from RConsortium to bring user interaction to spatial in R. Currently building in support for <code>sf</code>, which will be accelerated by the recent dev upgrades in leaflet itself and will eventually support the range of <code>sf</code> types, including full support for MULTIPOLYGON.</p>
-<p><code>leaflet</code> now has a huge number of new extensions thanks to <code>leaflet.extras</code>, and there is ongoing updates around integrating <code>crosstalk</code> which will be very importatnt for interactive map applications.</p>
-</section>
-<section id="simple-features-in-other-packages" class="level2">
-<h2 class="anchored" data-anchor-id="simple-features-in-other-packages">simple features in other packages</h2>
-<p><code>tmap</code>, <code>mapview</code>, <code>spbabel</code>, <code>stplanr</code>, …. all have internal versions of sf types converted to something else. It’s an interesting time for these packages that extend the <code>sp</code> and <code>sf</code> structures, and there are opportunities to ensure that best practices are being used.</p>
-</section>
-<section id="exotic-types-in-sf" class="level2">
-<h2 class="anchored" data-anchor-id="exotic-types-in-sf">Exotic types in sf</h2>
-<p>These are TINs, Polyhedral Surfaces (multipatch - basically polygons with shared “internal” edges), curves and various combinations and varieties of these. None of the triangulations use an indexed mesh, which makes them a bit clunky and probably only for very bespoke uses, but they provide interesting territory to explore. Certainly you can use them to build 3D plots in <code>rgl</code> and <code>plotly</code> (show examples, thanks to <span class="citation" data-cites="timelyportfolio">@timelyportfolio</span>).</p>
-<p>Note that a GEOMETRYCOLLECTION of triangle POLYGONs is effectively the same as a simple features TIN, it doesn’t really add any structure improvement to the way the thing is put together:</p>
-<p>https://github.com/r-gris/sfct</p>
-<p>We can bend the limits of simple features with “mesh” techniques, and the <code>plotly</code> packge provides easy publishing of interactive 3D visualizations of these.</p>
-<p><code>plotly</code> is already useable for many applications, we can use techniques from <code>rangl</code> to put sf data into it, and we can use that to easily create exotic triangulated surfaces that are pretty inefficient in the simple features form:</p>
-<p>Also check out Geotiff.js and timevis.</p>
-<p>Here are some rough examples with plotly.</p>
-<p>http://rpubs.com/cyclemumner/rangl-poly-topo-plotly</p>
-<p>http://rpubs.com/cyclemumner/raster-quads-to-triangles</p>
-<p>http://rpubs.com/cyclemumner/rangl-plotly</p>
-<p>I particularly want texture mapping to go with this kind of plotting, but apparently plotly cannot do that.</p>
-<p>https://twitter.com/mathinpython/status/818500905905561600</p>
-</section>
-<section id="the-limits-of-simple-features" class="level2">
-<h2 class="anchored" data-anchor-id="the-limits-of-simple-features">The limits of simple features</h2>
-<p>Simple features can’t fully represent GPS and other track data, indexed meshes (like rgl mesh3d, segmented paths), or custom hierarchies like networks, nested objects like counties within states, or arc-node topology (like TopoJSON), and it can’t store aesthetics with primitives (like ggplot2/ggvis, rgl, plotly and others can). R can do all of these things, in many different ways and converting from and to sf is not too difficult.</p>
-<p>Please don’t get the wrong idea though, <code>sf</code> is invaluable for developing more general tools that can work with these structures. Using the types in sf is very refreshing if you’ve been frustrated trying to pick apart a <code>Spatial</code> object in the past.</p>
-<p>In terms of going beyong simple features itself, GDAL is also going in this direction: http://lists.osgeo.org/pipermail/gdal-dev/2016-December/045675.html</p>
-<p>We already have most of this capability in R, it’s just scattered all over the place. I’m interested to collate together the best workflows and see where this can go.</p>
-</section>
-<section id="my-plans" class="level2">
-<h2 class="anchored" data-anchor-id="my-plans">My plans</h2>
-<p>I’m pretty comfortable now with sf and using it for what I want, I have converters to build the forms and workflows I need, and the support in mapview and leaflet and plotly provides more than enough to go with. I will work on making this as accessible and general as possible, and work on integrating it to replace my work on tracking data (the trip and SGAT packages), with 3D models (rbgm, quadmesh) and integrating it with htmlwidgets tools.</p>
-<p>I haven’t yet looked at curves, but I’m keen to see this capability in R both for sf and more generally, we could easily represent the forms made possible by TopoJSON (see “Bostock flawed example”), there is curve support in grid.</p>
-<p>We could provide smart geo-spatial finite element forms (triangulations, quads),</p>
-<p>I’m keen to see how ggvis and ggplot2 represent geometric types for objects that shared vertices, such as intervals and bar charts, and how we can put in indexed data structures (unlike what ggraph is doing, it builds a mesh from a group of coordinates, you can’t provide it with and index-mesh). I think we can build spatial structures that can store all of these things, so we could throw sf at ggplot2, and use the output as a kind of super-form that knows how to wrap it up into an interactive 4D plot, how to display its primitives etc. etc.</p>
-<p>GIS itself needs what we can already do in R, it’s not a target we are aspring to it’s the other way around.</p>
+<p>Plot native, something I should have done long ago.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Plot raster at native resolution</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' Determines the current device size and plots the raster centred on its own</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' middle to plot at native resolution. </span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param x as SpatRaster</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param ... passed to terra::plot</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">#' @return the input raster, cropped corresponding to the plot made</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">#' @export</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">#' @examples</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">#' plot_native(terra::rast(volcano))</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">#' plot_native(terra::disagg(terra::rast(volcano), 64))</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>plot_native <span class="ot">&lt;-</span> <span class="cf">function</span>(x, ...) {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  ex <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(terra<span class="sc">::</span><span class="fu">ext</span>(x))</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  at <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="do">## take the centre</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">is.null</span>(at)) {</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    at <span class="ot">&lt;-</span> <span class="fu">apply</span>(<span class="fu">matrix</span>(ex, <span class="dv">2</span>), <span class="dv">2</span>, mean)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  dv <span class="ot">&lt;-</span> <span class="fu">dev.size</span>(<span class="st">"px"</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  scl <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">res</span>(x)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  halfx <span class="ot">&lt;-</span> dv[<span class="dv">1</span>]<span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> scl[<span class="dv">1</span>]</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  halfy <span class="ot">&lt;-</span> dv[<span class="dv">2</span>]<span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> scl[<span class="dv">2</span>]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  cropex <span class="ot">&lt;-</span> <span class="fu">c</span>(at[<span class="dv">1</span>] <span class="sc">-</span> halfx, at[<span class="dv">1</span>] <span class="sc">+</span> halfx, at[<span class="dv">2</span>] <span class="sc">-</span> halfy, at[<span class="dv">2</span>] <span class="sc">+</span> halfy)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">crop</span>(x, terra<span class="sc">::</span><span class="fu">ext</span>(cropex), <span class="at">extend =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  add <span class="ot">&lt;-</span> <span class="cn">FALSE</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (terra<span class="sc">::</span><span class="fu">nlyr</span>(x) <span class="sc">&gt;=</span> <span class="dv">3</span>) terra<span class="sc">::</span><span class="fu">plotRGB</span>(x, <span class="at">add =</span> add) <span class="cf">else</span> <span class="fu">plot</span>(x, ..., <span class="at">add =</span> add)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  x</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>So as an example read this world imagery.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>dsn <span class="ot">&lt;-</span> <span class="st">"&lt;GDAL_WMS&gt;&lt;Service name=</span><span class="sc">\"</span><span class="st">TMS</span><span class="sc">\"</span><span class="st">&gt;&lt;ServerUrl&gt;http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}&lt;/ServerUrl&gt;&lt;/Service&gt;&lt;DataWindow&gt;&lt;UpperLeftX&gt;-20037508.34&lt;/UpperLeftX&gt;&lt;UpperLeftY&gt;20037508.34&lt;/UpperLeftY&gt;&lt;LowerRightX&gt;20037508.34&lt;/LowerRightX&gt;&lt;LowerRightY&gt;-20037508.34&lt;/LowerRightY&gt;&lt;TileLevel&gt;17&lt;/TileLevel&gt;&lt;TileCountX&gt;1&lt;/TileCountX&gt;&lt;TileCountY&gt;1&lt;/TileCountY&gt;&lt;YOrigin&gt;top&lt;/YOrigin&gt;&lt;/DataWindow&gt;&lt;Projection&gt;EPSG:900913&lt;/Projection&gt;&lt;BlockSizeX&gt;256&lt;/BlockSizeX&gt;&lt;BlockSizeY&gt;256&lt;/BlockSizeY&gt;&lt;BandsCount&gt;3&lt;/BandsCount&gt;&lt;MaxConnections&gt;10&lt;/MaxConnections&gt;&lt;Cache /&gt;&lt;ZeroBlockHttpCodes&gt;204,404,403&lt;/ZeroBlockHttpCodes&gt;&lt;/GDAL_WMS&gt;"</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>terra 1.7.83</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>im <span class="ot">&lt;-</span> <span class="fu">project</span>(<span class="fu">rast</span>(dsn), <span class="fu">rast</span>(<span class="fu">ext</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="at">res =</span> <span class="dv">1000</span>, <span class="at">crs =</span> <span class="st">"+proj=laea +lon_0=147 +lat_0=-42"</span>), <span class="at">by_util =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plotRGB</span>(im)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/image-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Do we have more, or less resolution than our device can handle? This next plot shows that we have more, and the cropped raster is returned to match the device.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">dim</span>(im))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2000 2000    3</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">dev.size</span>(<span class="st">"px"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1344  960</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_native</span>(im)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/native-res-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 960, 1344, 3  (nrow, ncol, nlyr)
+resolution  : 1000, 1000  (x, y)
+extent      : -672000, 672000, -480000, 480000  (xmin, xmax, ymin, ymax)
+coord. ref. : +proj=laea +lat_0=-42 +lon_0=147 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs 
+source(s)   : memory
+colors RGB  : 1, 2, 3 
+names       : GDAL_WMS&gt;_1, GDAL_WMS&gt;_2, GDAL_WMS&gt;_3 
+min values  :           0,           0,           0 
+max values  :         255,         237,         213 </code></pre>
+</div>
+</div>
 
 
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

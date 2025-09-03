@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Michael D. Sumner">
-<meta name="dcterms.date" content="2022-12-09">
+<meta name="dcterms.date" content="2022-04-25">
 
-<title>Degnerate Rectilinear (WIP) – hypertidy-blog</title>
+<title>GDAL warper with R – hypertidy-blog</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -105,19 +105,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="Degenerate Rectilinear (WIP) – hypertidy-blog">
+<meta property="og:title" content="GDAL warper with R – hypertidy-blog">
 <meta property="og:description" content="">
-<meta property="og:image" content="http://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/grid-stuff-1.png">
 <meta property="og:site_name" content="hypertidy-blog">
-<meta property="og:image:height" content="960">
-<meta property="og:image:width" content="1344">
-<meta name="twitter:title" content="Degenerate Rectilinear (WIP) – hypertidy-blog">
+<meta name="twitter:title" content="GDAL warper with R – hypertidy-blog">
 <meta name="twitter:description" content="">
-<meta name="twitter:image" content="http://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/grid-stuff-1.png">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image-height" content="960">
-<meta name="twitter:image-width" content="1344">
 </head>
 
 <body class="nav-fixed fullcontent">
@@ -162,7 +156,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Degnerate Rectilinear (WIP)</h1>
+      <h1 class="title">GDAL warper with R</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">news</div>
                 <div class="quarto-category">code</div>
@@ -183,7 +177,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">December 9, 2022</p>
+        <p class="date">April 25, 2022</p>
       </div>
     </div>
     
@@ -202,109 +196,77 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<p>There are a lot of problems when it comes to array representation in data formats and software. There is a whole family of complex issues with sometimes subtle or even cryptic causes, and here we focus on one particular detail.</p>
-<section id="degenerate-rectilinear-coordinates" class="level2">
-<h2 class="anchored" data-anchor-id="degenerate-rectilinear-coordinates">Degenerate Rectilinear Coordinates</h2>
-<p>I have taken to saying this phrase to describe a particular situation in array handling. I get confused responses, or normally just no response or feedback on the term itself. I think it’s <em>extremely</em> important though. Python communities raced up to where R was a few years back and just sped on by without any nod to what R folks had learned, I think that’s a huge failure and I take it personally.</p>
-<p>Here’s what it is. Let’s say we have a pretty low resolution grid of the world, we break up the entire range of longitude and latitude into intervals, 360 for <em>meridians</em> and 180 for <em>parallels</em>.</p>
-<p>(This is neat because in whole number terms, this is exactly the right number).</p>
-<p>So, define a grid, we make it a farily typical 1-degree-per-pixel grid of the entire globe flattened unceremoniously from an<br>
-angular coordinate system “longitude and latitude” to one where we just plot those numbers in x,y on a flat plane.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## define a grid in -180,180 -90,90 (360x180)</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>dm <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">360</span>, <span class="dv">180</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>xlim <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">180</span>, <span class="dv">180</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>ylim <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">90</span>, <span class="dv">90</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">## create a grid</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>), <span class="dv">2</span>L, <span class="dv">2</span>L)[<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="at">each =</span> <span class="dv">180</span>), <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="at">each =</span> <span class="dv">90</span>)]</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="do">## we don't get much from this because 0,1 0,1</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="do">## and the world isn't 0,360 0,180 anyway (that would have been handy!)</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">#image(dat)</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>xs <span class="ot">&lt;-</span> <span class="fu">seq</span>(xlim[<span class="dv">1</span>], xlim[<span class="dv">2</span>], <span class="at">length.out =</span> dm[<span class="dv">1</span>] <span class="sc">+</span> <span class="dv">1</span>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>ys <span class="ot">&lt;-</span> <span class="fu">seq</span>(ylim[<span class="dv">1</span>], ylim[<span class="dv">2</span>], <span class="at">length.out =</span> dm[<span class="dv">2</span>] <span class="sc">+</span> <span class="dv">1</span>)</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(xs, ys, dat, <span class="at">asp =</span> <span class="dv">1</span>)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>maps<span class="sc">::</span><span class="fu">map</span>(<span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/grid-stuff-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>What happened there? Well, <code>dat</code> is a matrix, a 2D array in R. It has 360 <em>rows</em> and 180 <em>columns</em> (but yes, we are treating the world map as if it had 360 columns, 180 rows - but that is not this blogpost). Just don’t question it right now, but be assured we are treating the world as having 360 unique whole number longitudes, and 180 unique whole number latitudes.</p>
-<p>We can <code>image()</code> that, by which I mean draw a pixel map on the screen of all the values in the matrix as if they were a field of little rectangles.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/image-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>But, that’s very boring because we don’t have any idea where anything is in 0,1 0,1 space.</p>
-<p>What if we use <code>xlim</code> and <code>ylim</code>, these are <code>plot()</code> arguments in R (and exist in <code>image()</code> too).</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(dat, <span class="at">xlim =</span> xlim, <span class="at">ylim =</span> ylim)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/xlim-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Ok that was a trick, our matrix is drawn as a tiny dot right at 0,0, because xlim/ylim is about the plot not the data.</p>
-<p>No more tricks, <code>image()</code> has 3 arguments <code>x,y,z</code> for normal usage.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="at">x =</span> xs, <span class="at">y =</span> ys, <span class="at">z =</span> dat, <span class="at">asp =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/xyz-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Why does that work? We essentially have an x coordinate and a y coordinate for every pixel <em>edge</em>. We have one for the left side of the leftmost pixel column, and the second one is the right side of the left most pixel, and so on. We used <code>dm[1] + 1</code> and <code>dm[2] + 1</code> up there exactly because we wanted xlim and ylim to be the very extremes of the data.</p>
-<p>Cool, explained - a matrix has a coordinate array for each side, we plot it like a map with those. Done.</p>
+<section id="an-unfinished-post" class="level2">
+<h2 class="anchored" data-anchor-id="an-unfinished-post">An unfinished post</h2>
+<p>There’s several meanings floating around when you say the “GDAL warper”. It can mean</p>
+<ul>
+<li>command-line <a href="https://gdal.org/apps">gdalwarp</a></li>
+<li>the <em>rasterio</em> package in Python, and its <a href="https://rasterio.readthedocs.io/en/latest/topics/virtual-warping.html">WarpedVRT</a></li>
+<li>the GDAL C++ API warping library</li>
+</ul>
+<p>We can also mean</p>
+<ul>
+<li>the <em>sf</em> package in R, and its <a href="https://r-spatial.github.io/sf/reference/gdal_utils.html">gdal_utils()</a> function</li>
+<li>the <em>stars</em> package in R, and its <a href="https://r-spatial.github.io/stars/reference/st_warp.html">st_warp()</a> function</li>
+<li>the <em>terra</em> package in R, and its <a href="https://rspatial.github.io/terra/reference/project.html">project()</a> function</li>
+<li>the <a href="https://github.com/gearslaboratory/gdalUtils">gdalUtils</a> package in R</li>
+<li>the <a href="https://github.com/JoshOBrien/gdalUtilities">gdalUtilities</a> package in R</li>
+</ul>
+<p>But, what I mean is the GDAL C++ API warping library.</p>
 </section>
-<section id="we-are-so-so-so-not-done." class="level2">
-<h2 class="anchored" data-anchor-id="we-are-so-so-so-not-done.">We are so so so not done.</h2>
-<p>I’m not here to explain how <code>image()</code> works in R, but that’s kind of necessary because I want people who <em>don’t use R</em> to also read this.</p>
+<section id="the-gdal-c-api-warping-library" class="level2">
+<h2 class="anchored" data-anchor-id="the-gdal-c-api-warping-library">The GDAL C++ API warping library</h2>
+<p>GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very <em>low-level development facilities</em>, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ code against the library directly. Often you don’t need C++ and can use Python, and sometimes you can use R depending on what is exposed there. Sometimes you need to modify GDAL itself, and you can do anything you want then(!), which is how open source is supposed to work.</p>
+<p>Key feature of the <em>gdalwarp_lib.cpp</em> <code>GDALWarp()</code> C++ function, versus the <code>GDALWarpDirect()</code>, <code>GDALWarpIndirect()</code> and the lower level <code>GDALWarpMulti()</code> and <code>GDALWarpImage()</code> functions.</p>
+<p>When we use <em>gdalwarp_lib</em>, we get handling of multiple-zoom level sources without intervention on our own.</p>
+<p>Most use cases I see of the warper facilities are for whole-sale conversion of large datasets, multiple input files converted to a another projection in a large output file or series of tiles.</p>
 </section>
-<section id="what-is-rectilinear" class="level2">
-<h2 class="anchored" data-anchor-id="what-is-rectilinear">What is Rectilinear?</h2>
-<p>Rectilinear means varying in one dimension. When applied to axis coordinates it just means you have a position along the axis for each step. These can vary in how big each step is, and that is exactly when we say it’s <em>rectilinear</em>, because otherwise it’s <em>regular</em>.</p>
-<p>Our <code>ys</code> above are a regular list of coordinates, each one is exactly the same distance apart (distance in the frame we are using, forget about the actual Earth).</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>op <span class="ot">&lt;-</span> <span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>))</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ys)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(<span class="fu">diff</span>(ys))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 1 1</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">diff</span>(ys))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/ys-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>See? They just plod along with exactly the same delta between each, in this case the step size is 1 but it could be anything.</p>
+<section id="the-warper-is-also-a-generalized-rasterio" class="level2">
+<h2 class="anchored" data-anchor-id="the-warper-is-also-a-generalized-rasterio">The warper is also a generalized RasterIO</h2>
+<p>(rasterio is a famous python package for using GDAL’s raster facilities, it’s not what we mean here).</p>
+<p>RasterIO is a C++ function in the GDAL library, its job is to take a source data set (i.e.&nbsp;a path to GeoTIFF) and to provide you with a window of pixels from that source. A window can be a subset, the entire raster, or a resampling (i.e.&nbsp;fewer pixels than native) of either the entire or a subset of the raster.</p>
+<p>It’s really, cool and using it looks like this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c++ code-with-copy"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>err <span class="op">=</span> rasterBand<span class="op">-&gt;</span>RasterIO<span class="op">(</span>GF_Read<span class="op">,</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>                           Xoffset<span class="op">,</span> Yoffset<span class="op">,</span> </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                           nXSize<span class="op">,</span> nYSize<span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                           <span class="op">&amp;</span>double_scanline<span class="op">[</span><span class="dv">0</span><span class="op">],</span> </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                           outXSize<span class="op">,</span> outYSize<span class="op">,</span> </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                           GDT_Float64<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="op">&amp;</span>psExtraArg<span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>There is <em>a lot</em> going on in that function call, but in short the key parts are (these are my argument-variable-names):</p>
+<ul>
+<li><code>rasterBand-&gt;RasterIO()</code> is the way we read a pixel values, we have a raster band and we call the member function RasterIO()</li>
+<li><code>Xoffset</code>, <code>Yoffset</code> is the first column and row we should consider for reading (0,0 if we start at the top left corner)</li>
+<li><code>nXSize</code>, <code>nYSize</code></li>
+<li><code>outXSize</code>, <code>outYSize</code> is the dimension of the window we get out</li>
+</ul>
+<p>That last bits, the two kinds of <em>Size</em> is the magic, we can ask to start at a particular row,column and read out a given number of pixels in x and y. But, not only that we can specifiy where to end in the source. If nXSize and outXSize are not equal in value then we have asked for a resampling of the source “only read every <code>nXSize / outXSize</code> values in the x direction. If they are equal, just read every one. Note also that we might ask for an outX/YSize that is <em>larger</em> than the source nXSize/nYSize - and this would give us a resampling to higher resolution. This is really where the resampling algorithm comes in. ‘Nearest neighbour’ would give us copies of pixels, ‘Bilinear’ and interpolation between source pixels for new pixels in between. Other algorithms include ‘Cubic’, ‘Lanczos’, ‘Average’, ‘Sum’.</p>
+<p>This is the key behind the fast and lazy reads provided by the terra and sf packages in R, this was originally available also in rgdal and raster made heavy use of it.</p>
+<p>But, what is the offset and the size? We really want to think in geographic coordinates, and this is exactly what <code>crop()</code> does for example. We get a discretized crop, not an exact one because we only get to read by this raster-based mechanism - we are bound to the size and alignment of the source pixels.</p>
+<p>Under the hood, functions like crop() do the following:</p>
+<pre class="psuedorcode"><code>offsets/scale vs. xlim,ylim</code></pre>
+<p>The other arguments in RasterIO.</p>
+<ul>
+<li><code>GF_Read</code> controls the mode we are into (read or write or update)</li>
+<li><code>GDT_Float64</code> controls the type of data we get out (64 bit doubles here, GDAL will auto-convert if the source is different type)</li>
+<li><code>0, 0, &amp;psExtraArg</code> are further details we won’t discuss (though, the way resampling is done is controlled in the extra args options).</li>
+</ul>
+<p>What are its limitations:</p>
+<ul>
+<li>only one source at a time, you can’t resample from multiple rasters at once (we are using offset/size indexing so the rasters must all be the same shape, you can read multiple bands)</li>
+<li></li>
+</ul>
+<p>What is interesting about RasterIO vs.&nbsp;Warping is that we would never ever use warping for pure graphics. It doesn’t make sens</p>
 </section>
-<section id="what-do-you-mean-degenerate" class="level2">
-<h2 class="anchored" data-anchor-id="what-do-you-mean-degenerate">What do you mean Degenerate?</h2>
-<p>Isn’t this a bad word, pejorative? Well no, it means something very specific.</p>
-<p><def></def></p>
-<p>It means even though there is a quite a lot of data, the <em>information</em> is confused or confounded. The required information could be expressed very compactly, but it’s actually obscured by the details.</p>
+<section id="enter-the-wutang-warper" class="level2">
+<h2 class="anchored" data-anchor-id="enter-the-wutang-warper">Enter the <del>WuTang</del> Warper!</h2>
+<p>Doing discretized extent raster math is boring. With the warper we don’t need to do it.</p>
+<p>This is because the warper is for <em>changing projections</em>, this is an entire re-modelling of raster data. (in the 2000s it was possible to do but still quite slow and problematic, hence you have very slowly changing standards and perceptions of what is possible/normal/appropriate in software comunities etc.).</p>
+<p>This is a global longlat data set, but we want a local projection so we adopt one by finding its specification.</p>
+<pre><code>
+</code></pre>
+<p>If we were using RasterIO we’d have to do this kind of math to run the index function.</p>
+<p>But with the warper, we can use an extent (but we still need to <em>align</em> it, or we won’t get what the RasterIO facility would faithfully give).</p>
 
 
 </section>

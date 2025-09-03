@@ -2,6 +2,7 @@
 title: "IDEA - data and software"
 author: "Michael Sumner"
 format: revealjs
+date: 2024-12-05
 title-slide-attributes: 
   data-background-image: sentinel-rema.png
   data-background-size: 70%
