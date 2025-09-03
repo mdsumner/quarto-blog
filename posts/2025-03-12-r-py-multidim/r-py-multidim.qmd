@@ -2,6 +2,7 @@
 title: "GDAL multidim and cloud-ready ZARR"
 author: "Michael Sumner"
 format: html
+date: 2025-06-30
 editor: visual
 editor_options: 
   chunk_output_type: console
@@ -219,14 +220,13 @@ There is ongoing work to bring the full GDAL API to R in [{gdalraster}](https://
 
 Please get in touch if any of this is of interest!
 
-
 ## Late Bonus Section: Bluelink ocean model
 
-This is something I want to use VRT to encapsulate as one whole dataset, here just a test on one file (there are 174 of these ocean_temp files, up to June 2024 at time of writing). 
+This is something I want to use VRT to encapsulate as one whole dataset, here just a test on one file (there are 174 of these ocean_temp files, up to June 2024 at time of writing).
 
-Note that we are using '/fileServer/' from Thredds, not '/dodsC/'. GDAL uses userfaultd as a trick to read NetCDF remotely. 
+Note that we are using '/fileServer/' from Thredds, not '/dodsC/'. GDAL uses userfaultd as a trick to read NetCDF remotely.
 
-```python
+``` python
 from osgeo import gdal
 dsn = "/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc"
 ds = gdal.OpenEx(dsn, gdal.OF_MULTIDIM_RASTER)
@@ -239,18 +239,15 @@ temp = rg.OpenMDArrayFromFullname("//temp")
 #['Time', 'st_ocean', 'yt_ocean', 'xt_ocean']
 [d.GetSize() for d in temp.GetDimensions()]
 #[31, 51, 1500, 3600]
-
 ```
 
-I don't know why xarray can seemingly read netcdf from S3, but not from normal url? Maybe just something fsspec I need to understand? 
+I don't know why xarray can seemingly read netcdf from S3, but not from normal url? Maybe just something fsspec I need to understand?
 
-I also noticed that if the file is local the array names at root level are like this: 
+I also noticed that if the file is local the array names at root level are like this:
 
-```
+```         
 ['//xt_ocean', '//yt_ocean', '//st_ocean', '//Time', '//nv', '//st_edges_ocean', '//average_T1', '//average_T2', '//average_DT', '//Time_bnds', '//temp']
-
 ```
-
 
 ```{r versions}
 gdalraster::gdal_version()

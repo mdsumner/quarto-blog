@@ -4,7 +4,7 @@ author: "Michael Sumner"
 editor: source
 date: "2024-12-11"
 categories: [news, code]
-draft: true
+draft: false
 ---
 
 Can GDAL do conservative re-gridding?   For cases of regular grid to regular grid, yes I think it can. 

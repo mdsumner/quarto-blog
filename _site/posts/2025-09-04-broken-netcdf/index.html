@@ -451,8 +451,8 @@ size        : 127, 902, 1  (nrow, ncol, nlyr)
 resolution  : 0.398722, 0.3987662  (x, y)
 extent      : 0.164645, 359.8119, -89.80441, -39.1611  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb795a721b7d4e.tif 
-name        : fileb795a721b7d4e </code></pre>
+source      : fileb833358a66fe0.tif 
+name        : fileb833358a66fe0 </code></pre>
 </div>
 </div>
 <p>We indeed now have a spatial grid, a raster. But perhaps we don’t like the 0,360 convention. We can set the target extent, GDAL had to figure one out from the input geolocation arrays, and it will usually do a good job but it’s really our responsibility to specify what we want for reproducibility in later workflows.</p>
@@ -477,8 +477,8 @@ size        : 194, 1371, 1  (nrow, ncol, nlyr)
 resolution  : 0.2625821, 0.2628866  (x, y)
 extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb795a9d85964.tif 
-name        : fileb795a9d85964 </code></pre>
+source      : fileb83331998b3c1.tif 
+name        : fileb83331998b3c1 </code></pre>
 </div>
 </div>
 <p>Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this an extent are all interlinked so we augment our bounding box / extent setting with a nice clean resolution.</p>
@@ -504,8 +504,8 @@ size        : 204, 1440, 1  (nrow, ncol, nlyr)
 resolution  : 0.25, 0.25  (x, y)
 extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
 coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : fileb795a3ee65e99.tif 
-name        : fileb795a3ee65e99 </code></pre>
+source      : fileb8333650693df.tif 
+name        : fileb8333650693df </code></pre>
 </div>
 </div>
 <p>That is all well and nice, and we’ve quietly demonstrated some of the key powers of GDAL:</p>
@@ -537,8 +537,8 @@ size        : 348, 332, 1  (nrow, ncol, nlyr)
 resolution  : 24999.84, 24999.84  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb795a4e985f4e.tif 
-name        : fileb795a4e985f4e </code></pre>
+source      : fileb83334e8575d1.tif 
+name        : fileb83334e8575d1 </code></pre>
 </div>
 </div>
 <p>To make sure let’s get some spatial data to plot with this.</p>
@@ -579,8 +579,8 @@ size        : 348, 332, 1  (nrow, ncol, nlyr)
 resolution  : 24999.84, 24999.84  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb795a4e985f4e.tif 
-name        : fileb795a4e985f4e </code></pre>
+source      : fileb83334e8575d1.tif 
+name        : fileb83334e8575d1 </code></pre>
 </div>
 </div>
 <p>So, let’s try to use the same grid.</p>
@@ -601,8 +601,8 @@ size        : 332, 316, 1  (nrow, ncol, nlyr)
 resolution  : 26265.66, 26204.65  (x, y)
 extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb795a221237f7.tif 
-name        : fileb795a221237f7 </code></pre>
+source      : fileb8333755a1d6f.tif 
+name        : fileb8333755a1d6f </code></pre>
 </div>
 </div>
 <p>We can’t do that without giving them the same extent, but we still don’t know what that is for the original data. So let’s calculate it.</p>
@@ -664,8 +664,8 @@ size        : 332, 316, 1  (nrow, ncol, nlyr)
 resolution  : 25000, 25000  (x, y)
 extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : fileb795a36bbb6c2.tif 
-name        : fileb795a36bbb6c2 </code></pre>
+source      : fileb833318ec58b9.tif 
+name        : fileb833318ec58b9 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a>polargrid <span class="sc">-</span> <span class="fu">set_ext</span>(ice, <span class="fu">ext</span>(ex))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -678,8 +678,8 @@ resolution  : 25000, 25000  (x, y)
 extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
 coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
 source(s)   : memory
-varname     : fileb795a36bbb6c2 
-name        : fileb795a36bbb6c2 
+varname     : fileb833318ec58b9 
+name        : fileb833318ec58b9 
 min value   :                 0 
 max value   :                 0 </code></pre>
 </div>

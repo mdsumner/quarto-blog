@@ -1,0 +1,33 @@
+#---
+#title: "Degeneracy in array formats"
+#author: "Michael Sumner"
+#editor: source
+#date: "2025-06-30"
+#categories: [news, code]
+#draft: true
+#---
+
+
+Consider these netcdf files. 
+
+# ncurl <- c("/vsicurl/https://gws-access.jasmin.ac.uk/public/polarres/MetUM_PolarRES/Antarctic/daily/hfls_ANT-11_ERA5_evaluation_r1i1p1f1_BAS_MetUM_v1-r1_day_20000101_20001231.nc", 
+#            "/vsicurl/http://ftp.climato.be/fettweis/MARv3.13/PolarRES/Antarctic/MAR-MPI-ESM1/MARv3.13-ANT-MPI-1985.nc")
+# 
+# library(terra)
+# 
+# ## equivalent to "+proj=ob_tran +o_proj=longlat +o_lon_p=0 +o_lat_p=5 +lon_0=200 +datum=WGS84 +no_defs"
+# crs1 <- 'GEOGCRS["Rotated_pole",BASEGEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]]],DERIVINGCONVERSION["Pole rotation (netCDF CF convention)",METHOD["Pole rotation (netCDF CF convention)"],PARAMETER["Grid north pole latitude (netCDF CF convention)",5,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],PARAMETER["Grid north pole longitude (netCDF CF convention)",20,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],PARAMETER["North pole grid longitude (netCDF CF convention)",0,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]]]'
+# crs2 <- "WGS84"
+# ll1 <- c(rast(ncurl[1], "longitude"), 
+#          rast(ncurl[1], "latitude")) * 1
+# d1 <- rast(ncurl[1], "surface_upward_latent_heat_flux")
+# 
+# ll2 <- c(rast(ncurl[2], "LON"), rast(ncurl[2], "LAT")) * 1
+# par(mfrow = c(2, 1))
+# plot(values(ll1), xlim = c(-360, 220), pch = ".")
+# plot(values(ll2), xlim = c(-360, 220), pch = ".")
+# 
+# plot(project(values(ll1), from = "EPSG:4326", to = crs1), pch = ".")
+# plot(project(values(ll2), to = "EPSG:3031", from = "EPSG:4326"), pch = ".")
+
+
