@@ -49,6 +49,10 @@
     <lastmod>2025-06-30T02:16:44.600Z</lastmod>
   </url>
   <url>
+    <loc>http://hypertidy.org/posts/2025-09-04-broken-netcdf/index.html</loc>
+    <lastmod>2025-09-03T06:01:37.665Z</lastmod>
+  </url>
+  <url>
     <loc>http://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/index.html</loc>
     <lastmod>2025-06-30T01:52:58.640Z</lastmod>
   </url>
@@ -67,9 +71,5 @@
   <url>
     <loc>http://hypertidy.org/posts/2017-01-10_r-spatial-2017/index.html</loc>
     <lastmod>2022-04-25T11:38:04.994Z</lastmod>
-  </url>
-  <url>
-    <loc>http://hypertidy.org/posts/2025-09-04-broken-netcdf/index.html</loc>
-    <lastmod>2025-09-03T05:14:28.596Z</lastmod>
   </url>
 </urlset>
