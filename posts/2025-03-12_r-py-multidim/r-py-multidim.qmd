@@ -4,6 +4,7 @@ author: "Michael Sumner"
 format: html
 date: 2025-06-30
 editor: visual
+freeze: true
 editor_options: 
   chunk_output_type: console
 ---
