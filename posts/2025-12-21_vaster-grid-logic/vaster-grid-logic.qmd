@@ -334,7 +334,7 @@ plot_raster(dat, legend = T)
 par(op)
 ```
 
-Not unexpectedly at 3.125km resolution it's a bit sparse on information, but we didn't have to use a different approach to get coincident data.
+Not unexpectedly at 3.125km resolution it's a bit sparse on information, but we didn't have to use a different approach to get coincident data. (To see Mawson at about this time from Sentinel 2 imagery, try [the estinel catalog](https://projects.pawsey.org.au/estinel/catalog/catalog-browser.html?location=Mawson_Station_20m&date=2025-12-18&viewtype=view_q128&sort=alphabetical), click 'ESA' and zoom around for more). 
 
 What about the bathymetry? Even at this scale we can see the disparity between bathymetric and topographic detail.
 
