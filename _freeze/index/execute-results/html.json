@@ -1,0 +1,15 @@
+{
+  "hash": "d5ed1e9e95b59988b2fef2c4d1f27d96",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"hypertidy-blog\"\nlisting:\n  contents: posts\n  sort: \"date desc\"\n  type: default\n  categories: true\npage-layout: full\ntitle-block-banner: true\n---\n\n::: {.cell}\n\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

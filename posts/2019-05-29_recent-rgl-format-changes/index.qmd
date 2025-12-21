@@ -3,6 +3,8 @@ title: "mesh3d - recent changes in rgl workhorse format"
 author: "Michael D. Sumner"
 date: "2019-05-29"
 categories: [news, code]
+execute:
+  freeze: true
 ---
 
 PLEASE NOTE (April 2022): this post has been migrated from an old site, and some details may have changed. There might an update to this post to reflect the rgl package as it is now. ---

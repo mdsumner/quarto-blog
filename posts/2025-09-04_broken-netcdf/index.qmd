@@ -68,7 +68,7 @@ Let's investigate the coordinates. We'll use GDAL via a commonly used wrapper in
 
 ```{r coords}
 #dsn <- "NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"
-dsn <- "NETCDF:../CS2WFA_25km_201007.nc"
+dsn <- sprintf("NETCDF:%s", here::here("posts/CS2WFA_25km_201007.nc"))
 library(terra)
 lon <- rast(dsn, "lon")
 lat <- rast(dsn, "lat")
@@ -152,7 +152,7 @@ That is all well and nice, and we've quietly demonstrated some of the key powers
 - setting grid specification with any of crs, extent(bbox), resolution, dimension, and allowing GDAL to internally wrap from 0,360 context to -180,180
 
 
-But, we still don't have that nice polar aspect we saw from the raw array above. So we change CRS. 'EPSG:3412' is a Polar Stereographic map projection on the south pole, commonly used for standard sea ice products. As a grid this has nice properties, that don't require edge-wrap for a matrix model, it's true scale at approximately where the coastline of Antarctica is, and it preserves shape (this means not all cells are exactly the same size, but they're close enough for where the sea ice is). 
+But, we still don't have that nice polar aspect we saw from the raw array above. So we change CRS. 'EPSG:3412' is a Polar Stereographic map projection on the south pole, commonly used for standard sea ice products. As a grid this has nice properties, that don't require edge-wrap for a matrix model, it is true scale at approximately where the coastline of Antarctica is, and it preserves shape (this means not all cells are exactly the same size, but they're close enough for where the sea ice is). 
 
 ```{r polargrid}
 gdalraster::warp(sds,  tf <- tempfile(fileext = ".tif", tmpdir = "/vsimem"), t_srs = "EPSG:3412", 
