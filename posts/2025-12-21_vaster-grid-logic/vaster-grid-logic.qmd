@@ -66,19 +66,25 @@ These two models are part of a foundation of all raster handling. GeoTIFFs use t
 
 There's a sort of frustration in base with `image()` and `rasterImage()`, each has features the other lacks. `image()` handles numeric data with colour palettes and is geared to R's matrix orientation, can create a plot or add to an existing one, but by default will draw into a unit square. `rasterImage()` handles the orientation more aligned to external raster data and graphics, but only works with unit-scaled data or pre-rendered images—no palette mapping, and no plot creation (only adding to an existing plot) .
 
-{ximage} merges the features of both into one function that uses the rasterImage orientation:
+[ximage](https://github.com/hypertidy/ximage) merges the features of both into one function that uses the rasterImage orientation:
 
-``` r
+```{r ximage}
 library(ximage)
-
+library(vaster)
 ## Plot numeric data in GIS orientation with extent
 ximage(volcano, extent = c(0, 61, 0, 87), col = terrain.colors(24))
 
-## Or RGB arrays, or nativeRaster, or hex colours—all work
-ximage(rgb_array, extent = c(100, 160, -50, -10))
-
 ## Add contours that respect the same extent
 xcontour(volcano, extent = c(0, 61, 0, 87), add = TRUE, levels = c(120, 140, 160))
+
+## Or RGB arrays, or nativeRaster, or hex colours—all work
+img <- png::readPNG(system.file("img", "Rlogo.png", package="png"), native = TRUE)
+ximage(img, extent = c(100, 160, -50, -10))
+maps::map(add = TRUE)  
+## nonsensical map, but we can do what we want and maps why not
+# they can be fun and used with non spatial data too
+ximage(img, extent = c(152, 158, -44, -40), add = TRUE)
+plot_extent(c(152, 158, -44, -40), add = TRUE, border = "firebrick", lwd = 2)
 ```
 
 Once we separate the *data* (a matrix of values) from the *placement* (extent as four numbers), you can handle any input type with the same logic. The orientation confusion disappears because {ximage} adopts the rasterImage convention—the one that matches how GDAL and every other geospatial tool returns data.
@@ -194,7 +200,7 @@ Once you separate grid logic from data, interesting things become possible. Here
 
 ### {fasterize}: fast polygon rasterization
 
-{fasterize} is a high-performance replacement for `raster::rasterize()`. It uses the classic scanline algorithm to burn polygons onto a grid. The original fasterize required an actual RasterLayer as a template—not for its data, but for its six numbers (dimension and extent).
+[fasterize](https://github.com/hypertidy/fasterize) is a high-performance replacement for `raster::rasterize()`. It uses the classic scanline algorithm to burn polygons onto a grid. The original fasterize required an actual RasterLayer as a template—not for its data, but for its six numbers (dimension and extent).
 
 ``` r
 ## fasterize needs a "raster", but really it just needs dimension + extent
@@ -208,7 +214,7 @@ The raster object is just a vessel for grid metadata, but fasterize also will cr
 
 ### {controlledburn}: don't materialize, just rasterize
 
-{controlledburn} takes the fasterize algorithm and strips away the last step: instead of filling a raster with values, it returns the *indices* of which cells each polygon covers. The output is run-length encoded scanline segments—start, end, row, polygon_id.
+[controlledburn](https://github.com/hypertidy/controlledburn) takes the fasterize algorithm and strips away the last step: instead of filling a raster with values, it returns the *indices* of which cells each polygon covers. The output is run-length encoded scanline segments—start, end, row, polygon_id.
 
 ``` r
 library(controlledburn)
@@ -228,21 +234,17 @@ This is the "cell abstraction" always implicit in raster operations. We can use 
 
 ### {grout}: tiling without tiles
 
-{grout} applies the same principle to tiling. Given a grid's dimension and extent, plus a block size, it computes the complete tiling scheme: how many tiles, where each one falls, how much overlap ("dangle") occurs when dimensions don't divide evenly.
+[grout](https://github.com/hypertidy/grout) applies the same principle to tiling. Given a grid's dimension and extent, plus a block size, it computes the complete tiling scheme: how many tiles, where each one falls, how much overlap ("dangle") occurs when dimensions don't divide evenly.
 
-``` r
+```{r grout}
 library(grout)
 
 ## A raster that's 87 × 61 with 8 × 8 tiles
-scheme <- grout(c(87, 61), extent = c(0, 87, 0, 61), blocksize = c(8, 8))
+scheme <- grout(c(87, 61), extent = c(0, 87, 0, 61), blocksize = c(8, 16))
 scheme
-#> tiles: 11, 8 (x * y = 88)
-#> block: 8, 8
-#> dangle: 1, 3
-#> tile extent: 0, 88, -3, 61 (xmin,xmax,ymin,ymax)
 
 ## Get offset/size for each tile (for GDAL RasterIO)
-tile_index(scheme)
+dplyr::glimpse(tile_index(scheme))
 ```
 
 No data loaded. No files opened. Just the arithmetic of how a grid subdivides. This is exactly what you need to drive tiled reading from GDAL, or to generate web map tile pyramids, or to parallelize processing across spatial chunks.
@@ -255,7 +257,7 @@ All three packages share a design principle: **the grid specification is just si
 
 {vaster} is the foundation that makes this all clean. Instead of each package reinventing `cellFromXY()` and friends, they can share a common vocabulary for grid logic.
 
-## Python has the same mix of concepts and tools
+## Python has a similar mix of history, concepts, and tools
 
 The Python geospatial ecosystem has grappled with the same issues that motivated {vaster}.
 
@@ -366,9 +368,13 @@ rema <- read_ds(new(GDALRaster, tfile), bands = 1)
 contour(setValues(r, rema), add = TRUE)
 ```
 
+Note that throughout we've done no juggling of input coverage or extent or determining output resolution - we ask GDAL for "enough pixels" to see, because that's what we're doing and it sorts that out. Reading enough pixels for a view from an efficient data source takes very little time, with raster logic as a core guideline it also takes very little time to craft our scripts. 
+
 ## Thanks
 
-Hopefully this sparks some interest in the simplicity of raster grid logic and more folks using the GDAL warp api to its full potential. 
+Hopefully this sparks some interest in the simplicity of raster grid logic and more use of the GDAL warp api to its full potential. Please contact me if you have any interest or questions. 
+
+https://github.com/hypertidy/vaster/issues
 
 ```{r}
 sessionInfo()
