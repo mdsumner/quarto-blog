@@ -29,7 +29,7 @@ Is there a problem? This logic is almost always coupled to a data structure. You
 
 The logic itself is beautifully simple: given a grid with certain dimensions (ncol, nrow) and a spatial extent (xmin, xmax, ymin, ymax, or identically 'bbox' xmin,ymin,xmax,ymax), you can compute everything else. Cell indices, row/column positions, coordinate centres and corners, cropping and snapping—all of it flows from six numbers and some basic arithmetic.
 
-That's what [{vaster}](https://hypertidy.github.io/vaster/) extracts: the logic alone, without any data. (This logic of course is not especially 2D and extends into n-dimensional concepts as well illustrated by xarray and others, but please let's park that from our discussion here.)
+That's what {vaster} extracts: the logic alone, without any data. (This logic of course is not especially 2D and extends into n-dimensional concepts as well illustrated by xarray and others, but please let's park that from our discussion here.)
 
 ## R already knows this (sort of)
 
@@ -53,7 +53,7 @@ Notice `x` has `nrow(m) + 1` elements, and `y` has `ncol(m) + 1`. These are *edg
 
 ```{r rasterImage-model}
 plot(NA, xlim = c(0, 1), ylim = c(0, 2), asp = 1, xlab = "x", ylab = "y")
-rasterImage(as.raster(scales::rescale(m)), xleft = 0, ybottom = 0, xright = 1, ytop = 2, interpolate = F)
+rasterImage(as.raster(m/max(m)), xleft = 0, ybottom = 0, xright = 1, ytop = 2, interpolate = F)
 ```
 
 The `rasterImage()` function takes a different approach: you hand it an image and four numbers defining the bounding box. The function stretches or compresses the image to fit. This is the *affine* model—the grid is implicitly regular within the box.
@@ -62,7 +62,7 @@ These two models are part of a foundation of all raster handling. GeoTIFFs use t
 
 ### {ximage}: unifying both models
 
-There's a sort of frustration in base with `image()` and `rasterImage()`, each has features the other lacks. `image()` handles numeric data with colour palettes and is geared to R's matrix orientation, can create a plot or add to an existing one, but by default will draw into a unit square. `rasterImage()` handles the orientation more aligned to external raster data and graphics, but only works with unit-scaled data or pre-rendered images—no palette mapping, and no plot creation (only adding to an existing plot) .
+There's a sort of frustration in base are with `image()` and `rasterImage()`, each have features the other lacks. `image()` handles numeric data with colour palettes and is geared to R's matrix orientation, can create a plot or add to an existing one, but by default will draw into a unit square. `rasterImage()` handles the orientation more aligned to external raster data and graphics, but only works with unit-scaled data or pre-rendered images—no palette mapping, and no plot creation (only adding to an existing plot) .
 
 {ximage} merges the features of both into one function that uses the rasterImage orientation:
 
@@ -253,7 +253,7 @@ All three packages share a design principle: **the grid specification is just si
 
 {vaster} is the foundation that makes this all clean. Instead of each package reinventing `cellFromXY()` and friends, they can share a common vocabulary for grid logic.
 
-## Python has the same mix of concepts and tools
+## The Python world is catching up
 
 The Python geospatial ecosystem has grappled with the same issues that motivated {vaster}.
 
@@ -273,9 +273,9 @@ From the post:
 
 > For 2D raster images, this function often takes the form of an Affine Transform. The rasterix library extends Xarray with a RasterIndex which computes coordinates for geospatial images such as GeoTiffs via Affine Transform.
 
-This is the same insight: **coordinates are implicit in dimension and extent**. You don't need to materialize a 7-terabyte coordinate array when six numbers suffice. The xarray team is building infrastructure for raster grid logic itself. 
+This is the same insight: **coordinates are implicit in dimension and extent**. You don't need to materialize a 7-terabyte coordinate array when six numbers suffice. The xarray team is building infrastructure for what {vaster} has provided all along.
 
-The Python ecosystem will align around this conceptual foundation—grid logic as well as R and other language. 
+The Python ecosystem is large and well-funded, so these tools will eventually mature. But it's worth noting that the conceptual foundation—grid logic as pure computation on dimension and extent—has been available in R for years, just waiting to be extracted from the packages that imprisoned it.
 
 ## The R matrix connection
 
@@ -293,7 +293,7 @@ dsn <- "WMTS:https://services.arcgisonline.com/arcgis/rest/services/World_Imager
 
 So, obviously we need a huge stack of Python geospatial to make a map image ... or maybe we can just use generic tools and do it in R.
 
-We're using {gdalraster} here because it's the thinnest wrapper over the GDAL API, but the same calls work through {terra}, {vapour}, or Python's osgeo.gdal. The point isn't the package — it's that the interface is just numbers and strings. I'm still using a mix of tools and plotting ... but that's life. 
+We're using {gdalraster} here because it's the thinnest wrapper over the GDAL API, but the same calls work through {terra}, {vapour}, or Python's osgeo.gdal. The point isn't the package — it's that the interface is just numbers and strings.
 
 ```{r image}
 library(gdalraster)
@@ -366,7 +366,7 @@ contour(setValues(r, rema), add = TRUE)
 
 ## Thanks
 
-Hopefully this sparks some interest in the simplicity of raster grid logic and more folks using the GDAL warp api to its full potential. 
+Hopefully this sparks some interest in the simplicity of raster grid logic and using the GDAL warp api as intended
 
 ```{r}
 sessionInfo()
