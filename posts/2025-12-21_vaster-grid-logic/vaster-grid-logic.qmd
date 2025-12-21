@@ -1,0 +1,373 @@
+---
+title: "Raster logic without pixels"
+author: "Michael Sumner"
+format: html
+date: 2025-12-21
+editor: visual
+categories: [code, news]
+---
+
+```{r setup, include=FALSE}
+library(vaster)
+# point to the GHRSST and relalted NETCDF problems
+# Add specific numbers from your real-world use (e.g., the estinel pipeline, Antarctic grids)
+# Adjust the {fasterize} example if the current API has changed since the hypertidy migration
+# Add a note about CRAN status for vaster (I saw you were working on submission
+# note that vaster is using 1-based indexing explicitly
+# note relatiionship between row,col and cell based indexing and utility of each
+# The "six numbers + vsicurl" not constructing heavy objects, just specifying where you want data and what grid to put it on, and GDAL does the rest.
+#pulling Sentinel imagery into an oblique Lambert Azimuthal centred on Casey Station, or a polar stereographic view of the Ross Sea, all driven by dimension + extent + projection string...
+
+
+```
+
+## Raster logic is in our software
+
+Every geospatial package that works with grids has *raster logic* inside. The old {raster} package in R established powerful abstraction functions and now {terra} includes an improved suite of those, the {stars} package has its own internally, GDAL obviously uses these abstractions deeply, and xarray and many other Python packages also provide this. There is similar logic built into R's matrix and array functions, its visualization `image()` function, and the newer `rasterImage()`.
+
+Is there a problem? This logic is almost always coupled to a data structure. You can't use raster's `cellFromXY()` without a RasterLayer. You can't use terra's `xyFromCell()` or `cells()` without a SpatRaster. Many packages have embedded this reinvented wheel, and to more or less degree lock the wheel inside a bigger machine.
+
+The logic itself is beautifully simple: given a grid with certain dimensions (ncol, nrow) and a spatial extent (xmin, xmax, ymin, ymax, or identically 'bbox' xmin,ymin,xmax,ymax), you can compute everything else. Cell indices, row/column positions, coordinate centres and corners, cropping and snapping—all of it flows from six numbers and some basic arithmetic.
+
+That's what {vaster} extracts: the logic alone, without any data. (This logic of course is not especially 2D and extends into n-dimensional concepts as well illustrated by xarray and others, but please let's park that from our discussion here.)
+
+## R already knows this (sort of)
+
+R's base graphics already embody two distinct models for placing gridded data in space.
+
+### The `image()` model: rectilinear coordinates
+
+```{r image-model}
+m <- volcano[1:10, 1:15]
+x <- seq(0, 1, length.out = nrow(m) + 1)
+y <- seq(0, 2, length.out = ncol(m) + 1)
+
+image(x, y, m, col = terrain.colors(12))
+```
+
+The `image()` function takes explicit coordinate vectors for cell boundaries. This is the *rectilinear* model—you define where every edge falls. It's flexible (cells don't need to be square, or even uniform), but it means carrying around those vectors.
+
+Notice `x` has `nrow(m) + 1` elements, and `y` has `ncol(m) + 1`. These are *edge* coordinates, not centres. The function figures out that a 10×15 matrix needs 11×16 edges. (Centres are also a valid input for `image()`, it quietly handles either case of 'n' or 'n+1', note this has implications for interpretation of a grid but that takes us away from the main topic here).
+
+### The `rasterImage()` model: bounding box placement
+
+```{r rasterImage-model}
+plot(NA, xlim = c(0, 1), ylim = c(0, 2), asp = 1, xlab = "x", ylab = "y")
+rasterImage(as.raster(m/max(m)), xleft = 0, ybottom = 0, xright = 1, ytop = 2, interpolate = F)
+```
+
+The `rasterImage()` function takes a different approach: you hand it an image and four numbers defining the bounding box. The function stretches or compresses the image to fit. This is the *affine* model—the grid is implicitly regular within the box.
+
+These two models are part of a foundation of all raster handling. GeoTIFFs use the affine model (extent + dimension → implicit coordinates). NetCDF often uses the rectilinear model (explicit coordinate arrays). Both are valid; both are useful; both involve the same underlying logic.
+
+### {ximage}: unifying both models
+
+There's a sort of frustration in base are with `image()` and `rasterImage()`, each have features the other lacks. `image()` handles numeric data with colour palettes and is geared to R's matrix orientation, can create a plot or add to an existing one, but by default will draw into a unit square. `rasterImage()` handles the orientation more aligned to external raster data and graphics, but only works with unit-scaled data or pre-rendered images—no palette mapping, and no plot creation (only adding to an existing plot) .
+
+{ximage} merges the features of both into one function that uses the rasterImage orientation:
+
+``` r
+library(ximage)
+
+## Plot numeric data in GIS orientation with extent
+ximage(volcano, extent = c(0, 61, 0, 87), col = terrain.colors(24))
+
+## Or RGB arrays, or nativeRaster, or hex colours—all work
+ximage(rgb_array, extent = c(100, 160, -50, -10))
+
+## Add contours that respect the same extent
+xcontour(volcano, extent = c(0, 61, 0, 87), add = TRUE, levels = c(120, 140, 160))
+```
+
+Once we separate the *data* (a matrix of values) from the *placement* (extent as four numbers), you can handle any input type with the same logic. The orientation confusion disappears because {ximage} adopts the rasterImage convention—the one that matches how GDAL and every other geospatial tool returns data.
+
+This is {vaster}'s philosophy applied to plotting: the spatial meaning comes from the six numbers (dimension + extent), not from the data structure.
+
+## What vaster provides
+
+{vaster} gives that underlying logic with no attachment to any data format or structure. All you need are dimension and extent (and extent is optional, a sensible default is \[0,nx\], \[0,ny\] rather than unit-square).
+
+```{r basic-vaster}
+library(vaster)
+
+dm <- c(40, 20)  # ncol, nrow
+ex <- c(100, 160, -50, -10)  # xmin, xmax, ymin, ymax
+
+# Cell centres - implicit from dimension and extent
+x_centre(dm, ex)
+y_centre(dm, ex)
+```
+
+What cell contains a given point?
+
+```{r cell-query}
+# Some arbitrary coordinates
+pts <- cbind(x = c(120.5, 145.2, 110.8), 
+             y = c(-25.3, -42.1, -15.7))
+
+cell_from_xy(dm, ex, pts)
+```
+
+What are the coordinates of cells 1, 100, and 800?
+
+```{r xy-from-cell}
+xy_from_cell(dm, ex, c(1, 100, 800))
+```
+
+Convert between row/column and cell index:
+
+```{r row-col-cell}
+# Cell to row, column
+cell <- 42
+row_from_cell(dm, cell)
+col_from_cell(dm, cell)
+
+# Row, column to cell
+cell_from_row_col(dm, row = 3, col = 15)
+```
+
+None of this requires loading imagery or touching files. It's pure computation from first principles.
+
+Note here that indexing is via R's convention: 1-based, both for cell and row and col.
+
+## The snap problem
+
+One of the most common operations in raster work is "snapping"—taking an arbitrary region and aligning it to an existing grid. You want to crop to an area of interest, but you need cell-aligned boundaries.
+
+```{r snap-demo}
+# A reference grid: 3-degree cells covering the globe
+ref_dm <- c(120, 60)
+ref_ex <- c(-180, 180, -90, 90)
+
+# Some arbitrary region of interest (not aligned to anything)
+roi <- c(112.3, 154.7, -44.2, -9.8)
+
+# Snap to the reference grid
+snapped <- vcrop(roi, ref_dm, extent = ref_ex)
+snapped
+```
+
+The result gives you the exact dimension and extent for the crop window, aligned to the reference grid. No data needed—just the numbers.
+
+```{r snap-plot}
+plot_extent(ref_ex, border = "grey")
+abline(v = x_corner(ref_dm, ref_ex), col = "grey90")
+abline(h = y_corner(ref_dm, ref_ex), col = "grey90")
+
+# Original ROI (arbitrary)
+plot_extent(roi, border = "red", lwd = 2, add = TRUE)
+
+# Snapped ROI (grid-aligned)
+plot_extent(snapped$extent, border = "blue", lwd = 2, add = TRUE)
+```
+
+The red box is what we asked for; the blue box is what we get when we respect the grid alignment.
+
+## The geotransform connection
+
+GDAL uses a six-element "geotransform" to encode the affine relationship between pixel coordinates and geographic coordinates. This is the workhorse of georeferenced raster data. {vaster} speaks this language:
+
+```{r geotransform}
+# From extent and dimension to geotransform
+gt <- extent_dim_to_gt(ex, dm)
+gt
+
+# And back again
+gt_dim_to_extent(gt, dm)
+```
+
+This matters when you're working directly with GDAL (via {gdalraster}, {vapour}, or Python's osgeo.gdal) and need to set up or interpret raster metadata without constructing heavyweight objects.
+
+## Why does this matter?
+
+1.  **Lightweight tooling**: Sometimes we just need to compute cell indices or snap extents. We shouldn't need to load terra or GDAL for that.
+
+2.  **Cross-package compatibility**: The logic is the same whether you're working with terra, stars, GDAL, or raw arrays. Having it in one place means consistent behaviour everywhere.
+
+3.  **Teaching and understanding**: Separating the logic from the data makes it clearer what raster operations actually *do*. The magic isn't in the file format or the object class—it's in the relationship between dimension and extent.
+
+## The ecosystem: what you can build with pure logic
+
+Once you separate grid logic from data, interesting things become possible. Here are three packages that build on this foundation, taken (ahem) shamelessly from the hypertidy suite. (I'm not ignoring other important packages in R and Python that use these ideas, but these are chosen to focus on the core idea of what vaster is and why it exists. )
+
+### {fasterize}: fast polygon rasterization
+
+{fasterize} is a high-performance replacement for `raster::rasterize()`. It uses the classic scanline algorithm to burn polygons onto a grid. The original fasterize required an actual RasterLayer as a template—not for its data, but for its six numbers (dimension and extent).
+
+``` r
+## fasterize needs a "raster", but really it just needs dimension + extent
+library(fasterize)
+r <- raster::raster(ncol = 1000, nrow = 800, 
+                    xmn = 0, xmx = 100, ymn = 0, ymx = 80)
+result <- fasterize(polygons_sf, r, field = "value")
+```
+
+The raster object is just a vessel for grid metadata, but fasterize also will create an actual numeric matrix in memory - so it has these two limitations at input and output. With raster logic available separately, we can drive the same algorithm with nothing but numbers.
+
+### {controlledburn}: don't materialize, just rasterize
+
+{controlledburn} takes the fasterize algorithm and strips away the last step: instead of filling a raster with values, it returns the *indices* of which cells each polygon covers. The output is run-length encoded scanline segments—start, end, row, polygon_id.
+
+``` r
+library(controlledburn)
+library(vaster)
+
+## Define a grid with just numbers
+ext <- c(100, 160, -50, -10)
+dm <- c(500, 400)
+
+## Get the cell coverage index, not pixel values
+idx <- burn_polygon(polygons_sf, extent = ext, dimension = dm)
+```
+
+For a 500,000 × 400,000 grid, materializing a raster would require terabytes. But storing the polygon coverage as run-length scanline indices? Tens of megabytes for typical distributions that real world polygons embody. The grid logic is the same—only the output changes.
+
+This is the "cell abstraction" always implicit in raster operations. We can use these indices for extraction, for streaming aggregation, for anything that doesn't require all pixels to exist at once.
+
+### {grout}: tiling without tiles
+
+{grout} applies the same principle to tiling. Given a grid's dimension and extent, plus a block size, it computes the complete tiling scheme: how many tiles, where each one falls, how much overlap ("dangle") occurs when dimensions don't divide evenly.
+
+``` r
+library(grout)
+
+## A raster that's 87 × 61 with 8 × 8 tiles
+scheme <- grout(c(87, 61), extent = c(0, 87, 0, 61), blocksize = c(8, 8))
+scheme
+#> tiles: 11, 8 (x * y = 88)
+#> block: 8, 8
+#> dangle: 1, 3
+#> tile extent: 0, 88, -3, 61 (xmin,xmax,ymin,ymax)
+
+## Get offset/size for each tile (for GDAL RasterIO)
+tile_index(scheme)
+```
+
+No data loaded. No files opened. Just the arithmetic of how a grid subdivides. This is exactly what you need to drive tiled reading from GDAL, or to generate web map tile pyramids, or to parallelize processing across spatial chunks.
+
+### The common thread
+
+All three packages share a design principle: **the grid specification is just six numbers, and most operations don't need anything else**.
+
+{fasterize} showed that fast rasterization doesn't need heavy objects—just geometry and grid metadata. {controlledburn} showed you don't even need to materialize pixels—indices are enough. {grout} showed that tiling is pure arithmetic on dimension and extent.
+
+{vaster} is the foundation that makes this all clean. Instead of each package reinventing `cellFromXY()` and friends, they can share a common vocabulary for grid logic.
+
+## The Python world is catching up
+
+The Python geospatial ecosystem has grappled with the same issues that motivated {vaster}.
+
+A [recent pangeo discussion](https://discourse.pangeo.io/t/comparing-odc-stac-load-and-stackstac-for-raster-composite-workflow/4097) compared `odc.stac` and `stackstac`—two packages for loading satellite imagery into xarray. Despite ostensibly doing the same thing, they produce different results. Why?
+
+**Pixel coordinates: edge or centre?** When you say a pixel is at coordinate (100.0, 200.0), do you mean that's its centre, or its top-left corner? `odc.stac` defaults to centre, `stackstac` defaults to edge. Both are valid conventions; GIS tools tend toward corners, while climate/ocean data tends toward centres. But if you don't know which convention your tool uses, your data shifts by half a pixel.
+
+**Coordinate snapping**: When your requested bounding box doesn't align perfectly with the source grid, what happens? Different tools make different choices about how to snap—and those choices are usually invisible, buried in the library internals.
+
+These are exactly the questions {vaster} makes explicit. Dimension and extent. Corner or centre. Snap in or snap out. The logic is universal; only the defaults vary.
+
+### xarray's new RasterIndex
+
+The xarray team recently [announced flexible indexing](https://xarray.dev/blog/flexible-indexing), including a `RasterIndex` that computes coordinates on-the-fly from an affine transform rather than storing explicit coordinate arrays. Sound familiar?
+
+From the post:
+
+> For 2D raster images, this function often takes the form of an Affine Transform. The rasterix library extends Xarray with a RasterIndex which computes coordinates for geospatial images such as GeoTiffs via Affine Transform.
+
+This is the same insight: **coordinates are implicit in dimension and extent**. You don't need to materialize a 7-terabyte coordinate array when six numbers suffice. The xarray team is building infrastructure for what {vaster} has provided all along.
+
+The Python ecosystem is large and well-funded, so these tools will eventually mature. But it's worth noting that the conceptual foundation—grid logic as pure computation on dimension and extent—has been available in R for years, just waiting to be extracted from the packages that imprisoned it.
+
+## The R matrix connection
+
+R's matrices already have most of this logic, just without the spatial semantics. A matrix has dimension (nrow, ncol). When you use `image()` with explicit coordinates, you're adding extent. The `[i, j]` indexing is cell-from-row-column. `which(m > threshold, arr.ind = TRUE)` gives you row-column-from-cell.
+
+{vaster} makes this connection explicit. It treats dimension and extent as first-class inputs, just as R treats matrices as first-class objects. The spatial meaning is in the numbers, not the container.
+
+## Example: raster logic is a simplifying principle
+
+Enough theory! Let's make a map. The following string defines a huge world-coverage image server.
+
+```{r string}
+dsn <- "WMTS:https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/WMTS/1.0.0/WMTSCapabilities.xml,layer=World_Imagery"
+```
+
+So, obviously we need a huge stack of Python geospatial to make a map image ... or maybe we can just use generic tools and do it in R.
+
+We're using {gdalraster} here because it's the thinnest wrapper over the GDAL API, but the same calls work through {terra}, {vapour}, or Python's osgeo.gdal. The point isn't the package — it's that the interface is just numbers and strings.
+
+```{r image}
+library(gdalraster)
+ds <- new(GDALRaster, dsn)  ## same as terra::rast(dsn) or osgeo.gdal.Open(dsn) or rioxarray.open_rasterio(dsn)
+ds
+```
+
+We don't want the whole world and certainly not that much detail, how about Mawson Station in Antarctica, Mawson is at approximately 62.87E and -67.6S.
+
+We should define a local equal area projection, on Mawson.
+
+```{r glue}
+prj <- "+proj=laea +lon_0=62.8742 +lat_0=-67.6033"
+```
+
+What is the right extent or bbox for that projection? It's just metres around the *zero-point*, let's go with a range.
+
+```{r warp}
+b <- 75000
+tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt") ## use GDAL to manage IO and cleanup, same in other tools
+chk <- warp(dsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
+plot_raster(read_ds(new(GDALRaster, tfile), bands = 1:3))
+```
+
+What about a different data source, can we see any meaningful data in sea ice at this time of year?
+
+```{r sst}
+icedsn <- "/vsicurl/https://data.seaice.uni-bremen.de/amsr2/asi_daygrid_swath/s3125/2025/dec/Antarctic3125/asi-AMSR2-s3125-20251220-v5.4.tif"
+
+tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
+chk <- warp(icedsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
+dat <- read_ds(new(GDALRaster, tfile), bands = 1)
+dat[dat > 100] <- NA
+op <- par(bg = "darkgrey")
+plot_raster(dat, legend = T)
+par(op)
+```
+
+Not unexpectedly at 3.125km resolution it's a bit sparse on information, but we didn't have to use a different approach to get coincident data.
+
+What about the bathymetry? Even at this scale we can see the disparity between bathymetric and topographic detail.
+
+```{r b2}
+bathdsn <- "/vsicurl/https://projects.pawsey.org.au/idea-gebco-tif/GEBCO_2024.tif"
+tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
+chk <- warp(bathdsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
+plot_raster(read_ds(new(GDALRaster, tfile), bands = 1), col_map_fn = hcl.colors(128), legend = TRUE)
+```
+
+Let's zoom right in, and this time we'll use terra so that adding contours is easy, read the REMA v2 2m topography and add it as contours.
+
+```{r noshow,include=FALSE}
+#Sys.setenv("AWS_NO_SIGN_REQUEST" = "YES")  ## oof
+```
+
+```{r zoom}
+b <- 3000
+tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
+chk <- warp(dsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
+plot_raster(read_ds(new(GDALRaster, tfile), bands = 1:3))
+
+remadsn <- "/vsicurl/https://raw.githubusercontent.com/mdsumner/rema-ovr/main/REMA-2m_dem_ovr.vrt"
+library(terra)
+r <- rast(ext(-b, b, -b, b), crs = prj, ncols = 1024, nrows = 1024)
+tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
+chk <- warp(remadsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 1024))
+rema <- read_ds(new(GDALRaster, tfile), bands = 1)
+contour(setValues(r, rema), add = TRUE)
+```
+
+## Thanks
+
+Hopefully this sparks some interest in the simplicity of raster grid logic and using the GDAL warp api as intended
+
+```{r}
+sessionInfo()
+```
