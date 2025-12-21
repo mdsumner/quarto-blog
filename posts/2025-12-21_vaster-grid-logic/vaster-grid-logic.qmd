@@ -299,6 +299,7 @@ We're using {gdalraster} here because it's the thinnest wrapper over the GDAL AP
 
 ```{r image}
 library(gdalraster)
+library(ximage)
 ds <- new(GDALRaster, dsn)  ## same as terra::rast(dsn) or osgeo.gdal.Open(dsn) or rioxarray.open_rasterio(dsn)
 ds
 ```
@@ -314,10 +315,10 @@ prj <- "+proj=laea +lon_0=62.8742 +lat_0=-67.6033"
 What is the right extent or bbox for that projection? It's just metres around the *zero-point*, let's go with a range.
 
 ```{r warp}
-b <- 75000
+b <- 125000
 tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt") ## use GDAL to manage IO and cleanup, same in other tools
 chk <- warp(dsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
-plot_raster(read_ds(new(GDALRaster, tfile), bands = 1:3))
+ximage(read_ds(new(GDALRaster, tfile), bands = 1:3), asp = 1)
 ```
 
 What about a different data source, can we see any meaningful data in sea ice at this time of year?
@@ -329,12 +330,12 @@ tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
 chk <- warp(icedsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
 dat <- read_ds(new(GDALRaster, tfile), bands = 1)
 dat[dat > 100] <- NA
-op <- par(bg = "darkgrey")
-plot_raster(dat, legend = T)
-par(op)
+
+ximage(dat, col = grey.colors(100), asp = 1)
+summary(dat)
 ```
 
-Not unexpectedly at 3.125km resolution it's a bit sparse on information, but we didn't have to use a different approach to get coincident data. (To see Mawson at about this time from Sentinel 2 imagery, try [the estinel catalog](https://projects.pawsey.org.au/estinel/catalog/catalog-browser.html?location=Mawson_Station_20m&date=2025-12-18&viewtype=view_q128&sort=alphabetical), click 'ESA' and zoom around for more). 
+Not unexpectedly at 3.125km resolution it's a bit sparse on information, but we didn't have to use a different approach to get coincident data. The ice is thick here, to see Mawson at about this time from Sentinel 2 imagery, try [the estinel catalog](https://projects.pawsey.org.au/estinel/catalog/catalog-browser.html?location=Mawson_Station_20m&date=2025-12-18&viewtype=view_q128&sort=alphabetical), click 'ESA' and zoom around for more, you'll see that dark hole in the sea ice). 
 
 What about the bathymetry? Even at this scale we can see the disparity between bathymetric and topographic detail.
 
@@ -342,20 +343,19 @@ What about the bathymetry? Even at this scale we can see the disparity between b
 bathdsn <- "/vsicurl/https://projects.pawsey.org.au/idea-gebco-tif/GEBCO_2024.tif"
 tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
 chk <- warp(bathdsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
-plot_raster(read_ds(new(GDALRaster, tfile), bands = 1), col_map_fn = hcl.colors(128), legend = TRUE)
+ximage(dat <- read_ds(new(GDALRaster, tfile), bands = 1), col = hcl.colors(128), asp = 1)
+
 ```
 
 Let's zoom right in, and this time we'll use terra so that adding contours is easy, read the REMA v2 2m topography and add it as contours.
 
-```{r noshow,include=FALSE}
-#Sys.setenv("AWS_NO_SIGN_REQUEST" = "YES")  ## oof
-```
+
 
 ```{r zoom}
 b <- 3000
 tfile <- tempfile(tmpdir = "/vsimem", fileext = ".vrt")
 chk <- warp(dsn, tfile, t_srs = prj, cl_arg = c("-te", -b, -b, b, b,  "-ts", 1024, 0))
-plot_raster(read_ds(new(GDALRaster, tfile), bands = 1:3))
+ximage(read_ds(new(GDALRaster, tfile), bands = 1:3), asp = TRUE)
 
 remadsn <- "/vsicurl/https://raw.githubusercontent.com/mdsumner/rema-ovr/main/REMA-2m_dem_ovr.vrt"
 library(terra)

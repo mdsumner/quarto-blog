@@ -486,8 +486,9 @@ $dimension
 <p>We’re using {gdalraster} here because it’s the thinnest wrapper over the GDAL API, but the same calls work through {terra}, {vapour}, or Python’s osgeo.gdal. The point isn’t the package — it’s that the interface is just numbers and strings. I’m still using a mix of tools and plotting … but that’s life.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalraster)</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> <span class="fu">new</span>(GDALRaster, dsn)  <span class="do">## same as terra::rast(dsn) or osgeo.gdal.Open(dsn) or rioxarray.open_rasterio(dsn)</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ximage)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>ds <span class="ot">&lt;-</span> <span class="fu">new</span>(GDALRaster, dsn)  <span class="do">## same as terra::rast(dsn) or osgeo.gdal.Open(dsn) or rioxarray.open_rasterio(dsn)</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>ds</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>C++ object of class GDALRaster
  Driver : OGC Web Map Tile Service (WMTS)
@@ -505,13 +506,13 @@ $dimension
 </div>
 <p>What is the right extent or bbox for that projection? It’s just metres around the <em>zero-point</em>, let’s go with a range.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="dv">75000</span></span>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="dv">125000</span></span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>) <span class="do">## use GDAL to manage IO and cleanup, same in other tools</span></span>
 <span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(dsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_raster</span>(<span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ximage</span>(<span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>), <span class="at">asp =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -531,8 +532,8 @@ $dimension
 </div>
 <div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span>)</span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>dat[dat <span class="sc">&gt;</span> <span class="dv">100</span>] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>op <span class="ot">&lt;-</span> <span class="fu">par</span>(<span class="at">bg =</span> <span class="st">"darkgrey"</span>)</span>
-<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_raster</span>(dat, <span class="at">legend =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ximage</span>(dat, <span class="at">col =</span> <span class="fu">grey.colors</span>(<span class="dv">100</span>), <span class="at">asp =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -540,18 +541,22 @@ $dimension
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(op)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   1.00   94.00   98.00   90.99  100.00  100.00  576851 </code></pre>
 </div>
-<p>Not unexpectedly at 3.125km resolution it’s a bit sparse on information, but we didn’t have to use a different approach to get coincident data. (To see Mawson at about this time from Sentinel 2 imagery, try <a href="https://projects.pawsey.org.au/estinel/catalog/catalog-browser.html?location=Mawson_Station_20m&amp;date=2025-12-18&amp;viewtype=view_q128&amp;sort=alphabetical">the estinel catalog</a>, click ‘ESA’ and zoom around for more).</p>
+</div>
+<p>Not unexpectedly at 3.125km resolution it’s a bit sparse on information, but we didn’t have to use a different approach to get coincident data. The ice is thick here, to see Mawson at about this time from Sentinel 2 imagery, try <a href="https://projects.pawsey.org.au/estinel/catalog/catalog-browser.html?location=Mawson_Station_20m&amp;date=2025-12-18&amp;viewtype=view_q128&amp;sort=alphabetical">the estinel catalog</a>, click ‘ESA’ and zoom around for more, you’ll see that dark hole in the sea ice).</p>
 <p>What about the bathymetry? Even at this scale we can see the disparity between bathymetric and topographic detail.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>bathdsn <span class="ot">&lt;-</span> <span class="st">"/vsicurl/https://projects.pawsey.org.au/idea-gebco-tif/GEBCO_2024.tif"</span></span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(bathdsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>bathdsn <span class="ot">&lt;-</span> <span class="st">"/vsicurl/https://projects.pawsey.org.au/idea-gebco-tif/GEBCO_2024.tif"</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(bathdsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_raster</span>(<span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span>), <span class="at">col_map_fn =</span> <span class="fu">hcl.colors</span>(<span class="dv">128</span>), <span class="at">legend =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ximage</span>(dat <span class="ot">&lt;-</span> <span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span>), <span class="at">col =</span> <span class="fu">hcl.colors</span>(<span class="dv">128</span>), <span class="at">asp =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -562,24 +567,24 @@ $dimension
 </div>
 <p>Let’s zoom right in, and this time we’ll use terra so that adding contours is easy, read the REMA v2 2m topography and add it as contours.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="dv">3000</span></span>
-<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
-<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(dsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="dv">3000</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(dsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_raster</span>(<span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>))</span>
-<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>remadsn <span class="ot">&lt;-</span> <span class="st">"/vsicurl/https://raw.githubusercontent.com/mdsumner/rema-ovr/main/REMA-2m_dem_ovr.vrt"</span></span>
-<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
-<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">rast</span>(<span class="fu">ext</span>(<span class="sc">-</span>b, b, <span class="sc">-</span>b, b), <span class="at">crs =</span> prj, <span class="at">ncols =</span> <span class="dv">1024</span>, <span class="at">nrows =</span> <span class="dv">1024</span>)</span>
-<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
-<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(remadsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">1024</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ximage</span>(<span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>), <span class="at">asp =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>remadsn <span class="ot">&lt;-</span> <span class="st">"/vsicurl/https://raw.githubusercontent.com/mdsumner/rema-ovr/main/REMA-2m_dem_ovr.vrt"</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">rast</span>(<span class="fu">ext</span>(<span class="sc">-</span>b, b, <span class="sc">-</span>b, b), <span class="at">crs =</span> prj, <span class="at">ncols =</span> <span class="dv">1024</span>, <span class="at">nrows =</span> <span class="dv">1024</span>)</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>tfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">tmpdir =</span> <span class="st">"/vsimem"</span>, <span class="at">fileext =</span> <span class="st">".vrt"</span>)</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>chk <span class="ot">&lt;-</span> <span class="fu">warp</span>(remadsn, tfile, <span class="at">t_srs =</span> prj, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">"-te"</span>, <span class="sc">-</span>b, <span class="sc">-</span>b, b, b,  <span class="st">"-ts"</span>, <span class="dv">1024</span>, <span class="dv">1024</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>rema <span class="ot">&lt;-</span> <span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span>)</span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(<span class="fu">setValues</span>(r, rema), <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>rema <span class="ot">&lt;-</span> <span class="fu">read_ds</span>(<span class="fu">new</span>(GDALRaster, tfile), <span class="at">bands =</span> <span class="dv">1</span>)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(<span class="fu">setValues</span>(r, rema), <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -593,7 +598,7 @@ $dimension
 <h2 class="anchored" data-anchor-id="thanks">Thanks</h2>
 <p>Hopefully this sparks some interest in the simplicity of raster grid logic and more folks using the GDAL warp api to its full potential.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>R version 4.5.1 (2025-06-13)
 Platform: x86_64-pc-linux-gnu
@@ -618,7 +623,8 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
-[1] gdalraster_2.3.0.9007 terra_1.8-80          vaster_0.5.0         
+[1] ximage_0.0.0.9012     gdalraster_2.3.0.9007 terra_1.8-80         
+[4] vaster_0.5.0         
 
 loaded via a namespace (and not attached):
  [1] cli_3.6.5          knitr_1.50         rlang_1.1.6        xfun_0.53         
@@ -628,7 +634,8 @@ loaded via a namespace (and not attached):
 [17] compiler_4.5.1     nanoarrow_0.7.0-2  codetools_0.2-19   RColorBrewer_1.1-3
 [21] htmlwidgets_1.6.4  Rcpp_1.1.0         rstudioapi_0.15.0  farver_2.1.2      
 [25] digest_0.6.39      wk_0.9.4.9000      R6_2.6.1           dichromat_2.0-0.1 
-[29] parallel_4.5.1     tools_4.5.1        bit64_4.6.0-1      xml2_1.5.1        </code></pre>
+[29] parallel_4.5.1     tools_4.5.1        bit64_4.6.0-1      palr_0.4.0        
+[33] xml2_1.5.1        </code></pre>
 </div>
 </div>
 
