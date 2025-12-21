@@ -9,6 +9,8 @@ categories: [code, news]
 
 ```{r setup, include=FALSE}
 library(vaster)
+library(terra)
+library(gdalraster)
 # point to the GHRSST and relalted NETCDF problems
 # Add specific numbers from your real-world use (e.g., the estinel pipeline, Antarctic grids)
 # Adjust the {fasterize} example if the current API has changed since the hypertidy migration
