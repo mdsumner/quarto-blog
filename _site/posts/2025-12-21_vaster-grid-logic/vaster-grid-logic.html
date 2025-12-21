@@ -335,21 +335,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>One of the most common operations in raster work is “snapping”—taking an arbitrary region and aligning it to an existing grid. You want to crop to an area of interest, but you need cell-aligned boundaries.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A reference grid: 3-degree cells covering the globe</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>ref_dm <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">120</span>, <span class="dv">60</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>ref_dm <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">30</span>, <span class="dv">10</span>)</span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>ref_ex <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">180</span>, <span class="dv">180</span>, <span class="sc">-</span><span class="dv">90</span>, <span class="dv">90</span>)</span>
 <span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Some arbitrary region of interest (not aligned to anything)</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>roi <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">112.3</span>, <span class="fl">154.7</span>, <span class="sc">-</span><span class="fl">44.2</span>, <span class="sc">-</span><span class="fl">9.8</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>roi <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">15</span>, <span class="fl">154.7</span>, <span class="sc">-</span><span class="fl">44.2</span>, <span class="sc">-</span><span class="fl">9.8</span>)</span>
 <span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Snap to the reference grid</span></span>
 <span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>snapped <span class="ot">&lt;-</span> <span class="fu">vcrop</span>(roi, ref_dm, <span class="at">extent =</span> ref_ex)</span>
 <span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>snapped</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>$extent
-[1] 111 156 -45  -9
+[1]  12 156 -54   0
 
 $dimension
-[1] 15 12</code></pre>
+[1] 12  3</code></pre>
 </div>
 </div>
 <p>The result gives you the exact dimension and extent for the crop window, aligned to the reference grid. No data needed—just the numbers.</p>

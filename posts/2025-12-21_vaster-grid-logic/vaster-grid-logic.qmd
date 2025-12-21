@@ -138,11 +138,11 @@ One of the most common operations in raster work is "snapping"—taking an arbit
 
 ```{r snap-demo}
 # A reference grid: 3-degree cells covering the globe
-ref_dm <- c(120, 60)
+ref_dm <- c(30, 10)
 ref_ex <- c(-180, 180, -90, 90)
 
 # Some arbitrary region of interest (not aligned to anything)
-roi <- c(112.3, 154.7, -44.2, -9.8)
+roi <- c(15, 154.7, -44.2, -9.8)
 
 # Snap to the reference grid
 snapped <- vcrop(roi, ref_dm, extent = ref_ex)
