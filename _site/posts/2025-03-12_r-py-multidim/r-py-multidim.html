@@ -19,7 +19,7 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
   width: 0.8em;
-  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
 /* CSS for syntax highlighting */
@@ -107,13 +107,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link rel="stylesheet" href="../../styles.css">
 <meta property="og:title" content="GDAL multidim and cloud-ready ZARR – hypertidy-blog">
 <meta property="og:description" content="">
-<meta property="og:image" content="http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
+<meta property="og:image" content="http://hypertidy.org/posts/2025-03-12_r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
 <meta property="og:site_name" content="hypertidy-blog">
 <meta property="og:image:height" content="960">
 <meta property="og:image:width" content="1344">
 <meta name="twitter:title" content="GDAL multidim and cloud-ready ZARR – hypertidy-blog">
 <meta name="twitter:description" content="">
-<meta name="twitter:image" content="http://hypertidy.org/posts/2025-03-12-r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
+<meta name="twitter:image" content="http://hypertidy.org/posts/2025-03-12_r-py-multidim/r-py-multidim_files/figure-html/osm-1.png">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image-height" content="960">
@@ -138,19 +138,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../../about.html">
+    <a class="nav-link" href="../../about.html"> 
 <span class="menu-text">About</span></a>
-  </li>
+  </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
-</i>
+</i> 
 <span class="menu-text"></span></a>
-  </li>
+  </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
-</i>
+</i> 
 <span class="menu-text"></span></a>
-  </li>
+  </li>  
 </ul>
           </div> <!-- /navcollapse -->
             <div class="quarto-navbar-tools">
@@ -165,8 +165,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <h1 class="title">GDAL multidim and cloud-ready ZARR</h1>
                       </div>
   </div>
-
-
+    
+  
   <div class="quarto-title-meta">
 
       <div>
@@ -175,22 +175,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
                <p>Michael Sumner </p>
             </div>
     </div>
-
+      
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
         <p class="date">June 30, 2025</p>
       </div>
     </div>
-
-
+    
+      
     </div>
-
-
+    
+  
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-
+    
 <!-- main -->
 <main class="content quarto-banner-title-block" id="quarto-document-content">
 
@@ -242,25 +242,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sample</span>(<span class="fu">names</span>(gdal), <span class="dv">40</span>)  <span class="do">## see that we have a huge coverage of the underlying API, 544 elements at time of writing</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] "GCI_NIRBand"                       "GCI_CyanBand"
- [3] "GFU_RedMax"                        "GRT_COMPOSITE"
- [5] "GRT_AGGREGATION"                   "GRIORA_Gauss"
- [7] "GPI_RGB"                           "GFT_Integer"
- [9] "GFU_AlphaMin"                      "GCI_SAR_C_Band"
-[11] "GCI_OtherIRBand"                   "ApplyVerticalShiftGrid"
-[13] "CPLE_NoWriteAccess"                "deprecation_warn"
-[15] "Rasterize"                         "GCI_SAR_K_Band"
-[17] "TermProgress_nocb"                 "GMF_ALL_VALID"
-[19] "DCAP_CREATECOPY"                   "GRA_Q1"
-[21] "config_option"                     "DCAP_FIELD_DOMAINS"
+<pre><code> [1] "GCI_NIRBand"                       "GCI_CyanBand"                     
+ [3] "GFU_RedMax"                        "GRT_COMPOSITE"                    
+ [5] "GRT_AGGREGATION"                   "GRIORA_Gauss"                     
+ [7] "GPI_RGB"                           "GFT_Integer"                      
+ [9] "GFU_AlphaMin"                      "GCI_SAR_C_Band"                   
+[11] "GCI_OtherIRBand"                   "ApplyVerticalShiftGrid"           
+[13] "CPLE_NoWriteAccess"                "deprecation_warn"                 
+[15] "Rasterize"                         "GCI_SAR_K_Band"                   
+[17] "TermProgress_nocb"                 "GMF_ALL_VALID"                    
+[19] "DCAP_CREATECOPY"                   "GRA_Q1"                           
+[21] "config_option"                     "DCAP_FIELD_DOMAINS"               
 [23] "GDAL_GCP_Info_set"                 "wrapper_GDALVectorTranslateDestDS"
-[25] "ColorTable"                        "ContourGenerate"
-[27] "DCAP_COORDINATE_EPOCH"             "GDT_UInt16"
-[29] "GDsCDeleteRelationship"            "GCI_YCbCr_CbBand"
-[31] "IsLineOfSightVisible"              "BuildVRTInternalObjects"
-[33] "DEMProcessing"                     "GDALDestroyDriverManager"
-[35] "DCAP_RENAME_LAYERS"                "MultiDimInfoOptions"
-[37] "CPLES_XML_BUT_QUOTES"              "DitherRGB2PCT"
+[25] "ColorTable"                        "ContourGenerate"                  
+[27] "DCAP_COORDINATE_EPOCH"             "GDT_UInt16"                       
+[29] "GDsCDeleteRelationship"            "GCI_YCbCr_CbBand"                 
+[31] "IsLineOfSightVisible"              "BuildVRTInternalObjects"          
+[33] "DEMProcessing"                     "GDALDestroyDriverManager"         
+[35] "DCAP_RENAME_LAYERS"                "MultiDimInfoOptions"              
+[37] "CPLES_XML_BUT_QUOTES"              "DitherRGB2PCT"                    
 [39] "GDT_TypeCount"                     "GARIO_ERROR"                      </code></pre>
 </div>
 </div>
@@ -337,111 +337,111 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="fu">get_all_mdnames</span>(ds<span class="sc">$</span><span class="fu">GetRootGroup</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  [1] "/conditions/geometry/angle"
-  [2] "/conditions/geometry/band"
-  [3] "/conditions/geometry/detector"
-  [4] "/conditions/geometry/x"
-  [5] "/conditions/geometry/y"
-  [6] "/conditions/geometry/mean_sun_angles"
+<pre><code>  [1] "/conditions/geometry/angle"                        
+  [2] "/conditions/geometry/band"                         
+  [3] "/conditions/geometry/detector"                     
+  [4] "/conditions/geometry/x"                            
+  [5] "/conditions/geometry/y"                            
+  [6] "/conditions/geometry/mean_sun_angles"              
   [7] "/conditions/geometry/mean_viewing_incidence_angles"
-  [8] "/conditions/geometry/sun_angles"
-  [9] "/conditions/geometry/viewing_incidence_angles"
- [10] "/conditions/mask/detector_footprint/r10m/x"
- [11] "/conditions/mask/detector_footprint/r10m/y"
- [12] "/conditions/mask/detector_footprint/r10m/b02"
- [13] "/conditions/mask/detector_footprint/r10m/b03"
- [14] "/conditions/mask/detector_footprint/r10m/b04"
- [15] "/conditions/mask/detector_footprint/r10m/b08"
- [16] "/conditions/mask/detector_footprint/r20m/x"
- [17] "/conditions/mask/detector_footprint/r20m/y"
- [18] "/conditions/mask/detector_footprint/r20m/b05"
- [19] "/conditions/mask/detector_footprint/r20m/b06"
- [20] "/conditions/mask/detector_footprint/r20m/b07"
- [21] "/conditions/mask/detector_footprint/r20m/b11"
- [22] "/conditions/mask/detector_footprint/r20m/b12"
- [23] "/conditions/mask/detector_footprint/r20m/b8a"
- [24] "/conditions/mask/detector_footprint/r60m/x"
- [25] "/conditions/mask/detector_footprint/r60m/y"
- [26] "/conditions/mask/detector_footprint/r60m/b01"
- [27] "/conditions/mask/detector_footprint/r60m/b09"
- [28] "/conditions/mask/detector_footprint/r60m/b10"
- [29] "/conditions/mask/l1c_classification/r60m/x"
- [30] "/conditions/mask/l1c_classification/r60m/y"
- [31] "/conditions/mask/l1c_classification/r60m/b00"
- [32] "/conditions/meteorology/cams/latitude"
- [33] "/conditions/meteorology/cams/longitude"
- [34] "/conditions/meteorology/cams/aod1240"
- [35] "/conditions/meteorology/cams/aod469"
- [36] "/conditions/meteorology/cams/aod550"
- [37] "/conditions/meteorology/cams/aod670"
- [38] "/conditions/meteorology/cams/aod865"
- [39] "/conditions/meteorology/cams/bcaod550"
- [40] "/conditions/meteorology/cams/duaod550"
- [41] "/conditions/meteorology/cams/isobaricInhPa"
- [42] "/conditions/meteorology/cams/number"
- [43] "/conditions/meteorology/cams/omaod550"
- [44] "/conditions/meteorology/cams/ssaod550"
- [45] "/conditions/meteorology/cams/step"
- [46] "/conditions/meteorology/cams/suaod550"
- [47] "/conditions/meteorology/cams/surface"
- [48] "/conditions/meteorology/cams/time"
- [49] "/conditions/meteorology/cams/valid_time"
- [50] "/conditions/meteorology/cams/z"
- [51] "/conditions/meteorology/ecmwf/latitude"
- [52] "/conditions/meteorology/ecmwf/longitude"
- [53] "/conditions/meteorology/ecmwf/isobaricInhPa"
- [54] "/conditions/meteorology/ecmwf/msl"
- [55] "/conditions/meteorology/ecmwf/number"
- [56] "/conditions/meteorology/ecmwf/r"
- [57] "/conditions/meteorology/ecmwf/step"
- [58] "/conditions/meteorology/ecmwf/surface"
- [59] "/conditions/meteorology/ecmwf/tco3"
- [60] "/conditions/meteorology/ecmwf/tcwv"
- [61] "/conditions/meteorology/ecmwf/time"
- [62] "/conditions/meteorology/ecmwf/u10"
- [63] "/conditions/meteorology/ecmwf/v10"
- [64] "/conditions/meteorology/ecmwf/valid_time"
- [65] "/measurements/reflectance/r10m/x"
- [66] "/measurements/reflectance/r10m/y"
- [67] "/measurements/reflectance/r10m/b02"
- [68] "/measurements/reflectance/r10m/b03"
- [69] "/measurements/reflectance/r10m/b04"
- [70] "/measurements/reflectance/r10m/b08"
- [71] "/measurements/reflectance/r20m/x"
- [72] "/measurements/reflectance/r20m/y"
- [73] "/measurements/reflectance/r20m/b05"
- [74] "/measurements/reflectance/r20m/b06"
- [75] "/measurements/reflectance/r20m/b07"
- [76] "/measurements/reflectance/r20m/b11"
- [77] "/measurements/reflectance/r20m/b12"
- [78] "/measurements/reflectance/r20m/b8a"
- [79] "/measurements/reflectance/r60m/x"
- [80] "/measurements/reflectance/r60m/y"
- [81] "/measurements/reflectance/r60m/b01"
- [82] "/measurements/reflectance/r60m/b09"
- [83] "/measurements/reflectance/r60m/b10"
- [84] "/quality/l1c_quicklook/r10m/band"
- [85] "/quality/l1c_quicklook/r10m/x"
- [86] "/quality/l1c_quicklook/r10m/y"
- [87] "/quality/l1c_quicklook/r10m/tci"
- [88] "/quality/mask/r10m/x"
- [89] "/quality/mask/r10m/y"
- [90] "/quality/mask/r10m/b02"
- [91] "/quality/mask/r10m/b03"
- [92] "/quality/mask/r10m/b04"
- [93] "/quality/mask/r10m/b08"
- [94] "/quality/mask/r20m/x"
- [95] "/quality/mask/r20m/y"
- [96] "/quality/mask/r20m/b05"
- [97] "/quality/mask/r20m/b06"
- [98] "/quality/mask/r20m/b07"
- [99] "/quality/mask/r20m/b11"
-[100] "/quality/mask/r20m/b12"
-[101] "/quality/mask/r20m/b8a"
-[102] "/quality/mask/r60m/x"
-[103] "/quality/mask/r60m/y"
-[104] "/quality/mask/r60m/b01"
-[105] "/quality/mask/r60m/b09"
+  [8] "/conditions/geometry/sun_angles"                   
+  [9] "/conditions/geometry/viewing_incidence_angles"     
+ [10] "/conditions/mask/detector_footprint/r10m/x"        
+ [11] "/conditions/mask/detector_footprint/r10m/y"        
+ [12] "/conditions/mask/detector_footprint/r10m/b02"      
+ [13] "/conditions/mask/detector_footprint/r10m/b03"      
+ [14] "/conditions/mask/detector_footprint/r10m/b04"      
+ [15] "/conditions/mask/detector_footprint/r10m/b08"      
+ [16] "/conditions/mask/detector_footprint/r20m/x"        
+ [17] "/conditions/mask/detector_footprint/r20m/y"        
+ [18] "/conditions/mask/detector_footprint/r20m/b05"      
+ [19] "/conditions/mask/detector_footprint/r20m/b06"      
+ [20] "/conditions/mask/detector_footprint/r20m/b07"      
+ [21] "/conditions/mask/detector_footprint/r20m/b11"      
+ [22] "/conditions/mask/detector_footprint/r20m/b12"      
+ [23] "/conditions/mask/detector_footprint/r20m/b8a"      
+ [24] "/conditions/mask/detector_footprint/r60m/x"        
+ [25] "/conditions/mask/detector_footprint/r60m/y"        
+ [26] "/conditions/mask/detector_footprint/r60m/b01"      
+ [27] "/conditions/mask/detector_footprint/r60m/b09"      
+ [28] "/conditions/mask/detector_footprint/r60m/b10"      
+ [29] "/conditions/mask/l1c_classification/r60m/x"        
+ [30] "/conditions/mask/l1c_classification/r60m/y"        
+ [31] "/conditions/mask/l1c_classification/r60m/b00"      
+ [32] "/conditions/meteorology/cams/latitude"             
+ [33] "/conditions/meteorology/cams/longitude"            
+ [34] "/conditions/meteorology/cams/aod1240"              
+ [35] "/conditions/meteorology/cams/aod469"               
+ [36] "/conditions/meteorology/cams/aod550"               
+ [37] "/conditions/meteorology/cams/aod670"               
+ [38] "/conditions/meteorology/cams/aod865"               
+ [39] "/conditions/meteorology/cams/bcaod550"             
+ [40] "/conditions/meteorology/cams/duaod550"             
+ [41] "/conditions/meteorology/cams/isobaricInhPa"        
+ [42] "/conditions/meteorology/cams/number"               
+ [43] "/conditions/meteorology/cams/omaod550"             
+ [44] "/conditions/meteorology/cams/ssaod550"             
+ [45] "/conditions/meteorology/cams/step"                 
+ [46] "/conditions/meteorology/cams/suaod550"             
+ [47] "/conditions/meteorology/cams/surface"              
+ [48] "/conditions/meteorology/cams/time"                 
+ [49] "/conditions/meteorology/cams/valid_time"           
+ [50] "/conditions/meteorology/cams/z"                    
+ [51] "/conditions/meteorology/ecmwf/latitude"            
+ [52] "/conditions/meteorology/ecmwf/longitude"           
+ [53] "/conditions/meteorology/ecmwf/isobaricInhPa"       
+ [54] "/conditions/meteorology/ecmwf/msl"                 
+ [55] "/conditions/meteorology/ecmwf/number"              
+ [56] "/conditions/meteorology/ecmwf/r"                   
+ [57] "/conditions/meteorology/ecmwf/step"                
+ [58] "/conditions/meteorology/ecmwf/surface"             
+ [59] "/conditions/meteorology/ecmwf/tco3"                
+ [60] "/conditions/meteorology/ecmwf/tcwv"                
+ [61] "/conditions/meteorology/ecmwf/time"                
+ [62] "/conditions/meteorology/ecmwf/u10"                 
+ [63] "/conditions/meteorology/ecmwf/v10"                 
+ [64] "/conditions/meteorology/ecmwf/valid_time"          
+ [65] "/measurements/reflectance/r10m/x"                  
+ [66] "/measurements/reflectance/r10m/y"                  
+ [67] "/measurements/reflectance/r10m/b02"                
+ [68] "/measurements/reflectance/r10m/b03"                
+ [69] "/measurements/reflectance/r10m/b04"                
+ [70] "/measurements/reflectance/r10m/b08"                
+ [71] "/measurements/reflectance/r20m/x"                  
+ [72] "/measurements/reflectance/r20m/y"                  
+ [73] "/measurements/reflectance/r20m/b05"                
+ [74] "/measurements/reflectance/r20m/b06"                
+ [75] "/measurements/reflectance/r20m/b07"                
+ [76] "/measurements/reflectance/r20m/b11"                
+ [77] "/measurements/reflectance/r20m/b12"                
+ [78] "/measurements/reflectance/r20m/b8a"                
+ [79] "/measurements/reflectance/r60m/x"                  
+ [80] "/measurements/reflectance/r60m/y"                  
+ [81] "/measurements/reflectance/r60m/b01"                
+ [82] "/measurements/reflectance/r60m/b09"                
+ [83] "/measurements/reflectance/r60m/b10"                
+ [84] "/quality/l1c_quicklook/r10m/band"                  
+ [85] "/quality/l1c_quicklook/r10m/x"                     
+ [86] "/quality/l1c_quicklook/r10m/y"                     
+ [87] "/quality/l1c_quicklook/r10m/tci"                   
+ [88] "/quality/mask/r10m/x"                              
+ [89] "/quality/mask/r10m/y"                              
+ [90] "/quality/mask/r10m/b02"                            
+ [91] "/quality/mask/r10m/b03"                            
+ [92] "/quality/mask/r10m/b04"                            
+ [93] "/quality/mask/r10m/b08"                            
+ [94] "/quality/mask/r20m/x"                              
+ [95] "/quality/mask/r20m/y"                              
+ [96] "/quality/mask/r20m/b05"                            
+ [97] "/quality/mask/r20m/b06"                            
+ [98] "/quality/mask/r20m/b07"                            
+ [99] "/quality/mask/r20m/b11"                            
+[100] "/quality/mask/r20m/b12"                            
+[101] "/quality/mask/r20m/b8a"                            
+[102] "/quality/mask/r60m/x"                              
+[103] "/quality/mask/r60m/y"                              
+[104] "/quality/mask/r60m/b01"                            
+[105] "/quality/mask/r60m/b09"                            
 [106] "/quality/mask/r60m/b10"                            </code></pre>
 </div>
 </div>
@@ -578,8 +578,8 @@ $`proj:wkt2`
 <div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">gdal_version</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "GDAL 3.11.0dev-dd6009a0eb, released 2018/99/99"
-[2] "3110000"
-[3] "20189999"
+[2] "3110000"                                       
+[3] "20189999"                                      
 [4] "3.11.0dev-dd6009a0eb"                          </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">session_info</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -682,7 +682,7 @@ $`proj:wkt2`
  numpy:          /perm_storage/home/mdsumner/.cache/R/reticulate/uv/cache/archive-v0/twFzciVwGCsaiQXG6_cWf/lib/python3.11/site-packages/numpy
  numpy_version:  2.2.3
  osgeo:          /perm_storage/home/mdsumner/.cache/R/reticulate/uv/cache/archive-v0/twFzciVwGCsaiQXG6_cWf/lib/python3.11/site-packages/osgeo
-
+ 
  NOTE: Python version was forced by py_require()
 
 ──────────────────────────────────────────────────────────────────────────────</code></pre>
@@ -702,7 +702,7 @@ $`proj:wkt2`
 <pre><code>── R package requests ───────────────────────────────────────────────────</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>R package  Python packages                           Python version
+<pre><code>R package  Python packages                           Python version      
 reticulate numpy                                                         </code></pre>
 </div>
 </div>
@@ -730,7 +730,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       toggleBodyColorMode(bsSheetEl);
     }
   }
-  toggleBodyColorPrimary();
+  toggleBodyColorPrimary();  
   const icon = "";
   const anchorJS = new window.AnchorJS();
   anchorJS.options = {
@@ -740,7 +740,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   anchorJS.add('.anchored');
   const isCodeAnnotation = (el) => {
     for (const clz of el.classList) {
-      if (clz.startsWith('code-annotation-')) {
+      if (clz.startsWith('code-annotation-')) {                     
         return true;
       }
     }
@@ -760,11 +760,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       button.setAttribute("data-bs-toggle", "tooltip");
       button.setAttribute("data-bs-placement", "left");
       button.setAttribute("data-bs-title", "Copied!");
-      tooltip = new bootstrap.Tooltip(button,
-        { trigger: "manual",
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
           customClass: "code-copy-button-tooltip",
           offset: [0, -8]});
-      tooltip.show();
+      tooltip.show();    
     }
     setTimeout(function() {
       if (tooltip) {
@@ -840,7 +840,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     if (onUntriggerFn) {
       config.onUntrigger = onUntriggerFn;
     }
-    window.tippy(el, config);
+    window.tippy(el, config); 
   }
   const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
   for (var i=0; i<noterefs.length; i++) {
@@ -915,7 +915,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     tippyHover(xref, undefined, function(instance) {
       instance.disable();
       let url = xref.getAttribute('href');
-      let hash = undefined;
+      let hash = undefined; 
       if (url.startsWith('#')) {
         hash = url;
       } else {
@@ -943,7 +943,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             if (note !== null) {
               const html = processXRef(id, note);
               instance.setContent(html);
-            }
+            } 
           }).finally(() => {
             instance.enable();
             instance.show();
@@ -967,7 +967,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             }
             const html = processXRef(null, note);
             instance.setContent(html);
-          }
+          } 
         }).finally(() => {
           instance.enable();
           instance.show();
@@ -1007,7 +1007,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             height = bottom - top;
           }
           if (top !== null && height !== null && parent !== null) {
-            // cook up a div (if necessary) and position it
+            // cook up a div (if necessary) and position it 
             let div = window.document.getElementById("code-annotation-line-highlight");
             if (div === null) {
               div = window.document.createElement("div");
