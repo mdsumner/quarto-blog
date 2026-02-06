@@ -1,0 +1,153 @@
+---
+title: "Detecting hidden grids in curvilinear coordinates"
+author: "Michael Sumner"
+date: 2025-02-07
+format: html
+categories: [news, code]
+---
+
+## The problem
+
+A lot of gridded data arrives with two-dimensional longitude and latitude arrays: one value per pixel, stored explicitly. This is the standard representation for curvilinear grids in NetCDF and HDF — satellite swaths, model output on rotated grids, polar data. The coordinates describe the geographic location of every cell, and in many cases they genuinely need to: the grid may be irregular, oblique, or follow a sensor's scan geometry.
+
+But sometimes those coordinates are hiding something. The data was originally produced on a regular projected grid — polar stereographic, Lambert conformal conic, Mercator — and at some point in the processing chain the projection was discarded and replaced with lon/lat arrays computed from it. The regularity is gone. The CRS is gone. What was four numbers and a coordinate reference system is now two arrays of floating-point values, one per pixel, carrying no more information than the originals but consuming orders of magnitude more storage and, critically, obscuring the actual structure of the data.
+
+This is an entropy problem. A 316×332 grid in EPSG:3412 at 25 km resolution is fully specified by a CRS string and four extent values. Storing lon/lat arrays for every pixel replaces those with 209,824 coordinate values — a 52,000:1 expansion — and the extra values are *noisier* than the originals because they've accumulated floating-point error from the forward projection.
+
+It would be useful to be able to detect this automatically.
+
+## Detecting regularity
+
+The in-development R package [gproj](https://github.com/mdsumner/gproj) includes tools for characterising coordinate geometry and selecting appropriate projections. Among these is a regularity detection pipeline that can identify "cryptic curvilinear" grids — data that presents as irregular lon/lat arrays but is in fact a regular projected grid with lost metadata.
+
+The approach is layered.
+
+### Step 1: Is it rectilinear in lon/lat?
+
+The simplest hidden structure is a rectilinear grid: longitude varies only along one axis, latitude only along the other. This is tested by checking the standard deviation of each coordinate along each matrix dimension.
+
+`detect_rectilinear()` classifies these into subtypes. If both marginal sequences have uniform spacing, it's a regular lon/lat grid. If longitude is uniform but latitude spacing follows the Mercator y-formula — `y = ln(tan(π/4 + φ/2))` — then it's a Mercator grid that was "devolved" to lon/lat.
+
+Running this on an AVISO altimetry product with 1080×915 lon/lat arrays:
+
+  ```
+Rectilinear:        TRUE
+Type:               mercator_devolved
+Lon regular:        TRUE (0.3333° spacing)
+Mercator test:      TRUE (max deviation: 1e-12)
+Mercator resolution: 37106 m
+```
+
+The deviation from perfect Mercator spacing is at machine epsilon — the coordinates were computed analytically. The 1,976,400 stored values can be replaced by a CRS and an extent.
+
+### Step 2: Is it regular in a projected CRS?
+
+When the grid isn't rectilinear in lon/lat, it may be regular in some projected coordinate system. The test:
+
+1. Characterise the data geometry — centre, extent, hemisphere — to select candidate projections.
+2. Project the lon/lat arrays into each candidate CRS.
+3. Check whether the projected coordinates form a regular grid: constant spacing along rows and columns, with rows horizontal in projected space.
+
+The `params()` function in gproj computes a geometric characterisation from any set of lon/lat coordinates:
+
+```
+<params: 104912 points>
+  centre:     -0.0000, -88.1448
+  extent:     [0.17, 359.84] x [-89.84, -39.36]
+  span:       359.67° lon x 50.47° lat
+  hemisphere: polar_south
+  aspect:     wide
+  axis:       azimuth=180.0°, tilt=90.0°, var_ratio=0.51/0.46/0.02
+```
+
+This is a CryoSat-2 sea ice product distributed as a NetCDF file with 316×332 lon/lat arrays. The `params()` output immediately tells us it's circumpolar Antarctic data with no dominant axis orientation (variance split evenly between two components — characteristic of polar data rather than an elongated swath).
+
+Projecting the coordinates into EPSG:3412 (NSIDC Sea Ice Polar Stereographic South) and testing regularity:
+
+  ```
+Max row-y SD:      13.42 m
+Median dx:         25000 m
+Max dx deviation:  74.8 m
+Median dy:         -25000 m
+Max dy deviation:  71.0 m
+```
+
+Row-level y standard deviation of 13 metres on a 25 km grid means rows are horizontal to within 0.05% of a cell width. The x and y spacing deviations of ~70 m (0.3%) are the accumulated floating-point noise from the trig functions in the lon/lat → projection → lon/lat → projection roundtrip.
+
+These numbers are unambiguous. A genuinely curvilinear grid would show deviations of 10–100% of the cell size. The gap between 0.3% and "not regular" is enormous.
+
+### Step 3: Recover the grid specification
+
+Once regularity is confirmed, the resolution is snapped to the nearest "round" value (25000 rather than 24999.7) and the extent is recovered from the cell centres plus half-cell margins:
+
+  ```
+Recovered extent:  -3950030  3950000  -3949995  4349967
+Known NSIDC extent: -3950000  3950000  -3950000  4350000
+Difference:         -30       0        5        -33
+```
+
+Within 33 metres of the exact grid specification. The extent values snap to exact multiples of the resolution, completing the reconstruction:
+
+  ```
+CRS:          EPSG:3412
+Resolution:   25000 × 25000 m
+Dimensions:   316 × 332
+Extent:       -3950000  3950000  -3950000  4350000
+```
+
+The 209,824 coordinate values have been replaced by four numbers and a CRS string. The reconstructed grid is not an approximation — it is the original grid, recovered exactly.
+
+## The Mercator case
+
+A subtler variant of this problem occurs with global ocean products. A Mercator projection produces a regular grid in eastings and northings, but when projected to lon/lat the latitude spacing becomes non-uniform: cells are compressed toward the poles following the inverse Mercator formula. The longitude spacing remains uniform.
+
+This is easy to miss because the grid *looks* rectilinear — it has separable 1D coordinate axes — and many tools will happily treat it as a lon/lat grid with variable spacing. But it's not: it's a Mercator grid with specific metric properties that are lost when treated as plain lon/lat.
+
+The detection is straightforward: convert the latitude values to Mercator y-coordinates and check whether the spacing becomes uniform. For the AVISO product tested above, the deviation from perfect Mercator spacing is 10⁻¹² — indistinguishable from the analytical formula.
+
+## Swath geometry and projection selection
+
+Not all lon/lat arrays hide regular grids. Satellite swath data from sensors like VIIRS or MODIS is genuinely curvilinear — the coordinates follow the sensor's scan geometry, and there is no single projected CRS that makes them regular. But the coordinates still have structure that can be exploited.
+
+The `params()` function characterises this structure using PCA on the 3D Cartesian coordinates of the data points. Converting lon/lat to points on the unit sphere before PCA avoids the distortions that would arise from operating directly in longitude/latitude space (particularly near the poles or antimeridian).
+
+For a VIIRS swath boundary:
+
+```
+<params: 32436 points>
+  centre:     -113.56, -20.81
+  extent:     [-180, 180] x [-84.44, 57.66]
+  hemisphere: polar_south
+  axis:       azimuth=12.4°, tilt=77.6°, var_ratio=0.85/0.14/0.02
+```
+
+The variance ratio of 0.85 in the first component indicates a strongly elongated dataset. The azimuth of 12.4° gives the bearing of the dominant axis — essentially the satellite ground track orientation.
+
+This feeds directly into projection selection. The `proj()` function uses the geometric characterisation to generate appropriate CRS parameters:
+
+- Polar data with no dominant axis → stereographic or Lambert azimuthal equal-area, centred on the pole
+- Elongated data with a dominant axis → oblique Mercator aligned to the data's axis
+- Mid-latitude wide bands → conic projections with secant latitudes derived from the data extent
+- Small regions → stereographic centred on the data
+
+For the VIIRS swath, this produces an oblique Mercator projection aligned to the 12.4° ground track, which straightens the swath into a narrow strip in projected coordinates (aspect ratio ~11:1).
+
+## The opportunity
+
+The detection of hidden regular grids is not a theoretical exercise. These grids exist throughout operational data archives — sea ice products, ocean altimetry, atmospheric reanalyses, satellite imagery. Every file that stores redundant lon/lat arrays for a regular projected grid is:
+
+  - Wasting storage (often 2× the data volume for the coordinate arrays alone)
+- Losing precision (floating-point coordinates are noisier than the exact grid specification)
+- Obscuring structure (downstream tools treat the data as irregular, triggering unnecessary resampling)
+- Creating friction (users must discover the projection through external documentation or domain expertise)
+
+The regularity test demonstrated here is simple — a few lines of linear algebra and some tolerance checks — and could be applied routinely during data ingest or quality assessment. The tolerance gap between "regular with floating-point noise" (0.3% deviation) and "genuinely irregular" is wide enough that false positives are unlikely.
+
+For data producers, the message is: if your data is on a regular projected grid, store the grid specification, not the coordinates. A CRS string and four extent values are complete, exact, and universally understood.
+
+For data consumers and tool developers, the message is: when you encounter 2D lon/lat arrays, test for regularity before treating them as curvilinear. The answer may save you considerable complexity.
+
+The gproj package is in early development at [github.com/mdsumner/gproj](https://github.com/mdsumner/gproj).
+
+A previous iteration of this discussion was published here [hypertidy.org: Coordinates broken in NetCDF](https://www.hypertidy.org/posts/2025-09-04_broken-netcdf/). 
+

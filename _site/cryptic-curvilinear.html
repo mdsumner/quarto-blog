@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.42">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+<meta name="dcterms.date" content="2025-02-07">
+
+<title>Detecting hidden grids in curvilinear coordinates – hypertidy-blog</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-2f5df379a58b258e96c21c0638c20c03.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-6532943c4b09e2756183d8ee8ed41373.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="Detecting hidden grids in curvilinear coordinates – hypertidy-blog">
+<meta property="og:description" content="">
+<meta property="og:site_name" content="hypertidy-blog">
+<meta name="twitter:title" content="Detecting hidden grids in curvilinear coordinates – hypertidy-blog">
+<meta name="twitter:description" content="">
+<meta name="twitter:creator" content="@mdsumner">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">hypertidy-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="./about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Detecting hidden grids in curvilinear coordinates</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">news</div>
+    <div class="quarto-category">code</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Michael Sumner </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">February 7, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="the-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-problem">The problem</h2>
+<p>A lot of gridded data arrives with two-dimensional longitude and latitude arrays: one value per pixel, stored explicitly. This is the standard representation for curvilinear grids in NetCDF and HDF — satellite swaths, model output on rotated grids, polar data. The coordinates describe the geographic location of every cell, and in many cases they genuinely need to: the grid may be irregular, oblique, or follow a sensor’s scan geometry.</p>
+<p>But sometimes those coordinates are hiding something. The data was originally produced on a regular projected grid — polar stereographic, Lambert conformal conic, Mercator — and at some point in the processing chain the projection was discarded and replaced with lon/lat arrays computed from it. The regularity is gone. The CRS is gone. What was four numbers and a coordinate reference system is now two arrays of floating-point values, one per pixel, carrying no more information than the originals but consuming orders of magnitude more storage and, critically, obscuring the actual structure of the data.</p>
+<p>This is an entropy problem. A 316×332 grid in EPSG:3412 at 25 km resolution is fully specified by a CRS string and four extent values. Storing lon/lat arrays for every pixel replaces those with 209,824 coordinate values — a 52,000:1 expansion — and the extra values are <em>noisier</em> than the originals because they’ve accumulated floating-point error from the forward projection.</p>
+<p>It would be useful to be able to detect this automatically.</p>
+</section>
+<section id="detecting-regularity" class="level2">
+<h2 class="anchored" data-anchor-id="detecting-regularity">Detecting regularity</h2>
+<p>The in-development R package <a href="https://github.com/mdsumner/gproj">gproj</a> includes tools for characterising coordinate geometry and selecting appropriate projections. Among these is a regularity detection pipeline that can identify “cryptic curvilinear” grids — data that presents as irregular lon/lat arrays but is in fact a regular projected grid with lost metadata.</p>
+<p>The approach is layered.</p>
+<section id="step-1-is-it-rectilinear-in-lonlat" class="level3">
+<h3 class="anchored" data-anchor-id="step-1-is-it-rectilinear-in-lonlat">Step 1: Is it rectilinear in lon/lat?</h3>
+<p>The simplest hidden structure is a rectilinear grid: longitude varies only along one axis, latitude only along the other. This is tested by checking the standard deviation of each coordinate along each matrix dimension.</p>
+<p><code>detect_rectilinear()</code> classifies these into subtypes. If both marginal sequences have uniform spacing, it’s a regular lon/lat grid. If longitude is uniform but latitude spacing follows the Mercator y-formula — <code>y = ln(tan(π/4 + φ/2))</code> — then it’s a Mercator grid that was “devolved” to lon/lat.</p>
+<p>Running this on an AVISO altimetry product with 1080×915 lon/lat arrays:</p>
+<pre><code>Rectilinear:        TRUE
+Type:               mercator_devolved
+Lon regular:        TRUE (0.3333° spacing)
+Mercator test:      TRUE (max deviation: 1e-12)
+Mercator resolution: 37106 m</code></pre>
+<p>The deviation from perfect Mercator spacing is at machine epsilon — the coordinates were computed analytically. The 1,976,400 stored values can be replaced by a CRS and an extent.</p>
+</section>
+<section id="step-2-is-it-regular-in-a-projected-crs" class="level3">
+<h3 class="anchored" data-anchor-id="step-2-is-it-regular-in-a-projected-crs">Step 2: Is it regular in a projected CRS?</h3>
+<p>When the grid isn’t rectilinear in lon/lat, it may be regular in some projected coordinate system. The test:</p>
+<ol type="1">
+<li>Characterise the data geometry — centre, extent, hemisphere — to select candidate projections.</li>
+<li>Project the lon/lat arrays into each candidate CRS.</li>
+<li>Check whether the projected coordinates form a regular grid: constant spacing along rows and columns, with rows horizontal in projected space.</li>
+</ol>
+<p>The <code>params()</code> function in gproj computes a geometric characterisation from any set of lon/lat coordinates:</p>
+<pre><code>&lt;params: 104912 points&gt;
+  centre:     -0.0000, -88.1448
+  extent:     [0.17, 359.84] x [-89.84, -39.36]
+  span:       359.67° lon x 50.47° lat
+  hemisphere: polar_south
+  aspect:     wide
+  axis:       azimuth=180.0°, tilt=90.0°, var_ratio=0.51/0.46/0.02</code></pre>
+<p>This is a CryoSat-2 sea ice product distributed as a NetCDF file with 316×332 lon/lat arrays. The <code>params()</code> output immediately tells us it’s circumpolar Antarctic data with no dominant axis orientation (variance split evenly between two components — characteristic of polar data rather than an elongated swath).</p>
+<p>Projecting the coordinates into EPSG:3412 (NSIDC Sea Ice Polar Stereographic South) and testing regularity:</p>
+<pre><code>Max row-y SD:      13.42 m
+Median dx:         25000 m
+Max dx deviation:  74.8 m
+Median dy:         -25000 m
+Max dy deviation:  71.0 m</code></pre>
+<p>Row-level y standard deviation of 13 metres on a 25 km grid means rows are horizontal to within 0.05% of a cell width. The x and y spacing deviations of ~70 m (0.3%) are the accumulated floating-point noise from the trig functions in the lon/lat → projection → lon/lat → projection roundtrip.</p>
+<p>These numbers are unambiguous. A genuinely curvilinear grid would show deviations of 10–100% of the cell size. The gap between 0.3% and “not regular” is enormous.</p>
+</section>
+<section id="step-3-recover-the-grid-specification" class="level3">
+<h3 class="anchored" data-anchor-id="step-3-recover-the-grid-specification">Step 3: Recover the grid specification</h3>
+<p>Once regularity is confirmed, the resolution is snapped to the nearest “round” value (25000 rather than 24999.7) and the extent is recovered from the cell centres plus half-cell margins:</p>
+<pre><code>Recovered extent:  -3950030  3950000  -3949995  4349967
+Known NSIDC extent: -3950000  3950000  -3950000  4350000
+Difference:         -30       0        5        -33</code></pre>
+<p>Within 33 metres of the exact grid specification. The extent values snap to exact multiples of the resolution, completing the reconstruction:</p>
+<pre><code>CRS:          EPSG:3412
+Resolution:   25000 × 25000 m
+Dimensions:   316 × 332
+Extent:       -3950000  3950000  -3950000  4350000</code></pre>
+<p>The 209,824 coordinate values have been replaced by four numbers and a CRS string. The reconstructed grid is not an approximation — it is the original grid, recovered exactly.</p>
+</section>
+</section>
+<section id="the-mercator-case" class="level2">
+<h2 class="anchored" data-anchor-id="the-mercator-case">The Mercator case</h2>
+<p>A subtler variant of this problem occurs with global ocean products. A Mercator projection produces a regular grid in eastings and northings, but when projected to lon/lat the latitude spacing becomes non-uniform: cells are compressed toward the poles following the inverse Mercator formula. The longitude spacing remains uniform.</p>
+<p>This is easy to miss because the grid <em>looks</em> rectilinear — it has separable 1D coordinate axes — and many tools will happily treat it as a lon/lat grid with variable spacing. But it’s not: it’s a Mercator grid with specific metric properties that are lost when treated as plain lon/lat.</p>
+<p>The detection is straightforward: convert the latitude values to Mercator y-coordinates and check whether the spacing becomes uniform. For the AVISO product tested above, the deviation from perfect Mercator spacing is 10⁻¹² — indistinguishable from the analytical formula.</p>
+</section>
+<section id="swath-geometry-and-projection-selection" class="level2">
+<h2 class="anchored" data-anchor-id="swath-geometry-and-projection-selection">Swath geometry and projection selection</h2>
+<p>Not all lon/lat arrays hide regular grids. Satellite swath data from sensors like VIIRS or MODIS is genuinely curvilinear — the coordinates follow the sensor’s scan geometry, and there is no single projected CRS that makes them regular. But the coordinates still have structure that can be exploited.</p>
+<p>The <code>params()</code> function characterises this structure using PCA on the 3D Cartesian coordinates of the data points. Converting lon/lat to points on the unit sphere before PCA avoids the distortions that would arise from operating directly in longitude/latitude space (particularly near the poles or antimeridian).</p>
+<p>For a VIIRS swath boundary:</p>
+<pre><code>&lt;params: 32436 points&gt;
+  centre:     -113.56, -20.81
+  extent:     [-180, 180] x [-84.44, 57.66]
+  hemisphere: polar_south
+  axis:       azimuth=12.4°, tilt=77.6°, var_ratio=0.85/0.14/0.02</code></pre>
+<p>The variance ratio of 0.85 in the first component indicates a strongly elongated dataset. The azimuth of 12.4° gives the bearing of the dominant axis — essentially the satellite ground track orientation.</p>
+<p>This feeds directly into projection selection. The <code>proj()</code> function uses the geometric characterisation to generate appropriate CRS parameters:</p>
+<ul>
+<li>Polar data with no dominant axis → stereographic or Lambert azimuthal equal-area, centred on the pole</li>
+<li>Elongated data with a dominant axis → oblique Mercator aligned to the data’s axis</li>
+<li>Mid-latitude wide bands → conic projections with secant latitudes derived from the data extent</li>
+<li>Small regions → stereographic centred on the data</li>
+</ul>
+<p>For the VIIRS swath, this produces an oblique Mercator projection aligned to the 12.4° ground track, which straightens the swath into a narrow strip in projected coordinates (aspect ratio ~11:1).</p>
+</section>
+<section id="the-opportunity" class="level2">
+<h2 class="anchored" data-anchor-id="the-opportunity">The opportunity</h2>
+<p>The detection of hidden regular grids is not a theoretical exercise. These grids exist throughout operational data archives — sea ice products, ocean altimetry, atmospheric reanalyses, satellite imagery. Every file that stores redundant lon/lat arrays for a regular projected grid is:</p>
+<ul>
+<li>Wasting storage (often 2× the data volume for the coordinate arrays alone)</li>
+<li>Losing precision (floating-point coordinates are noisier than the exact grid specification)</li>
+<li>Obscuring structure (downstream tools treat the data as irregular, triggering unnecessary resampling)</li>
+<li>Creating friction (users must discover the projection through external documentation or domain expertise)</li>
+</ul>
+<p>The regularity test demonstrated here is simple — a few lines of linear algebra and some tolerance checks — and could be applied routinely during data ingest or quality assessment. The tolerance gap between “regular with floating-point noise” (0.3% deviation) and “genuinely irregular” is wide enough that false positives are unlikely.</p>
+<p>For data producers, the message is: if your data is on a regular projected grid, store the grid specification, not the coordinates. A CRS string and four extent values are complete, exact, and universally understood.</p>
+<p>For data consumers and tool developers, the message is: when you encounter 2D lon/lat arrays, test for regularity before treating them as curvilinear. The answer may save you considerable complexity.</p>
+<p>The gproj package is in early development at <a href="https://github.com/mdsumner/gproj">github.com/mdsumner/gproj</a>.</p>
+<p>A previous iteration of this discussion was published here <a href="https://www.hypertidy.org/posts/2025-09-04_broken-netcdf/">hypertidy.org: Coordinates broken in NetCDF</a>.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("http:\/\/hypertidy\.org");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
