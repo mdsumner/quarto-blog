@@ -149,5 +149,5 @@ For data consumers and tool developers, the message is: when you encounter 2D lo
 
 The gproj package is in early development at [github.com/mdsumner/gproj](https://github.com/mdsumner/gproj).
 
-A previous iteration of this discussion was published here [hypertidy.org: Coordinates broken in NetCDF](https://www.hypertidy.org/posts/2025-09-04_broken-netcdf/). 
+A previous iteration of this discussion was published here [hypertidy.org: Coordinates broken in NetCDF](https://www.hypertidy.org/posts/2025-09-04_broken-netcdf/#throw-all-that-away-ignore-everything-above.). 
 
