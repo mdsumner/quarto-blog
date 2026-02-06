@@ -95,7 +95,7 @@ Dimensions:   316 × 332
 Extent:       -3950000  3950000  -3950000  4350000
 ```
 
-The 209,824 coordinate values have been replaced by four numbers and a CRS string. The reconstructed grid is not an approximation — it is the original grid, recovered exactly.
+The 209,824 coordinate values have been replaced by four numbers and a CRS string. The reconstructed grid is not an approximation — it is the original grid, recovered (near enough to) exactly.
 
 ## The Mercator case
 
