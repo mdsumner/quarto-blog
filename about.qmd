@@ -1,60 +1,39 @@
 ---
-title: "About"
+title: "Michael Sumner"
 image: profile.png
 about:
   template: trestles
   links:
     - icon: github
-      text: Github
+      text: GitHub
       href: https://github.com/mdsumner
     - icon: mastodon
       text: Fediverse
       href: https://rstats.me/@mdsumner
 ---
 
+I'm a researcher at the [Australian Antarctic Division](https://www.aad.gov.au/) in Hobart, working on geospatial data systems for Southern Ocean and Antarctic science. My day job involves satellite imagery, ocean model outputs, and tracking data — which means a lot of rasters, meshes, and coordinate transformations.
 
-This is a [**quarto**](https://quarto.org/) website for the [**hypertidy**](https://github.com/hypertidy) family of R packages for multi-dimensional and spatial data. 
+I maintain the [hypertidy](https://github.com/hypertidy) family of R packages (see the [packages listing](/packages.html)) and contribute to the broader R geospatial ecosystem. Most of what I build is motivated by problems that come up in research: needing direct access to GDAL without heavy abstractions, working with grids that don't fit the GIS raster mould, and connecting raster and vector through mesh-based data structures.
 
-Hypertidy is an approach to spatial or multi-dimensional data in R based on the following principles: 
+I originally created [vapour](https://github.com/hypertidy/vapour) to give R direct, dependency-light access to the GDAL C API — read raster and vector data without importing the whole spatial stack. Chris Toney's [gdalraster](https://github.com/firelab/gdalraster) now easily supersedes vapour, with comprehensive bindings and an active community. It's where I'd point anyone who wants to work close to GDAL in R today.
 
-* data sources are best managed with *database techniques*, which mostly means managing what you have and using clever indexing
-* *spatial is not special*, user-interfaces, graphics and time-series all involve 'space'
-* raster and vector are not naturally distinct, high-dimensional, curvilinear, cell-based rasters, polygon grids and ragged-arrays all cross this boundary
-* 'mesh-based' or 'indexed' data structures are central, general data types while traditionally "geospatial" structures are domain-specific optimizations, for example vector and raster exist at extremes of a continuum defined by mesh structures
-* simple features left topology behind, resulting in fragmented and inefficient workarounds in the geo-spatial communities 
-* R spatial needs better APIs, a rich ecosystem of small, composable software modules
-* tidy data principles are about leveraging databases and database techniques
+Hypertidy is a collaborative effort. [Mark Padgham](https://github.com/mpadge) wrote [geodist](https://github.com/hypertidy/geodist) and contributed core C++ to [laridae](https://github.com/hypertidy/laridae), and was central to the topology discussions that shaped [silicate](https://github.com/hypertidy/silicate). [Noam Ross](https://github.com/noamross) at [rOpenSci](https://ropensci.org/) originally created [fasterize](https://github.com/hypertidy/fasterize). [tidync](https://github.com/ropensci/tidync) went through rOpenSci review. Every day I rely on a collaborative data collection built with [bowerbird](https://github.com/AustralianAntarcticDivision/bowerbird) by [Ben Raymond](https://github.com/raymondben) at the AAD.
 
-Examples of these principles are seen in these R packages. 
+This blog is where I write about GDAL, raster logic, NetCDF, coordinate systems, and the R packages that tie them together.
 
-[**vapour**](https://github.com/hypertidy/vapour)
+## The hypertidy philosophy
 
-[**raadtools**](https://github.com/AustralianAntarcticDivision/raadtools) and  [**angstroms**](https://github.com/AustralianAntarcticDivision/angstroms)
+Hypertidy is built on a few core ideas:
 
-[**tidync**](https://github.com/ropensci/tidync), [**lazyraster**](https://github.com/hypertidy/lazyraster), 
+**Spatial is not special.** User interfaces, graphics, and time-series all involve "space". Date-time is a projection. Longitude-latitude is a projection. They're all mappings to a coordinate axis.
 
-[**silicate**](https://github.com/hypertidy/silicate), [**anglr**](https://github.com/hypertidy/anglr), [**rbgm**](https://github.com/AustralianAntarcticDivision/rbgm/)
+**Raster and vector are not naturally distinct.** High-dimensional, curvilinear, cell-based rasters, polygon grids, and ragged arrays all cross the traditional raster/vector boundary. Both are special cases of mesh structures — GIS just optimized for the extremes.
 
+**Topology matters.** Simple features left topology behind, resulting in fragmented and inefficient workarounds. Polygons are topologically identical to closed lines. Points, lines, and surfaces are 0-, 1-, and 2-dimensional primitives whose topology is independent of their geometry.
 
+**Data sources are databases.** Manage what you have, use clever indexing, don't materialize what you don't need. This is what GDAL does well, and it's what [vapour](https://github.com/hypertidy/vapour) exposes directly.
 
-# Hypertidy manifesto
+**Small, composable tools.** R spatial needs better APIs — a rich ecosystem of focused packages rather than monolithic frameworks. Thin wrappers over GDAL and PROJ, not heavy abstractions on top of them.
 
-There's a series of principles that hypertidy represents, we don't think these are very controversial but they do not align well with 
-some high-profile geo-spatial projects. 
-
-
-## Gridded data 
-
-Hypertidy recognizes that not all gridded data fit into the GIS raster conventions. Gridded data comes in many forms, geographic with longitude-latitude or projected spaces, with time and or depth dimensions, with different orderings of axes (i.e. time-first, the latitude-longitude), and with generally any arbitrary space. A space is simply a set of axes with particular units and projection, and yes we mean "space" and "projection" in the more general mathematical sense. Date-time data is a projection, there is a mapping of a particular set of values to the real line and the position on that line for particular instant is defined by the axis units and epoch. 
-
-Mesh and grid share the same meaning in some contexts. 
-
-## Structured vs. unstructured, topology vs. geometry
-
-Array-based data have a straight-forward relationship between a set of axes that have discrete steps. These are "structured grids". Unstructured grids include triangulations, non-regularly binned histograms, tetrahedral meshes and ragged arrays. 
-
-An unstructured mesh (grid) is able to represent any data structure, but structured meshes have some advantages because of the regular indexing relationship between dimensions. 
-
-GIS vector constructs "polygons", "lines", "points" are special case optimizations of the unstructured grid case. Polygons really are topologically identical to lines, and they are a dead-end in the broader scheme of dimensionality. Points and lines can are topologicaly 0-dimensional and 1-dimensional respectively, and this shape-constraint is the same no matter what geometric dimension they are defined in. A line can twist around a 4D space with x, y, z, t coordinates at its segment nodes or it can be constrained to single dimension with only one of those coordinates specifying its position. The topology of the line is completely independent of the geometry, if we treat the line as composed of topological primitives. 
-
-Polygons are not composed of topological primitives, but they can be treated as being composed of line primitives. 
+**Structured and unstructured grids are a continuum.** Array-based data have a regular indexing relationship between dimensions. Unstructured grids — triangulations, tetrahedral meshes, ragged arrays — can represent anything. GIS vectors are a special-case optimization of the unstructured case. The general solution is the mesh.
