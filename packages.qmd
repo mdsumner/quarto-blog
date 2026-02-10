@@ -21,12 +21,12 @@ The foundation: low-level access to GDAL without imposing a data model.
 
 | Package | | Description |
 |---|---|---|
-| [vapour](https://github.com/hypertidy/vapour) | [![vapour status badge](https://hypertidy.r-universe.dev/vapour/badges/version)](https://hypertidy.r-universe.dev/vapour) | Low-level GDAL API for R. Raster and vector read via RasterIO and the Warper, format-agnostic. The workhorse. |
-| [whatarelief](https://github.com/hypertidy/whatarelief) | [![whatarelief status badge](https://hypertidy.r-universe.dev/whatarelief/badges/version)](https://hypertidy.r-universe.dev/whatarelief) | Obtain raster data via the GDAL warper. High-level wrappers around vapour for common tasks. |
-| [controlledburn](https://github.com/hypertidy/controlledburn) | [![controlledburn status badge](https://hypertidy.r-universe.dev/controlledburn/badges/version)](https://hypertidy.r-universe.dev/controlledburn) | Don't materialize, just rasterize! GDAL rasterization without needing the output in memory. |
-| [sds](https://github.com/hypertidy/sds) | [![sds status badge](https://hypertidy.r-universe.dev/sds/badges/version)](https://hypertidy.r-universe.dev/sds) | Spatial Data Sources — a curated collection of interesting GDAL-readable data source URLs and connection strings. |
-| [lazysf](https://github.com/hypertidy/lazysf) | [![lazysf status badge](https://hypertidy.r-universe.dev/lazysf/badges/version)](https://hypertidy.r-universe.dev/lazysf) | Lazy dplyr backend for GDAL vector data sources. Query without loading. |
-| [ximage](https://github.com/hypertidy/ximage) | [![ximage status badge](https://hypertidy.r-universe.dev/ximage/badges/version)](https://hypertidy.r-universe.dev/ximage) | Good `image()`. Native-resolution raster plotting done right. |
+| [vapour](https://github.com/hypertidy/vapour) | <a href="https://hypertidy.r-universe.dev/vapour"><img src="https://hypertidy.r-universe.dev/vapour/badges/version" alt="vapour status badge"></a> | Low-level GDAL API for R. Raster and vector read via RasterIO and the Warper, format-agnostic. The workhorse. |
+| [whatarelief](https://github.com/hypertidy/whatarelief) | <a href="https://hypertidy.r-universe.dev/whatarelief"><img src="https://hypertidy.r-universe.dev/whatarelief/badges/version" alt="whatarelief status badge"></a> | Obtain raster data via the GDAL warper. High-level wrappers around vapour for common tasks. |
+| [controlledburn](https://github.com/hypertidy/controlledburn) | <a href="https://hypertidy.r-universe.dev/controlledburn"><img src="https://hypertidy.r-universe.dev/controlledburn/badges/version" alt="controlledburn status badge"></a> | Don't materialize, just rasterize! GDAL rasterization without needing the output in memory. |
+| [sds](https://github.com/hypertidy/sds) | <a href="https://hypertidy.r-universe.dev/sds"><img src="https://hypertidy.r-universe.dev/sds/badges/version" alt="sds status badge"></a> | Spatial Data Sources — a curated collection of interesting GDAL-readable data source URLs and connection strings. |
+| [lazysf](https://github.com/hypertidy/lazysf) | <a href="https://hypertidy.r-universe.dev/lazysf"><img src="https://hypertidy.r-universe.dev/lazysf/badges/version" alt="lazysf status badge"></a> | Lazy dplyr backend for GDAL vector data sources. Query without loading. |
+| [ximage](https://github.com/hypertidy/ximage) | <a href="https://hypertidy.r-universe.dev/ximage"><img src="https://hypertidy.r-universe.dev/ximage/badges/version" alt="ximage status badge"></a> | Good `image()`. Native-resolution raster plotting done right. |
 
 ## Raster and grid logic
 
@@ -34,9 +34,9 @@ Grid abstractions, rasterization, and cell-based operations.
 
 | Package | | Description |
 |---|---|---|
-| [vaster](https://github.com/hypertidy/vaster) | [![vaster status badge](https://hypertidy.r-universe.dev/vaster/badges/version)](https://hypertidy.r-universe.dev/vaster) | Grid logic, without any pesky data. Extent, dimension, resolution, cell indexing — no pixels required. |
-| [fasterize](https://github.com/hypertidy/fasterize) | [![fasterize status badge](https://hypertidy.r-universe.dev/fasterize/badges/version)](https://hypertidy.r-universe.dev/fasterize) | High-performance polygon-to-raster conversion. |
-| [tabularaster](https://github.com/hypertidy/tabularaster) | [![tabularaster status badge](https://hypertidy.r-universe.dev/tabularaster/badges/version)](https://hypertidy.r-universe.dev/tabularaster) | Tidy raster extraction — cell numbers as data frames, not lists of matrices. |
+| [vaster](https://github.com/hypertidy/vaster) | <a href="https://hypertidy.r-universe.dev/vaster"><img src="https://hypertidy.r-universe.dev/vaster/badges/version" alt="vaster status badge"></a> | Grid logic, without any pesky data. Extent, dimension, resolution, cell indexing — no pixels required. |
+| [fasterize](https://github.com/hypertidy/fasterize) | <a href="https://hypertidy.r-universe.dev/fasterize"><img src="https://hypertidy.r-universe.dev/fasterize/badges/version" alt="fasterize status badge"></a> | High-performance polygon-to-raster conversion. |
+| [tabularaster](https://github.com/hypertidy/tabularaster) | <a href="https://hypertidy.r-universe.dev/tabularaster"><img src="https://hypertidy.r-universe.dev/tabularaster/badges/version" alt="tabularaster status badge"></a> | Tidy raster extraction — cell numbers as data frames, not lists of matrices. |
 
 
 ## Projections and coordinate systems
@@ -45,11 +45,11 @@ Thin wrappers around PROJ for coordinate transformation and projection analysis.
 
 | Package | | Description |
 |---|---|---|
-| [PROJ](https://github.com/hypertidy/PROJ) | [![PROJ status badge](https://hypertidy.r-universe.dev/PROJ/badges/version)](https://hypertidy.r-universe.dev/PROJ) | Straightforward R wrapper for the PROJ library (≥6). Coordinate transformation for generic data. |
-| [reproj](https://github.com/hypertidy/reproj) | [![reproj status badge](https://hypertidy.r-universe.dev/reproj/badges/version)](https://hypertidy.r-universe.dev/reproj) | Reproject anything — generic methods for matrices, data frames, spatial objects. |
+| [PROJ](https://github.com/hypertidy/PROJ) | <a href="https://hypertidy.r-universe.dev/PROJ"><img src="https://hypertidy.r-universe.dev/PROJ/badges/version" alt="PROJ status badge"></a> | Straightforward R wrapper for the PROJ library (≥6). Coordinate transformation for generic data. |
+| [reproj](https://github.com/hypertidy/reproj) | <a href="https://hypertidy.r-universe.dev/reproj"><img src="https://hypertidy.r-universe.dev/reproj/badges/version" alt="reproj status badge"></a> | Reproject anything — generic methods for matrices, data frames, spatial objects. |
 | [tissot](https://github.com/mdsumner/tissot) | | Tissot Indicatrix: visualize and quantify local distortion in map projections. |
-| [graticule](https://github.com/hypertidy/graticule) | [![graticule status badge](https://hypertidy.r-universe.dev/graticule/badges/version)](https://hypertidy.r-universe.dev/graticule) | Meridional and parallel lines for maps, with control over placement and extent. |
-| [geodist](https://github.com/hypertidy/geodist) | [![geodist status badge](https://hypertidy.r-universe.dev/geodist/badges/version)](https://hypertidy.r-universe.dev/geodist) | Ultra lightweight, ultra fast calculation of geodesic distances. |
+| [graticule](https://github.com/hypertidy/graticule) | <a href="https://hypertidy.r-universe.dev/graticule"><img src="https://hypertidy.r-universe.dev/graticule/badges/version" alt="graticule status badge"></a> | Meridional and parallel lines for maps, with control over placement and extent. |
+| [geodist](https://github.com/hypertidy/geodist) | <a href="https://hypertidy.r-universe.dev/geodist"><img src="https://hypertidy.r-universe.dev/geodist/badges/version" alt="geodist status badge"></a> | Ultra lightweight, ultra fast calculation of geodesic distances. |
 | [gproj](https://github.com/mdsumner/gproj) | | Projection selection — choose an appropriate map projection for a given region. |
 
 
@@ -59,9 +59,9 @@ Decompose spatial data into mesh primitives — edges, triangles, quads — for 
 
 | Package | | Description |
 |---|---|---|
-| [silicate](https://github.com/hypertidy/silicate) | [![silicate status badge](https://hypertidy.r-universe.dev/silicate/badges/version)](https://hypertidy.r-universe.dev/silicate) | A general form for complex data. Path, arc, edge, and triangle models that normalize geometry and preserve topology. |
-| [anglr](https://github.com/hypertidy/anglr) | [![anglr status badge](https://hypertidy.r-universe.dev/anglr/badges/version)](https://hypertidy.r-universe.dev/anglr) | Mesh topology and 3D visualization for spatial data. Combines raster and vector as textured meshes via rgl. |
-| [quadmesh](https://github.com/hypertidy/quadmesh) | [![quadmesh status badge](https://hypertidy.r-universe.dev/quadmesh/badges/version)](https://hypertidy.r-universe.dev/quadmesh) | Raster grids as indexed quad meshes — lossless reprojection of cells, 3D plotting, barycentric interpolation. |
+| [silicate](https://github.com/hypertidy/silicate) | <a href="https://hypertidy.r-universe.dev/silicate"><img src="https://hypertidy.r-universe.dev/silicate/badges/version" alt="silicate status badge"></a> | A general form for complex data. Path, arc, edge, and triangle models that normalize geometry and preserve topology. |
+| [anglr](https://github.com/hypertidy/anglr) | <a href="https://hypertidy.r-universe.dev/anglr"><img src="https://hypertidy.r-universe.dev/anglr/badges/version" alt="anglr status badge"></a> | Mesh topology and 3D visualization for spatial data. Combines raster and vector as textured meshes via rgl. |
+| [quadmesh](https://github.com/hypertidy/quadmesh) | <a href="https://hypertidy.r-universe.dev/quadmesh"><img src="https://hypertidy.r-universe.dev/quadmesh/badges/version" alt="quadmesh status badge"></a> | Raster grids as indexed quad meshes — lossless reprojection of cells, 3D plotting, barycentric interpolation. |
 | [polymer](https://github.com/mdsumner/polymer) | | Polygon overlay via constrained triangulation. General intersections through a shared triangle pool. |
 
 
@@ -71,8 +71,8 @@ Tools for navigating and extracting from NetCDF, Zarr, and other array-based dat
 
 | Package | | Description |
 |---|---|---|
-| [tidync](https://github.com/ropensci/tidync) | [![tidync status badge](https://hypertidy.r-universe.dev/tidync/badges/version)](https://hypertidy.r-universe.dev/tidync) | Tidy approach to NetCDF. Explore grids, filter dimensions, extract as arrays or tibbles. [rOpenSci](https://docs.ropensci.org/tidync/). |
-| [ncmeta](https://github.com/hypertidy/ncmeta) | [![ncmeta status badge](https://hypertidy.r-universe.dev/ncmeta/badges/version)](https://hypertidy.r-universe.dev/ncmeta) | Straightforward NetCDF metadata — variables, dimensions, attributes, grids, axes in tidy form. |
+| [tidync](https://github.com/ropensci/tidync) | <a href="https://hypertidy.r-universe.dev/tidync"><img src="https://hypertidy.r-universe.dev/tidync/badges/version" alt="tidync status badge"></a> | Tidy approach to NetCDF. Explore grids, filter dimensions, extract as arrays or tibbles. [rOpenSci](https://docs.ropensci.org/tidync/). |
+| [ncmeta](https://github.com/hypertidy/ncmeta) | <a href="https://hypertidy.r-universe.dev/ncmeta"><img src="https://hypertidy.r-universe.dev/ncmeta/badges/version" alt="ncmeta status badge"></a> | Straightforward NetCDF metadata — variables, dimensions, attributes, grids, axes in tidy form. |
 
 
 ## Data access
@@ -81,8 +81,8 @@ Packages for getting at specific data sources.
 
 | Package | | Description |
 |---|---|---|
-| [ceramic](https://github.com/hypertidy/ceramic) | [![ceramic status badge](https://hypertidy.r-universe.dev/ceramic/badges/version)](https://hypertidy.r-universe.dev/ceramic) | Read image server tiles direct with GDAL, or cache locally. Mapbox, elevation, satellite imagery. |
-| [L3bin](https://github.com/hypertidy/L3bin) | [![L3bin status badge](https://hypertidy.r-universe.dev/L3bin/badges/version)](https://hypertidy.r-universe.dev/L3bin) | Integerized Sinusoidal Binning Scheme for NASA Level 3 ocean colour data. |
+| [ceramic](https://github.com/hypertidy/ceramic) | <a href="https://hypertidy.r-universe.dev/ceramic"><img src="https://hypertidy.r-universe.dev/ceramic/badges/version" alt="ceramic status badge"></a> | Read image server tiles direct with GDAL, or cache locally. Mapbox, elevation, satellite imagery. |
+| [L3bin](https://github.com/hypertidy/L3bin) | <a href="https://hypertidy.r-universe.dev/L3bin"><img src="https://hypertidy.r-universe.dev/L3bin/badges/version" alt="L3bin status badge"></a> | Integerized Sinusoidal Binning Scheme for NASA Level 3 ocean colour data. |
 
 
 ## Antarctic and Southern Ocean
