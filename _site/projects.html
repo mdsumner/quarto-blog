@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Michael Sumner – hypertidy-blog</title>
+<title>Projects &amp; Infrastructure – hypertidy-blog</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -33,6 +33,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-2f5df379a58b258e96c21c0638c20c03.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-b53751a350365c71b6c909e95f209ed1.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
@@ -70,19 +71,13 @@ ul.task-list li input[type="checkbox"] {
 
 
 <link rel="stylesheet" href="styles.css">
-<meta property="og:title" content="Michael Sumner – hypertidy-blog">
+<meta property="og:title" content="Projects &amp; Infrastructure – hypertidy-blog">
 <meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
-<meta property="og:image" content="https://hypertidy.org/profile.png">
 <meta property="og:site_name" content="hypertidy-blog">
-<meta property="og:image:height" content="420">
-<meta property="og:image:width" content="420">
-<meta name="twitter:title" content="Michael Sumner – hypertidy-blog">
+<meta name="twitter:title" content="Projects &amp; Infrastructure – hypertidy-blog">
 <meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
-<meta name="twitter:image" content="https://hypertidy.org/profile.png">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image-height" content="420">
-<meta name="twitter:image-width" content="420">
 </head>
 
 <body class="nav-fixed fullcontent">
@@ -107,7 +102,11 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Packages</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./about.html" aria-current="page"> 
+    <a class="nav-link active" href="./projects.html" aria-current="page"> 
+<span class="menu-text">Projects &amp; Infrastructure</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./about.html"> 
 <span class="menu-text">Michael Sumner</span></a>
   </li>  
   <li class="nav-item compact">
@@ -139,49 +138,48 @@ ul.task-list li input[type="checkbox"] {
 <!-- margin-sidebar -->
     
 <!-- main -->
-<div class="quarto-about-trestles">
-  <div class="about-entity">
-    <img src="profile.png" class="about-image
-  rounded " style="width: 20em;">
+<main class="content" id="quarto-document-content">
+
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Michael Sumner</h1>
+<h1 class="title">Projects &amp; Infrastructure</h1>
 </div>
+
+
+
 <div class="quarto-title-meta">
+
+    
+  
+    
   </div>
+  
+
+
 </header>
-    <div class="about-links">
-  <a href="https://github.com/mdsumner" class="about-link" rel="" target="">
-    <i class="bi bi-github"></i>
-     <span class="about-link-text">GitHub</span>
-  </a>
-  <a href="https://rstats.me/@mdsumner" class="about-link" rel="" target="">
-    <i class="bi bi-mastodon"></i>
-     <span class="about-link-text">Fediverse</span>
-  </a>
-</div>
-  </div>
-  <div class="about-contents"><main class="content" id="quarto-document-content">
-<p>I’m a researcher at the <a href="https://www.antarctica.gov.au/">Australian Antarctic Division</a> in Hobart, working on geospatial data systems for Southern Ocean and Antarctic science. My day job involves satellite imagery, ocean model outputs, and tracking data — which means a lot of rasters, meshes, and coordinate transformations.</p>
-<p>I maintain the <a href="https://github.com/hypertidy">hypertidy</a> family of R packages (see the <a href="./packages.html">packages listing</a>) and contribute to the broader R geospatial ecosystem. Most of what I build is motivated by problems that come up in research: needing direct access to GDAL without heavy abstractions, working with grids that don’t fit the GIS raster mould, and connecting raster and vector through mesh-based data structures.</p>
-<p>I originally created <a href="https://github.com/hypertidy/vapour">vapour</a> to give R direct, dependency-light access to the GDAL C API — read raster and vector data without importing the whole spatial stack. Chris Toney’s <a href="https://github.com/firelab/gdalraster">gdalraster</a> now easily supersedes vapour, with comprehensive bindings and an active community. It’s where I’d point anyone who wants to work close to GDAL in R today.</p>
-<p>Hypertidy is a collaborative effort. <a href="https://github.com/mpadge">Mark Padgham</a> wrote <a href="https://github.com/hypertidy/geodist">geodist</a> and contributed core C++ to <a href="https://github.com/hypertidy/laridae">laridae</a>, and was central to the topology discussions that shaped <a href="https://github.com/hypertidy/silicate">silicate</a>. <a href="https://github.com/noamross">Noam Ross</a> at <a href="https://ropensci.org/">rOpenSci</a> originally created <a href="https://github.com/hypertidy/fasterize">fasterize</a>. <a href="https://github.com/ropensci/tidync">tidync</a> went through rOpenSci review. Every day I rely on a collaborative data collection built with <a href="https://github.com/AustralianAntarcticDivision/bowerbird">bowerbird</a> by <a href="https://github.com/raymondben">Ben Raymond</a> at the AAD.</p>
-<p>This blog is where I write about GDAL, raster logic, NetCDF, coordinate systems, and the R packages that tie them together.</p>
-<section id="the-hypertidy-philosophy" class="level2">
-<h2 data-anchor-id="the-hypertidy-philosophy">The hypertidy philosophy</h2>
-<p>Hypertidy is built on a few core ideas:</p>
-<p><strong>Spatial is not special.</strong> User interfaces, graphics, and time-series all involve “space”. Date-time is a projection. Longitude-latitude is a projection. They’re all mappings to a coordinate axis.</p>
-<p><strong>Raster and vector are not naturally distinct.</strong> High-dimensional, curvilinear, cell-based rasters, polygon grids, and ragged arrays all cross the traditional raster/vector boundary. Both are special cases of mesh structures — GIS just optimized for the extremes.</p>
-<p><strong>Topology matters.</strong> Simple features left topology behind, resulting in fragmented and inefficient workarounds. Polygons are topologically identical to closed lines. Points, lines, and surfaces are 0-, 1-, and 2-dimensional primitives whose topology is independent of their geometry.</p>
-<p><strong>Data sources are databases.</strong> Manage what you have, use clever indexing, don’t materialize what you don’t need. This is what GDAL does well, and it’s what <a href="https://github.com/firelab/gdalraster">gdalraster</a> exposes directly.</p>
-<p><strong>Small, composable tools.</strong> R spatial needs better APIs — a rich ecosystem of focused packages rather than monolithic frameworks. Thin wrappers over GDAL and PROJ, not heavy abstractions on top of them.</p>
-<p><strong>Structured and unstructured grids are a continuum.</strong> Array-based data have a regular indexing relationship between dimensions. Unstructured grids — triangulations, tetrahedral meshes, ragged arrays — can represent anything. GIS vectors are a special-case optimization of the unstructured case. The general solution is the mesh.</p>
+
+
+<p>Beyond the <a href="./packages.html">R packages</a>, these are projects and infrastructure I maintain or co-maintain that support the day-to-day work.</p>
+<section id="data-collection" class="level2">
+<h2 class="anchored" data-anchor-id="data-collection">Data collection</h2>
+<p><a href="https://github.com/ropensci/bowerbird">bowerbird</a> and <a href="https://github.com/AustralianAntarcticDivision/blueant">blueant</a> are the foundation of data access at the AAD. Bowerbird is a framework for mirroring remote data collections to a local file system and keeping them up to date — it went through rOpenSci review and is co-authored with <a href="https://github.com/raymondben">Ben Raymond</a>. Blueant provides the Antarctic and Southern Ocean data source definitions: sea ice, bathymetry, ocean reanalysis, atmospheric models, satellite altimetry, and more from NASA, NOAA, Copernicus, NSIDC, and others. Between them they manage terabytes of environmental data that feed into everything from voyage planning to ecosystem models. I’m an equal contributor to Ben on vision and design across both packages.</p>
+</section>
+<section id="software-docker-and-ci" class="level2">
+<h2 class="anchored" data-anchor-id="software-docker-and-ci">Software, Docker and CI</h2>
+<p><a href="https://github.com/hypertidy/gdal-ci-r">gdal-ci-r</a> builds Docker images with bleeding-edge GDAL, PROJ, and GEOS aligned across R and Python — a single image where <code>gdalraster::gdal_version()</code>, <code>gdalinfo --version</code>, <code>import osgeo.gdal</code> and others all report the same library versions. It provides GitHub Actions CI infrastructure for testing R geospatial packages against these images.</p>
+<p><a href="https://github.com/mdsumner/gdal-r-python">gdal-r-python</a> is a resource for collating instructive documents about the software landscape.</p>
+</section>
+<section id="monitoring-and-field-tools" class="level2">
+<h2 class="anchored" data-anchor-id="monitoring-and-field-tools">Monitoring and field tools</h2>
+<p><a href="https://github.com/mdsumner/nuyina-proximal">nuyina-proximal</a> is an interactive viewer for RSV Nuyina vessel tracks, with timeline-based navigation across voyage seasons, animation controls, and direct links to satellite imagery at vessel positions.</p>
+<p><a href="https://github.com/hypertidy/estinel">estinel</a> is a satellite image processing pipeline and catalog browser for Sentinel-2 imagery over Antarctic and sub-Antarctic sites. It includes a collaborative rating interface for systematic image quality assessment and supports incremental catalog updates.</p>
+<hr>
+<p><em>This is a partial listing — more projects to come after a cleanup pass across the GitHub organisations.</em></p>
 
 
 </section>
-</main></div>
-</div>
- <!-- /main -->
+
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
@@ -346,6 +344,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   } else {
     toggleColorMode(false);
   }
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
   const isCodeAnnotation = (el) => {
     for (const clz of el.classList) {
       if (clz.startsWith('code-annotation-')) {                     

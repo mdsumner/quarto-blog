@@ -46,7 +46,7 @@
   </url>
   <url>
     <loc>https://hypertidy.org/about.html</loc>
-    <lastmod>2025-06-30T01:52:58.640Z</lastmod>
+    <lastmod>2026-02-10T21:41:45.509Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/index.html</loc>
@@ -87,5 +87,9 @@
   <url>
     <loc>https://hypertidy.org/posts/2024-12-05_idea_update/idea-update.html</loc>
     <lastmod>2026-02-10T11:14:10.816Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/projects.html</loc>
+    <lastmod>2026-02-10T21:46:13.293Z</lastmod>
   </url>
 </urlset>

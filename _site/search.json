@@ -373,9 +373,9 @@
   {
     "objectID": "about.html",
     "href": "about.html",
-    "title": "About",
+    "title": "Michael Sumner",
     "section": "",
-    "text": "This is a quarto website for the hypertidy family of R packages for multi-dimensional and spatial data.\nHypertidy is an approach to spatial or multi-dimensional data in R based on the following principles:\nExamples of these principles are seen in these R packages.\nvapour\nraadtools and angstroms\ntidync, lazyraster,\nsilicate, anglr, rbgm"
+    "text": "I’m a researcher at the Australian Antarctic Division in Hobart, working on geospatial data systems for Southern Ocean and Antarctic science. My day job involves satellite imagery, ocean model outputs, and tracking data — which means a lot of rasters, meshes, and coordinate transformations.\nI maintain the hypertidy family of R packages (see the packages listing) and contribute to the broader R geospatial ecosystem. Most of what I build is motivated by problems that come up in research: needing direct access to GDAL without heavy abstractions, working with grids that don’t fit the GIS raster mould, and connecting raster and vector through mesh-based data structures.\nI originally created vapour to give R direct, dependency-light access to the GDAL C API — read raster and vector data without importing the whole spatial stack. Chris Toney’s gdalraster now easily supersedes vapour, with comprehensive bindings and an active community. It’s where I’d point anyone who wants to work close to GDAL in R today.\nHypertidy is a collaborative effort. Mark Padgham wrote geodist and contributed core C++ to laridae, and was central to the topology discussions that shaped silicate. Noam Ross at rOpenSci originally created fasterize. tidync went through rOpenSci review. Every day I rely on a collaborative data collection built with bowerbird by Ben Raymond at the AAD.\nThis blog is where I write about GDAL, raster logic, NetCDF, coordinate systems, and the R packages that tie them together."
   },
   {
     "objectID": "about.html#gridded-data",
@@ -831,5 +831,47 @@
     "title": "IDEA - data and software",
     "section": "How are we doing this",
     "text": "How are we doing this\n\nThe old and new tools reflect user-demand, tell us your ideas!\nModern tech: cloud-native and efficient public-available files\nData curation and cataloguing tools: {bowerbird}, STAC, VirtualiZarr\nExploring best-practice usage in Python xarray, odc, and in R terra, gdalraster, rsi\nContributing to software libraries GDAL.org, and community with AADC, SCAR, rOpenSci, Pangeo, Radiant Earth, Opendatacube, Digital Earth Antarctica"
+  },
+  {
+    "objectID": "projects.html",
+    "href": "projects.html",
+    "title": "Projects & Infrastructure",
+    "section": "",
+    "text": "Beyond the R packages, these are projects and infrastructure I maintain or co-maintain that support the day-to-day work."
+  },
+  {
+    "objectID": "projects.html#data-collection",
+    "href": "projects.html#data-collection",
+    "title": "Projects & Infrastructure",
+    "section": "Data collection",
+    "text": "Data collection\nbowerbird and blueant are the foundation of data access at the AAD. Bowerbird is a framework for mirroring remote data collections to a local file system and keeping them up to date — it went through rOpenSci review and is co-authored with Ben Raymond. Blueant provides the Antarctic and Southern Ocean data source definitions: sea ice, bathymetry, ocean reanalysis, atmospheric models, satellite altimetry, and more from NASA, NOAA, Copernicus, NSIDC, and others. Between them they manage terabytes of environmental data that feed into everything from voyage planning to ecosystem models. I’m an equal contributor to Ben on vision and design across both packages."
+  },
+  {
+    "objectID": "projects.html#docker-and-ci",
+    "href": "projects.html#docker-and-ci",
+    "title": "Projects & Infrastructure",
+    "section": "Docker and CI",
+    "text": "Docker and CI\ngdal-r-python builds Docker images with bleeding-edge GDAL, PROJ, and GEOS aligned across R and Python — a single image where terra::gdal(), gdalinfo --version, and import osgeo.gdal all report the same library versions. gdal-ci-r provides the GitHub Actions CI infrastructure for testing R geospatial packages against these images, using conda-forge to avoid the dual-PROJ problems that plague the standard osgeo Docker images."
+  },
+  {
+    "objectID": "projects.html#monitoring-and-field-tools",
+    "href": "projects.html#monitoring-and-field-tools",
+    "title": "Projects & Infrastructure",
+    "section": "Monitoring and field tools",
+    "text": "Monitoring and field tools\nnuyina-proximal is an interactive viewer for RSV Nuyina vessel tracks, with timeline-based navigation across voyage seasons, animation controls, and direct links to satellite imagery at vessel positions.\nestinel is a satellite image processing pipeline and catalog browser for Sentinel-2 imagery over Antarctic and sub-Antarctic sites. It includes a collaborative rating interface for systematic image quality assessment and supports incremental catalog updates.\n\nThis is a partial listing — more projects to come after a cleanup pass across the GitHub organisations."
+  },
+  {
+    "objectID": "about.html#the-hypertidy-philosophy",
+    "href": "about.html#the-hypertidy-philosophy",
+    "title": "Michael Sumner",
+    "section": "The hypertidy philosophy",
+    "text": "The hypertidy philosophy\nHypertidy is built on a few core ideas:\nSpatial is not special. User interfaces, graphics, and time-series all involve “space”. Date-time is a projection. Longitude-latitude is a projection. They’re all mappings to a coordinate axis.\nRaster and vector are not naturally distinct. High-dimensional, curvilinear, cell-based rasters, polygon grids, and ragged arrays all cross the traditional raster/vector boundary. Both are special cases of mesh structures — GIS just optimized for the extremes.\nTopology matters. Simple features left topology behind, resulting in fragmented and inefficient workarounds. Polygons are topologically identical to closed lines. Points, lines, and surfaces are 0-, 1-, and 2-dimensional primitives whose topology is independent of their geometry.\nData sources are databases. Manage what you have, use clever indexing, don’t materialize what you don’t need. This is what GDAL does well, and it’s what gdalraster exposes directly.\nSmall, composable tools. R spatial needs better APIs — a rich ecosystem of focused packages rather than monolithic frameworks. Thin wrappers over GDAL and PROJ, not heavy abstractions on top of them.\nStructured and unstructured grids are a continuum. Array-based data have a regular indexing relationship between dimensions. Unstructured grids — triangulations, tetrahedral meshes, ragged arrays — can represent anything. GIS vectors are a special-case optimization of the unstructured case. The general solution is the mesh."
+  },
+  {
+    "objectID": "projects.html#software-docker-and-ci",
+    "href": "projects.html#software-docker-and-ci",
+    "title": "Projects & Infrastructure",
+    "section": "Software, Docker and CI",
+    "text": "Software, Docker and CI\ngdal-ci-r builds Docker images with bleeding-edge GDAL, PROJ, and GEOS aligned across R and Python — a single image where gdalraster::gdal_version(), gdalinfo --version, import osgeo.gdal and others all report the same library versions. It provides GitHub Actions CI infrastructure for testing R geospatial packages against these images.\ngdal-r-python is a resource for collating instructive documents about the software landscape."
   }
 ]

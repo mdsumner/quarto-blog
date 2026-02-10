@@ -1,0 +1,25 @@
+---
+title: "Projects & Infrastructure"
+---
+
+Beyond the [R packages](/packages.html), these are projects and infrastructure I maintain or co-maintain that support the day-to-day work.
+
+## Data collection
+
+[bowerbird](https://github.com/ropensci/bowerbird) and [blueant](https://github.com/AustralianAntarcticDivision/blueant) are the foundation of data access at the AAD. Bowerbird is a framework for mirroring remote data collections to a local file system and keeping them up to date — it went through rOpenSci review and is co-authored with [Ben Raymond](https://github.com/raymondben). Blueant provides the Antarctic and Southern Ocean data source definitions: sea ice, bathymetry, ocean reanalysis, atmospheric models, satellite altimetry, and more from NASA, NOAA, Copernicus, NSIDC, and others. Between them they manage terabytes of environmental data that feed into everything from voyage planning to ecosystem models. I'm an equal contributor to Ben on vision and design across both packages.
+
+## Software, Docker and CI
+
+[gdal-ci-r](https://github.com/hypertidy/gdal-ci-r) builds Docker images with bleeding-edge GDAL, PROJ, and GEOS aligned across R and Python — a single image where `gdalraster::gdal_version()`, `gdalinfo --version`, `import osgeo.gdal` and others all report the same library versions. It provides GitHub Actions CI infrastructure for testing R geospatial packages against these images. 
+
+[gdal-r-python](https://github.com/mdsumner/gdal-r-python) is a resource for collating instructive documents about the software landscape. 
+
+## Monitoring and field tools
+
+[nuyina-proximal](https://github.com/mdsumner/nuyina-proximal) is an interactive viewer for RSV Nuyina vessel tracks, with timeline-based navigation across voyage seasons, animation controls, and direct links to satellite imagery at vessel positions.
+
+[estinel](https://github.com/hypertidy/estinel) is a satellite image processing pipeline and catalog browser for Sentinel-2 imagery over Antarctic and sub-Antarctic sites. It includes a collaborative rating interface for systematic image quality assessment and supports incremental catalog updates.
+
+---
+
+*This is a partial listing — more projects to come after a cleanup pass across the GitHub organisations.*

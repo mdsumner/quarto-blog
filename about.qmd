@@ -12,7 +12,7 @@ about:
       href: https://rstats.me/@mdsumner
 ---
 
-I'm a researcher at the [Australian Antarctic Division](https://www.aad.gov.au/) in Hobart, working on geospatial data systems for Southern Ocean and Antarctic science. My day job involves satellite imagery, ocean model outputs, and tracking data — which means a lot of rasters, meshes, and coordinate transformations.
+I'm a researcher at the [Australian Antarctic Division](https://www.antarctica.gov.au/) in Hobart, working on geospatial data systems for Southern Ocean and Antarctic science. My day job involves satellite imagery, ocean model outputs, and tracking data — which means a lot of rasters, meshes, and coordinate transformations.
 
 I maintain the [hypertidy](https://github.com/hypertidy) family of R packages (see the [packages listing](/packages.html)) and contribute to the broader R geospatial ecosystem. Most of what I build is motivated by problems that come up in research: needing direct access to GDAL without heavy abstractions, working with grids that don't fit the GIS raster mould, and connecting raster and vector through mesh-based data structures.
 
@@ -32,7 +32,7 @@ Hypertidy is built on a few core ideas:
 
 **Topology matters.** Simple features left topology behind, resulting in fragmented and inefficient workarounds. Polygons are topologically identical to closed lines. Points, lines, and surfaces are 0-, 1-, and 2-dimensional primitives whose topology is independent of their geometry.
 
-**Data sources are databases.** Manage what you have, use clever indexing, don't materialize what you don't need. This is what GDAL does well, and it's what [vapour](https://github.com/hypertidy/vapour) exposes directly.
+**Data sources are databases.** Manage what you have, use clever indexing, don't materialize what you don't need. This is what GDAL does well, and it's what [gdalraster](https://github.com/firelab/gdalraster) exposes directly.
 
 **Small, composable tools.** R spatial needs better APIs — a rich ecosystem of focused packages rather than monolithic frameworks. Thin wrappers over GDAL and PROJ, not heavy abstractions on top of them.
 

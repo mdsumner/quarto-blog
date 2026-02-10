@@ -12,7 +12,12 @@ website:
   search: true
   navbar:
     right:
-      - packages.qmd
+      - href: index.qmd
+        text: Home
+      - href: packages.qmd
+        text: Packages
+      - href: projects.qmd
+        text: Projects
       - about.qmd
       - icon: github
         href: https://github.com/mdsumner
