@@ -22,7 +22,9 @@ website:
         href: index.xml
 format:
   html:
-    theme: litera
+    theme:
+      light: flatly
+      dark: darkly
     css: styles.css
 execute:
   freeze: true
