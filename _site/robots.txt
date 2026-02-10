@@ -1,1 +1,1 @@
-Sitemap: http://hypertidy.org/sitemap.xml
+Sitemap: https://hypertidy.org/sitemap.xml

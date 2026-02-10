@@ -72,10 +72,10 @@ ul.task-list li input[type="checkbox"] {
 
 <link rel="stylesheet" href="../../styles.css">
 <meta property="og:title" content="R spatial in 2017 – hypertidy-blog">
-<meta property="og:description" content="">
+<meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta property="og:site_name" content="hypertidy-blog">
 <meta name="twitter:title" content="R spatial in 2017 – hypertidy-blog">
-<meta name="twitter:description" content="">
+<meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta name="twitter:creator" content="@mdsumner">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -108,6 +108,11 @@ ul.task-list li input[type="checkbox"] {
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img">
 </i> 
 <span class="menu-text"></span></a>
   </li>  
@@ -339,7 +344,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
     var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
     var mailtoRegex = new RegExp(/^mailto:/);
-      var filterRegex = new RegExp("http:\/\/hypertidy\.org");
+      var filterRegex = new RegExp("https:\/\/hypertidy\.org");
     var isInternal = (href) => {
         return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
     }
