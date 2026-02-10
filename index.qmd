@@ -5,16 +5,13 @@ listing:
   sort: "date desc"
   type: default
   categories: true
+  feed: true
 page-layout: full
 title-block-banner: true
 ---
 
-
-
-
 ```{r write-redirects}
 #| echo: false
-
 ## https://blog.djnavarro.net/posts/2022-04-20_porting-to-quarto/#netlify-redirects
 # list names of post folders
 posts <- list.dirs(
