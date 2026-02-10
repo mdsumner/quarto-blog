@@ -1,5 +1,5 @@
 ---
-title: "hypertidy-blog"
+title: "hypertidy"
 listing:
   contents: posts
   sort: "date desc"
