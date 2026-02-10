@@ -4,7 +4,7 @@ author: "Michael Sumner"
 format: html
 date: "2025-09-04"
 editor: source
-categories: [news, code]
+categories: [netcdf, gdal]
 draft: false
 ---
 

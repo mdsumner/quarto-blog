@@ -2,7 +2,7 @@
 title: "GDAL raster read/write  by blocks"
 author: "Michael D. Sumner"
 date: "2022-05-04"
-categories: [news, code]
+categories: [gdal, raster]
 ---
 
 ## Read and write raster by blocks.

@@ -3,7 +3,7 @@ title: "Conservative regridding with GDAL (?)"
 author: "Michael Sumner"
 editor: source
 date: "2024-12-11"
-categories: [news, code]
+categories: [gdal, raster]
 draft: false
 ---
 

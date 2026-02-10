@@ -2,7 +2,7 @@
 title: "Plot at native resolution, with R"
 author: "Michael D. Sumner"
 date: "2024-12-04"
-categories: [news, code]
+categories: [raster, gdal]
 ---
 
 Plot native, something I should have done long ago. 

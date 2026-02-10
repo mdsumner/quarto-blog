@@ -2,7 +2,7 @@
 title: "Web services for scientific data in R"
 author: "Michael D. Sumner"
 date: "2017-07-25"
-categories: [news, code]
+categories: [netcdf, r-packages]
 tags: [NetCDF]
 ---
 

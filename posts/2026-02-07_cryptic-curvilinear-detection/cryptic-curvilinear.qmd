@@ -3,7 +3,7 @@ title: "Detecting hidden grids in curvilinear coordinates"
 author: "Michael Sumner"
 date: 2026-02-07
 format: html
-categories: [news, code]
+categories: [gdal, raster, netcdf, projections]
 ---
 
 ## The problem

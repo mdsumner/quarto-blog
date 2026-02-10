@@ -8,6 +8,7 @@ execute:
   freeze: true
 editor_options: 
   chunk_output_type: console
+categories: [gdal, zarr, netcdf]
 ---
 
 ```{r preamble, include =FALSE}

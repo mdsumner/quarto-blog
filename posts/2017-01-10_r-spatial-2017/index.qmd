@@ -2,7 +2,7 @@
 title: "R spatial in 2017"
 author: "Michael D. Sumner"
 date: "2017-01-10"
-categories: [news, code]
+categories: [overview]
 tags: [R, spatial]
 ---
 

@@ -2,7 +2,7 @@
 title: "mesh3d - recent changes in rgl workhorse format"
 author: "Michael D. Sumner"
 date: "2019-05-29"
-categories: [news, code]
+categories: [mesh, rgl]
 execute:
   freeze: true
 ---

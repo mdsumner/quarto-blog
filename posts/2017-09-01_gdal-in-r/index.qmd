@@ -3,7 +3,7 @@
 title: "GDAL in R"
 author: "Michael D. Sumner"
 date: "2017-09-01"
-categories: [news, code]
+categories: [gdal, overview]
 tags: [gdal]
 ---
 

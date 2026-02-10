@@ -4,7 +4,7 @@ author: "Michael Sumner"
 format: html
 date: 2025-12-21
 editor: visual
-categories: [code, news]
+categories: [raster, vaster]
 ---
 
 ```{r setup, include=FALSE}
