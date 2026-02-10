@@ -6,9 +6,7 @@ website:
   description: "Geospatial data, GDAL, and R — Michael Sumner"
   repo-url: https://github.com/mdsumner/quarto-blog
   open-graph: true
-  twitter-card:
-    creator: "@mdsumner"
-    card-style: summary_large_image
+  twitter-card: true
   search: true
   navbar:
     right:
@@ -18,7 +16,8 @@ website:
         text: Packages
       - href: projects.qmd
         text: Projects
-      - about.qmd
+      - href: about.qmd
+        text: About
       - icon: github
         href: https://github.com/mdsumner
       - icon: mastodon
