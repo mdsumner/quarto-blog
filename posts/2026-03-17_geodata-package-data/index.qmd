@@ -1,0 +1,372 @@
+---
+title: "What's on geodata.ucdavis.edu and how to access it"
+author: "Michael Sumner"
+date: "2026-03-17"
+categories:
+  - code
+  - news
+  - raster
+  - vector
+  - gdal
+  - spatial
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+The R package [geodata](https://CRAN.R-project.org/package=geodata) provides
+functions for downloading climate, elevation, soil, crop, species occurrence,
+and administrative boundary data. All of its raster and vector data is hosted
+on a single Apache web server at `geodata.ucdavis.edu`.
+
+Every file on that server is directly accessible via HTTP. This means we can
+enumerate, inspect, and in some cases read them using GDAL's virtual
+filesystem — without downloading anything first.
+
+This post documents the full site structure, the file formats served, and
+which files can be streamed via `/vsicurl/` versus which need to be or should (for efficiency)be downloaded.
+
+## Helper functions
+
+The code snippets below use a small set of helper functions that wrap
+`gdalraster::vsi_read_dir()` and related GDAL calls. Source them with:
+ 
+```{r}
+source("https://github.com/mdsumner/quarto-blog/releases/download/latest/geodata-ucdavis-tools.R")
+```
+
+This provides: `vsi_list()`, `geodata_files()`, `gdalinfo()`,
+`check_block_size()`, and `streamability_report()`.
+
+## Site structure
+
+The server has three top-level paths that contain spatial data:
+
+| Path | Contents |
+|:-----|:---------|
+| `/climate/` | WorldClim 2.1 and 1.4, CMIP5 legacy data |
+| `/cmip6/` | Downscaled CMIP6 projections |
+| `/geodata/` | Soil, landcover, crops, elevation, travel time, OSM, buildings |
+| `/gadm/` | GADM administrative boundaries (versions 2.8, 3.6, 4.0, 4.1) |
+
+The root URL itself and some intermediate directories serve an `index.html`
+that says "Hello World!" rather than an Apache directory listing. The data
+directories below these do have standard Apache autoindex enabled, which is
+what makes `vsi_read_dir()` work.
+
+## Enumerating files
+
+GDAL's `/vsicurl/` handler can parse Apache directory listings. The
+`gdalraster` package exposes this via `vsi_read_dir()`:
+
+```{r}
+library(gdalraster)
+
+## flat directory — returns filenames
+vsi_read_dir("/vsicurl/https://geodata.ucdavis.edu/geodata/soil/soilgrids/")
+```
+
+For structured enumeration with URLs and GDAL dataset names:
+
+```{r}
+soilgrids <- geodata_files("geodata/soil/soilgrids")
+head(soilgrids)
+```
+
+This returns a data.frame with columns `url`, `file`, `ext`, and `gdaldsn`.
+The `gdaldsn` column contains the `/vsicurl/` path for files GDAL can read,
+and `NA` for files it cannot (`.rds`, `.txt`, etc.).
+
+## What's there: a complete inventory
+
+### SoilGrids (`/geodata/soil/soilgrids/`)
+
+Global soil properties at 30 arc-second resolution. 48 TIF files covering
+8 properties (bdod, cec, cfvo, clay, nitrogen, ocd, phh2o, sand, silt, soc)
+at 4 depth intervals, plus pH quantiles. Files range from 83 MB to 546 MB.
+
+```{r}
+soilgrids <- geodata_files("geodata/soil/soilgrids", pattern = "\\.tif$")
+nrow(soilgrids)
+```
+
+**Format**: Single-band GeoTIFF, LZW compressed, `Block=43200x1`
+(row-striped). No overviews. No internal tiling.
+
+```{r}
+check_block_size(soilgrids$gdaldsn[1])
+
+```
+
+**Streamability**: Row-striped layout means sub-region reads via `/vsicurl/`
+require decompressing entire rows spanning the full 43200 pixel width.
+Reading a small bounding box will transfer most of the file. These files are
+best downloaded locally.
+
+The `geodata::soil_world_vsi()` function constructs `/vsicurl/` paths to
+these same files — the name suggests streaming is the intended use, but the
+row-striped layout makes it impractical for anything less than a large
+regional or global read.
+
+### WorldClim 2.1 tiles (`/climate/worldclim/2_1/tiles/tile/`)
+
+30 arc-second resolution climate data, pre-tiled into 72 spatial tiles.
+8 variables (bio, elev, prec, srad, tavg, tmax, tmin, wind). Bio tiles
+have 19 bands; monthly variables have 12 bands; elevation has 1. File sizes
+range from ~5 MB (ocean/ice tiles) to ~550 MB (land-dense tiles).
+
+```{r}
+wc_tiles <- geodata_files("climate/worldclim/2_1/tiles/tile", pattern = "\\.tif$")
+nrow(wc_tiles)  ## expect 576 = 72 tiles × 8 variables
+```
+
+**Format**: Multi-band GeoTIFF. Block layout should be checked:
+
+```{r}
+check_block_size(wc_tiles$gdaldsn[1])
+```
+
+### WorldClim 2.1 global (`/climate/worldclim/2_1/base/`)
+
+Global grids at 10m, 5m, 2.5m, and 30s resolution. All stored as `.zip`
+files containing one or more TIF files per variable.
+
+| Resolution | Variables | Example size |
+|:-----------|:----------|:-------------|
+| 10 minute | bio, elev, prec, srad, tavg, tmax, tmin, vapr, wind | 1.3 MB – 48 MB |
+| 5 minute | same | 4.6 MB – 171 MB |
+| 2.5 minute | same | 17 MB – 628 MB |
+| 30 second | same | 323 MB – 9.7 GB |
+
+GDAL can read inside these zips via `/vsizip//vsicurl/`:
+
+```{r}
+## example: 10-minute bioclim, first file inside the zip
+dsn <- "/vsizip//vsicurl/https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_bio.zip"
+## list the contents of the zip
+vsi_read_dir(dsn)
+```
+
+The internal TIF filenames follow the pattern
+`wc2.1_{res}_{var}_{number}.tif`.
+
+### WorldClim 2.1 country extracts (`/climate/worldclim/2_1/tiles/iso/`)
+
+30 arc-second data clipped to individual countries, identified by ISO 3166-1
+alpha-3 codes.
+
+```{r}
+iso <- geodata_files("climate/worldclim/2_1/tiles/iso")
+head(iso)
+```
+
+### WorldClim 1.4 (`/climate/worldclim/1_4/`)
+
+Legacy WorldClim version in BIL (Band Interleaved by Line) format inside
+zip files. Three subdirectories: `cur/` (current), `fut/` (future
+projections), `pst/` (past / LGM / mid-Holocene).
+
+BIL format is GDAL-readable but, like the row-striped TIFs, does not support
+efficient random access.
+
+### CMIP6 projections (`/cmip6/`)
+
+Downscaled and bias-corrected CMIP6 future climate data. Organised as:
+
+```
+/cmip6/{resolution}/{model}/{ssp}/
+```
+
+Resolutions: `30s`, `2.5m`, `5m`, `10m`. 23 GCMs. 4 SSPs (ssp126, ssp245,
+ssp370, ssp585). 4 time periods (2021-2040, 2041-2060, 2061-2080,
+2081-2100). Variables: bioc, prec, tmax, tmin.
+
+At 30s resolution these are bare TIF files, some exceeding 20 GB.
+
+```{r}
+## list models at 2.5 minute resolution
+vsi_read_dir("/vsicurl/https://geodata.ucdavis.edu/cmip6/2.5m/")
+```
+
+There is also a `/cmip6/tiles/` directory with tiled versions.
+
+### CMIP5 projections (`/climate/cmip5/`)
+
+Legacy CMIP5 data at 30s, 2.5m, 5m, 10m resolutions. Separate directories
+for `lgm/` (Last Glacial Maximum) and `mid/` (mid-Holocene).
+
+### Elevation
+
+TODO: locate and document. The `geodata` package provides `elevation_3s()`,
+`elevation_30s()`, and `elevation_global()` — the URLs for these need to be
+traced from the source code.
+
+### Landcover (`/geodata/landcover/`)
+
+Two subdirectories:
+
+- `/geodata/landcover/30s/` — 30 arc-second aggregated landcover fractions
+- `/geodata/landcover/3deg_cogs/` — ESA WorldCover 10m data as 3-degree
+  tiles, labelled as COGs in the directory name
+
+```{r}
+lc_cogs <- geodata_files("geodata/landcover/3deg_cogs", pattern = "\\.tif$")
+nrow(lc_cogs)
+```
+
+The `3deg_cogs` files follow the naming convention
+`ESA_WorldCover_10m_2020_v100_{lat}{lon}_Map.tif`. If these are genuine
+COGs (internally tiled with overviews), they would be efficiently
+streamable via `/vsicurl/`.
+
+```{r}
+## check whether these are really COGs
+check_block_size(lc_cogs$gdaldsn[1])
+## TODO: run this
+```
+
+### Crops (`/geodata/crops/`)
+
+Subdirectories for SPAM and Monfreda crop data, plus cropland density and
+crop calendars. File formats and structure need to be enumerated.
+
+### GADM administrative boundaries (`/gadm/gadm4.1/`)
+
+Per-country boundaries in multiple formats:
+
+| Subdirectory | Format | GDAL-readable | Notes |
+|:-------------|:-------|:--------------|:------|
+| `gpkg/` | GeoPackage | Yes | SQLite-based, supports HTTP range requests |
+| `shp/` | Shapefile (zipped) | Yes, via /vsizip/ | Multiple component files |
+| `json/` | GeoJSON | Yes | |
+| `pck/` | RDS (R serialization) | No | Used by `geodata::gadm()` |
+| `kmz/` | KMZ (zipped KML) | Yes, via /vsizip/ | |
+
+Whole-dataset archives:
+
+- `gadm_410-gpkg.zip` — 1.4 GB, all countries in one GeoPackage
+- `gadm_410-gdb.zip` — 913 MB, FileGDB format
+- `gadm_410-levels.zip` — 2.5 GB, separated by admin level
+- `gadm_410-raw.gpkg` — 2.6 GB, bare GeoPackage on HTTP
+
+The `gadm_410-raw.gpkg` is directly streamable:
+
+```{r}
+## open GADM as a single GeoPackage over HTTP
+dsn <- "/vsicurl/https://geodata.ucdavis.edu/gadm/gadm4.1/gadm_410-raw.gpkg"
+## list layers
+gdalraster::ogr_ds_layer_names(dsn)
+```
+
+Per-country GeoPackage files are also streamable:
+
+```{r}
+dsn <- "/vsicurl/https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/gadm41_AUS.gpkg"
+gdalraster::ogr_ds_layer_names(dsn)
+```
+
+### Other datasets
+
+| Path | Contents | geodata function |
+|:-----|:---------|:-----------------|
+| `/geodata/travel/` | Travel time rasters | `travel_time()` |
+| `/geodata/osm/` | OpenStreetMap extracts (highways, places) | `osm()` |
+| `/geodata/buildings/` | Building footprint data | — |
+
+These need further enumeration.
+
+### Datasets not on this server
+
+Some `geodata` functions fetch data from external APIs rather than
+`geodata.ucdavis.edu`:
+
+- `sp_occurrence()` — queries the GBIF API
+- `bio_oracle()` — queries the Bio-Oracle server at `bio-oracle.org`
+
+## Block layout and streamability
+
+The central question for remote access is whether a file's internal layout
+supports efficient HTTP range requests. GDAL's `/vsicurl/` handler issues
+byte-range requests to read specific portions of a file. This works well
+when the file is internally tiled (e.g., COG format with `Block=256x256`)
+but poorly when the file is row-striped (`Block=width×1`).
+
+For a row-striped file, reading a small spatial window requires
+decompressing one or more full rows, each spanning the entire raster width.
+For a 43200-pixel-wide global grid, every row is a complete scan line from
+-180° to +180°. A single HTTP range request per row, times the number of
+rows in the window, with full LZW decompression of each row. For a small
+bounding box this is extremely wasteful.
+
+### What we know
+
+| Collection | Block layout | Streamable? |
+|:-----------|:-------------|:------------|
+| SoilGrids TIFs | 43200×1 (row-striped) | No — download |
+| WorldClim 2.1 tiles | TODO: check | Probably row-striped |
+| WorldClim 2.1 global zips | N/A (zip) | Via /vsizip/, but still row-striped inside |
+| CMIP6 30s TIFs | TODO: check | Unknown |
+| Landcover 3deg COGs | TODO: check | Likely yes (name says COGs) |
+| Landcover 30s | TODO: check | Unknown |
+| GADM GeoPackage | N/A (vector) | Yes — SQLite random access works over HTTP |
+| GADM raw GeoPackage | N/A (vector) | Yes |
+
+### How to check
+
+```{r}
+## for any TIF on the server
+bs <- check_block_size("/vsicurl/https://geodata.ucdavis.edu/path/to/file.tif")
+bs
+## if is_row_striped is TRUE: download, don't stream
+## if is_tiled is TRUE: streaming is efficient
+```
+
+## Generating file tables
+
+For any collection, generate a complete table of URLs and GDAL dataset names:
+
+```{r}
+## SoilGrids: all TIFs
+sg <- geodata_files("geodata/soil/soilgrids", pattern = "\\.tif$")
+head(sg[, c("url", "gdaldsn")])
+```
+
+```{r}
+## WorldClim tiles: all TIFs
+wc <- geodata_files("climate/worldclim/2_1/tiles/tile", pattern = "\\.tif$")
+head(wc[, c("url", "gdaldsn")])
+```
+
+```{r}
+## GADM 4.1 GeoPackages
+gadm <- geodata_files("gadm/gadm4.1/gpkg", pattern = "\\.gpkg$")
+head(gadm[, c("url", "gdaldsn")])
+```
+
+```{r}
+## CMIP6 models at 2.5 minute resolution
+## first list the model directories, then enumerate within each
+models <- vsi_read_dir("/vsicurl/https://geodata.ucdavis.edu/cmip6/2.5m/")
+models
+```
+
+## Still to document
+
+Several areas need further investigation:
+
+- Elevation data paths (`elevation_3s`, `elevation_30s`, `elevation_global`)
+- Exact contents of `/geodata/crops/`, `/geodata/travel/`, `/geodata/osm/`,
+  `/geodata/buildings/`
+- Block layout of WorldClim tiles, CMIP6 30s TIFs, and landcover COGs
+- Contents of `/geodata/landcover/30s/`
+- Contents of `/geodata/soil/soilgrids/agg/`, `fill/`, and `raw/`
+  subdirectories
+- The `/cmip6/tiles/` tiled variant structure
+
+Once these are filled in, the tables generated by `geodata_files()` will
+provide a complete machine-readable inventory of the site.
+
+
