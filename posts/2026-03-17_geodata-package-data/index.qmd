@@ -14,7 +14,7 @@ categories:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = FALSE)
+knitr::opts_chunk$set(eval = TRUE)
 ```
 
 The R package [geodata](https://CRAN.R-project.org/package=geodata) provides
@@ -225,7 +225,7 @@ streamable via `/vsicurl/`.
 ```{r}
 ## check whether these are really COGs
 check_block_size(lc_cogs$gdaldsn[1])
-## TODO: run this
+
 ```
 
 ### Crops (`/geodata/crops/`)
@@ -316,7 +316,7 @@ bounding box this is extremely wasteful.
 
 ### How to check
 
-```{r}
+```{r, eval=FALSE}
 ## for any TIF on the server
 bs <- check_block_size("/vsicurl/https://geodata.ucdavis.edu/path/to/file.tif")
 bs
