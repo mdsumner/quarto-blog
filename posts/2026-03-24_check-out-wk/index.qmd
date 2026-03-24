@@ -1,5 +1,5 @@
 ---
-title: "check out wk"
+title: "Check it out: wk"
 author: "Michael Sumner"
 date: "2026-03-24"
 categories: [r-packages, vector]

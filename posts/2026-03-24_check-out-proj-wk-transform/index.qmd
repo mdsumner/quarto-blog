@@ -1,5 +1,5 @@
 ---
-title: "Check it out: PROJ::proj_trans_create and wk::wk_transform"
+title: "Check it out: proj_trans_create and wk_transform"
 author: "Michael Sumner"
 date: "2026-03-24"
 categories: [r-packages, projections]
