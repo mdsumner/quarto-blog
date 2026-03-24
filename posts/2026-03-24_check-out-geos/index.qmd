@@ -185,4 +185,4 @@ This is part of a series of posts for foundational spatial support in R. These p
 - [reproj](https://www.hypertidy.org/posts/2026-03-24_check-out-reproj/)
 - [PROJ/wk transform](https://www.hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/)
 - [gdalraster](https://www.hypertidy.org/posts/2026-03-24_check-out-gdalraster/)
-- [geos](https://www.hypertidy.org/posts/2026-03-24_check-out-geos/)
+- [geos](https://www.hypertidy.org/posts/2026-03-24_check-out-geos/) (this one!)
