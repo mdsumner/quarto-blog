@@ -393,7 +393,8 @@ Object codes (`"EPSG:4326"`), WKT2, and PROJJSON are unambiguous — they always
 
 ## How this connects to reproj
 
-The [reproj](https://hypertidy.github.io/reproj/) package (see the reproj post in this series) uses `PROJ::proj_trans()` under the hood. 
+The [reproj](https://hypertidy.github.io/reproj/) package (see the [reproj](https://www.hypertidy.org/posts/2026-03-24_check-out-reproj/) post in this series) uses `PROJ::proj_trans()` under the hood. 
+
 The relationship is:
 
 - **reproj** — high-level generic, format-agnostic, delegates to PROJ

@@ -93,7 +93,7 @@ wk_coords(wkb)
 ## compute bounding boxes per feature
 wk_envelope(wkb)
 
-## transform coordinates (see the PROJ post)
+## transform coordinates (see the PROJ post) https://www.hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/
 wk_transform(pts, PROJ::proj_trans_create("EPSG:4326", "EPSG:3857"))
 ```
 
@@ -111,7 +111,7 @@ wk itself includes several useful operations that don't require GEOS:
 - `wk_set_z()` / `wk_drop_z()` — add or remove Z dimension
 - `wk_orient()` / `wk_clockwise()` / `wk_counterclockwise()` — rewind polygon rings
 
-For geometric predicates, buffering, intersection and the like you need [geos](https://paleolimbot.github.io/geos/) (see the geos post in this series).
+For geometric predicates, buffering, intersection and the like try [geos](https://paleolimbot.github.io/geos/) (see the [geos](https://www.hypertidy.org/posts/2026-03-24_check-out-geos/) post in this series).
 
 
 Install from CRAN:
