@@ -1,0 +1,134 @@
+---
+title: "check out wk"
+author: "Michael Sumner"
+date: "2026-03-24"
+categories: [r-packages, vector]
+---
+
+The [wk](https://paleolimbot.github.io/wk/) package is a foundation for geometry handling in R. It's a lightweight, dependency-free geometry column with CRS support, vctrs integration, and a handler-based streaming API. Any data frame with a wk column works as well as the column itself with supported functions. 
+
+## What wk provides
+
+wk defines several vector types that carry geometry and coordinate reference system information as first-class attributes:
+
+- `wk::wkt()` — well-known text, human-readable
+- `wk::wkb()` — well-known binary, compact and fast
+- `wk::xy()`, `wk::xyz()`, `wk::xym()`, `wk::xyzm()` — coordinate vectors (points)
+- `wk::rct()` — rectangles (bounding boxes)
+- `wk::crc()` — circles
+
+All of these carry a `crs` attribute and behave properly as vctrs types. They can live in data frame columns, get subset, combined, and compared — with CRS compatibility checked automatically.
+
+```r
+library(wk)
+pts <- wk::xy(c(147, 148, 149), c(-42, -43, -44), crs = "EPSG:4326")
+pts
+#> <wk_xy[3] with CRS=EPSG:4326>
+#> [1] (147 -42) (148 -43) (149 -44)
+```
+
+You can put these directly in a data frame:
+
+```r
+d <- data.frame(name = c("Hobart", "South", "Further"), geometry = pts)
+d
+#>     name     geometry
+#> 1 Hobart  (147 -42)
+#> 2  South  (148 -43)
+#> 3 Further (149 -44)
+```
+
+Subset, combine, and merge all work correctly. The CRS propagates through operations and mismatches are caught:
+
+```r
+## combining vectors with different CRS will error
+pts_other <- wk::xy(1, 2, crs = "EPSG:3857")
+try(c(pts, pts_other))
+#> Error: CRS objects are not equal
+```
+
+## CRS handling
+
+The CRS system in wk is deliberately general. At the C level, the PROJ library `proj_create()` function accepts a remarkably wide range of CRS definition strings. The [PROJ C API documentation](https://proj.org/en/stable/development/reference/functions.html#transformation-setup) lists many valid types of inputs from 'auth:code', PROJJSON, WKT variants and PROJ4 strings.  The CRS support in wk is similarly open to inputs, the key functions in wk are:
+
+- `wk_crs()` — get the CRS from any wk-compatible object
+- `wk_set_crs()` — set or replace the CRS
+- `wk_crs_equal()` — compare CRS values
+- `wk_crs_proj_definition()` — extract a PROJ-compatible string (used by PROJ and other packages)
+
+The sentinel value `wk_crs_inherit()` signals "inherit from context" and is used for empty or zero-length geometry vectors. This means you can safely combine an empty geometry with a CRS-bearing one without triggering a mismatch.
+
+## Interchange
+
+wk acts as a common interchange format. Other formats that are supported are 'raw binary', 'raw text', geos package vectors, sf data frames and geometry vectors. The gdalraster package can emit vector geometry in wk format. Conversions to and from other formats are built in:
+
+```r
+## sf -> wk
+library(sf)
+nc <- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
+wkb <- wk::as_wkb(nc)
+wk_crs(wkb)
+#> [1] "NAD27"
+
+## wk -> sf
+sf::st_as_sfc(wkb)
+
+## terra -> wk
+geos::as_geos_geometry(terra::vect(<src>))
+```
+
+The geos package accepts wk types directly. The PROJ package transforms them. The gdalraster package (via `ogr_layer_create()` and friends) can write them. This is an interchange layer that allows packages to stay independent of formats, just as the underlying libraries GDAL, PROJ, GEOS already allow. 
+
+## The handler API
+
+The real power of wk is its streaming handler API. Rather than materializing geometry in memory, wk can stream coordinates through a chain of handlers — read, transform, and write without ever building an intermediate object.
+
+```r
+## count coordinates without materializing geometry
+wk_count(wkb)
+
+## extract coordinates as a data frame
+wk_coords(wkb)
+
+## compute bounding boxes per feature
+wk_envelope(wkb)
+
+## transform coordinates (see the PROJ post)
+wk_transform(pts, PROJ::proj_trans_create("EPSG:4326", "EPSG:3857"))
+```
+
+The `wk_handle()` generic is what makes this extensible. Any package can implement a `wk_handle()` method for its geometry type and immediately plug into the wk ecosystem — filters, transforms, writers all just work.
+
+## Geometric operations via wk
+
+wk itself includes several useful operations that don't require GEOS:
+
+- `wk_vertices()` — extract all vertices from a geometry
+- `wk_coords()` / `wk_coords<-()` — get/set coordinates
+- `wk_flatten()` — flatten collections to simple geometries
+- `wk_collection()` — collect simple geometries into multi/collection types
+- `wk_linestring()` / `wk_polygon()` — construct from coordinates
+- `wk_set_z()` / `wk_drop_z()` — add or remove Z dimension
+- `wk_clockwise()` / `wk_counterclockwise()` — rewind polygon rings
+
+For geometric predicates, buffering, intersection and the like you need [geos](https://paleolimbot.github.io/geos/) (see the geos post in this series).
+
+
+Install from CRAN:
+
+```r
+install.packages("wk")
+```
+
+Links:
+
+- [wk on CRAN](https://CRAN.R-project.org/package=wk)
+- [wk documentation](https://paleolimbot.github.io/wk/)
+- [GitHub](https://github.com/paleolimbot/wk)
+
+## Check it out series
+
+This is part of a series of posts for foundational spatial support in R. These posts include: 
+
+
+

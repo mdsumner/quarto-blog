@@ -1,0 +1,419 @@
+---
+title: "Check it out: PROJ::proj_trans_create and wk::wk_transform"
+author: "Michael Sumner"
+date: "2026-03-24"
+categories: [r-packages, projections]
+---
+
+The [PROJ](https://hypertidy.github.io/PROJ/) R package provides `proj_trans_create()`, which creates a reusable coordinate transformation object that plugs directly into wk's `wk_transform()`. This is the mechanism that connects the PROJ C library to any geometry type that speaks wk.
+
+This post goes into some detail on what CRS representations are accepted, how R's CRS objects get resolved to strings that PROJ understands, and how wk's `wk_crs_proj_definition()` generic bridges the gap.
+
+## What PROJ accepts as a CRS definition
+
+At the C level, PROJ's `proj_create()` function accepts a remarkably wide range of CRS definition strings. The [PROJ C API documentation](https://proj.org/en/stable/development/reference/functions.html#transformation-setup) lists the following as valid inputs:
+
+- A **proj-string**, e.g. `"+proj=utm +zone=55 +south +datum=WGS84 +type=crs"`
+- A **WKT string** (WKT2:2019 preferred, WKT1 accepted), e.g. `GEOGCRS["WGS 84", ...]`
+- An **object code**, e.g. `"EPSG:4326"`, `"urn:ogc:def:crs:EPSG::4326"`, or `"urn:ogc:def:coordinateOperation:EPSG::1671"`
+- An **object name**, e.g. `"WGS 84"` or `"WGS 84 / UTM zone 31N"` — matched by heuristics when the name is not unique
+- An **OGC URN** for compound CRS, e.g. `"urn:ogc:def:crs,crs:EPSG::2393,crs:EPSG::5717"` or the abbreviated `"EPSG:2393+5717"`
+- An **OGC URN** for concatenated operations, e.g. `"urn:ogc:def:coordinateOperation,coordinateOperation:EPSG::3895,coordinateOperation:EPSG::1618"`
+- A **PROJJSON string** (added in PROJ 6.2) — the JSON representation of a CRS or coordinate operation, schema at <https://proj.org/schemas/v0.4/projjson.schema.json>
+- A **compound CRS** from two names joined with `" + "`, e.g. `"WGS 84 + EGM96 height"` (added in PROJ 7.1)
+
+That's a lot of ways to say the same thing. In R, the PROJ package wraps this directly — `proj_trans_create()` and `proj_crs_text()` accept all of these forms as character strings.
+
+There is a critical distinction for proj-strings: if the string contains `+type=crs`, it's interpreted as a CRS definition. Geographic CRS with `+type=crs` are assumed to have longitude-latitude axis order with degree units. Without `+type=crs`, the proj-string is interpreted as a *coordinate operation* (a transformation step, not a CRS). This matters in some contexts but many packages (PROJ, sf, terra) will detect this case and add the '+type=crs' because it's common and convenient. 
+
+```r
+library(PROJ)
+
+## this is a CRS ("+type=crs" present):
+proj_crs_text("+proj=laea +type=crs", format = 0L)
+## returns a proper WKT2 CRS
+
+## this is technically a transformation step, NOT a CRS (no "+type=crs") but workarounds are often used (as here)
+proj_crs_text("+proj=laea", format = 0L)
+
+```
+
+The PROJ library documentation explicitly says: "The use of proj-string to describe a CRS is discouraged. It is a legacy means of conveying CRS descriptions: use of object codes (EPSG:XXXX typically) or WKT description is recommended for better expressivity."  This is absolutely true but if you want to define your own
+CRS, just a simple equal area project such as "+proj=laea +lon_0=-147 +lat_0=-42 +datum=WGS4" then you can easily convert from a proj string to WKT, but write the
+WKT from scratch?? That's hard but don't let it put you off,  use map projections, specified in a few characters as PROJ strings -  if you need a specific datum you'll need to get a full-blown WKT string by some means. 
+
+## CRS representations you can work with in R
+
+`proj_crs_text()` converts between CRS representations. The `format` argument selects the output:
+
+- `format = 0L` → WKT2 (the default, most expressive)
+- `format = 1L` → proj-string
+- `format = 2L` → PROJJSON
+
+```r
+library(PROJ)
+
+## WKT2
+cat(proj_crs_text("EPSG:4326", format = 0L))
+```
+
+```
+GEOGCRS["WGS 84",
+    ENSEMBLE["World Geodetic System 1984 ensemble",
+        MEMBER["World Geodetic System 1984 (Transit)"],
+        MEMBER["World Geodetic System 1984 (G730)"],
+        MEMBER["World Geodetic System 1984 (G873)"],
+        MEMBER["World Geodetic System 1984 (G1150)"],
+        MEMBER["World Geodetic System 1984 (G1674)"],
+        MEMBER["World Geodetic System 1984 (G1762)"],
+        MEMBER["World Geodetic System 1984 (G2139)"],
+        ELLIPSOID["WGS 84",6378137,298.257223563,
+            LENGTHUNIT["metre",1]],
+        ENSEMBLEACCURACY[2.0]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["degree",0.0174532925199433]],
+    CS[ellipsoidal,2],
+        AXIS["geodetic latitude (Lat)",north,
+            ORDER[1],
+            ANGLEUNIT["degree",0.0174532925199433]],
+        AXIS["geodetic longitude (Lon)",east,
+            ORDER[2],
+            ANGLEUNIT["degree",0.0174532925199433]],
+    USAGE[
+        SCOPE["Horizontal component of 3D system."],
+        AREA["World."],
+        BBOX[-90,-180,90,180]],
+    ID["EPSG",4326]]
+```
+
+```r
+## proj-string
+proj_crs_text("EPSG:4326", format = 1L)
+#> "+proj=longlat +datum=WGS84 +no_defs +type=crs"
+```
+
+```r
+## PROJJSON
+cat(proj_crs_text("EPSG:4326", format = 2L))
+```
+
+```json
+{
+  "$schema": "https://proj.org/schemas/v0.7/projjson.schema.json",
+  "type": "GeographicCRS",
+  "name": "WGS 84",
+  "datum_ensemble": {
+    "name": "World Geodetic System 1984 ensemble",
+    "members": [
+      {
+        "name": "World Geodetic System 1984 (Transit)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1166
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G730)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1152
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G873)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1153
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G1150)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1154
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G1674)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1155
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G1762)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1156
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G2139)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1309
+        }
+      },
+      {
+        "name": "World Geodetic System 1984 (G2296)",
+        "id": {
+          "authority": "EPSG",
+          "code": 1383
+        }
+      }
+    ],
+    "ellipsoid": {
+      "name": "WGS 84",
+      "semi_major_axis": 6378137,
+      "inverse_flattening": 298.257223563
+    },
+    "accuracy": "2.0",
+    "id": {
+      "authority": "EPSG",
+      "code": 6326
+    }
+  },
+  "coordinate_system": {
+    "subtype": "ellipsoidal",
+    "axis": [
+      {
+        "name": "Geodetic latitude",
+        "abbreviation": "Lat",
+        "direction": "north",
+        "unit": "degree"
+      },
+      {
+        "name": "Geodetic longitude",
+        "abbreviation": "Lon",
+        "direction": "east",
+        "unit": "degree"
+      }
+    ]
+  },
+  "scope": "Horizontal component of 3D system.",
+  "area": "World.",
+  "bbox": {
+    "south_latitude": -90,
+    "west_longitude": -180,
+    "north_latitude": 90,
+    "east_longitude": 180
+  },
+  "id": {
+    "authority": "EPSG",
+    "code": 4326
+  }
+}
+```
+
+PROJJSON is the most machine-friendly format — it's the full CRS definition in a structure you can parse, manipulate, and round-trip without information loss. WKT2 is the canonical text representation and equally complete. Proj-strings are the most compact, but lose information (datum ensemble members, axis order details, usage scope). Every conversion to proj-string is potentially lossy.
+
+## How wk bridges CRS objects to PROJ strings
+
+In the wk package, a CRS can be *any R object*. The `crs` attribute on a `wk::wkt()`, `wk::wkb()`, or `wk::xy()` vector is deliberately untyped — it could be a string like `"EPSG:4326"`, an integer like `4326`, an sf `crs` object, or something else entirely. wk doesn't interpret the CRS, it just propagates it.
+
+The bridge to PROJ is `wk_crs_proj_definition()`. This is an S3 generic that takes a CRS object and returns a character string that the PROJ library can understand. This is the function that `PROJ::proj_trans()` and `PROJ::proj_trans_create()` call internally to resolve CRS arguments.
+
+The built-in methods handle the common cases:
+
+- **character** → returned as-is (assumed to be an authority:code string, WKT, PROJJSON, or proj-string already)
+- **integer** or **double** → formatted as `"EPSG:<code>"` (e.g. `4326` → `"EPSG:4326"`)
+- **NULL** → `NA_character_` (no CRS)
+- **`wk_crs_inherit()`** → `NA_character_` (inherit from context)
+
+```r
+library(wk)
+
+wk_crs_proj_definition("EPSG:4326")
+#> [1] "EPSG:4326"
+
+wk_crs_proj_definition(4326)
+#> [1] "EPSG:4326"
+
+wk_crs_proj_definition(4326L)
+#> [1] "EPSG:4326"
+```
+
+For sf's `crs` class, sf registers its own method so that `wk_crs_proj_definition()` returns the correct string for the installed version of PROJ. Other packages can do the same — this is the extension point for custom CRS types.
+
+The `verbose` argument controls how much detail is returned. With `verbose = FALSE` (the default), it returns the most compact form — typically the authority:code string. With `verbose = TRUE`, it returns PROJJSON or WKT2 for maximum expressivity.
+
+### wk_crs_projjson()
+
+There's also `wk_crs_projjson()`, which returns the PROJJSON representation of a CRS. For shortcut-style CRS values like `"EPSG:4326"` or `4326`, wk includes cached lookup tables — `wk_proj_crs_view` and `wk_proj_crs_json` — containing pre-rendered PROJJSON for all CRS definitions in the PROJ database (based on PROJ 9.3.0 as of wk 0.9.x). This means `wk_crs_projjson("EPSG:4326")` works without PROJ being installed — the lookup is pure R against shipped data.
+
+```r
+## get PROJJSON for a known EPSG code, no PROJ library needed
+pj <- wk_crs_projjson("EPSG:4326")
+cat(pj)
+## full PROJJSON output
+```
+
+This is the mechanism that allows wk-based packages to inspect CRS properties without linking to the PROJ C library.
+
+## The transformation pipeline
+
+With all that context, here's how `proj_trans_create()` works:
+
+1. It calls `wk_crs_proj_definition()` on the `source_crs` and `target_crs` arguments to get PROJ-compatible strings
+2. It passes those strings to the PROJ C library's `proj_create_crs_to_crs()` function, which finds the best available transformation pipeline between the two CRS
+3. It wraps the result in a `wk_trans` object — an external pointer with an `wk_trans_inverse()` method
+
+```r
+library(PROJ)
+library(wk)
+
+## create a transformation object
+trans <- proj_trans_create("EPSG:4326", "EPSG:3857")
+<proj_trans at 0x55800593fd60>
+type: Concatenated Operation
+id: pipeline
+description: axis order change (2D) + Popular Visualisation Pseudo-Mercator
+definition: proj=pipeline step proj=unitconvert xy_in=deg xy_out=rad step proj=webmerc lat_0=0 lon_0=0 x_0=0 y_0=0 ellps=WGS84
+area_of_use:
+  name: World
+  bounds: [-180 -90 180 90]
+source_crs:
+  type: Geographic 2D CRS
+  id: EPSG:4326
+  name: WGS 84
+  area_of_use:
+    name: World.
+    bounds: [-180 -90 180 90]
+target_crs:
+  type: Projected CRS
+  id: EPSG:3857
+  name: WGS 84 / Pseudo-Mercator
+  area_of_use:
+    name: World between 85.06°S and 85.06°N.
+    bounds: [-180 -85.06 180 85.06]
+```
+
+The source and target can be any form PROJ accepts — EPSG codes, WKT2, PROJJSON, proj-strings with `+type=crs`, object names:
+
+```r
+## all of these create equivalent transformations:
+proj_trans_create("EPSG:4326", "EPSG:3857")
+proj_trans_create(4326, 3857)
+proj_trans_create("WGS 84", "WGS 84 / Pseudo-Mercator")
+proj_trans_create(
+  "+proj=longlat +datum=WGS84 +type=crs",
+  "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +type=crs"
+)
+```
+
+## Applying the transformation with wk_transform
+
+`wk::wk_transform()` takes any wk-handleable geometry and applies the transformation through wk's streaming handler API. This means the transformation works on *any* geometry type — points, lines, polygons, collections — without materializing intermediate representations:
+
+```r
+## transform point coordinates
+pts <- wk::xy(c(147, 148, 149), c(-42, -43, -44), crs = "EPSG:4326")
+wk_transform(pts, trans)
+#> <wk_xy[3] with CRS=EPSG:3857>
+#> [1] (16362893 -5160980) (16474013 -5311971) (16585132 -5465442)
+
+## transform well-known text geometries
+poly <- wk::wkt(
+  "POLYGON ((147 -42, 148 -42, 148 -43, 147 -43, 147 -42))",
+  crs = "EPSG:4326"
+)
+wk_transform(poly, trans)
+#> <wk_wkt[1] with CRS=EPSG:3857>
+#> [1] POLYGON ((16362893 -5160980, ...))
+
+## transform well-known binary
+wkb_geom <- wk::as_wkb(poly)
+wk_transform(wkb_geom, trans)
+
+## transform sf geometries (sf implements wk_handle)
+## wk_transform(sf_sfc_object, trans) — just works
+```
+
+The CRS of the output is updated automatically. The output carries the target CRS from the transformation.
+
+The transformation object is reusable — create it once, apply it to many geometry vectors. This avoids paying the PROJ pipeline setup cost for each call.
+
+## Inverse transformations
+
+`wk_trans_inverse()` flips a transformation:
+
+```r
+inv <- wk_trans_inverse(trans)
+
+## round-trip
+pts_proj <- wk_transform(pts, trans)
+wk_transform(pts_proj, inv)
+#> <wk_xy[3] with CRS=EPSG:4326>
+#> [1] (147 -42) (148 -43) (149 -44)
+```
+
+## The convenience wrapper: PROJ::proj_trans()
+
+If you don't need a reusable transformation object, `PROJ::proj_trans()` combines the create and transform steps. It accepts matrices, data frames, wk geometry vectors, and sf `sfc` columns:
+
+```r
+## matrix form — requires explicit source
+PROJ::proj_trans(cbind(147, -42), "+proj=laea +type=crs", "EPSG:4326")
+#>          x        y
+#> [1,] 5969744 -9803200
+
+## wk type with CRS — source is inferred from the data
+PROJ::proj_trans(wk::xy(147, -42, crs = "EPSG:4326"), "+proj=laea +type=crs")
+#> <wk_xy[1] with CRS=+proj=laea +type=crs>
+#> [1] (5969744 -9803200)
+
+## full WKT geometries work too
+PROJ::proj_trans(
+  wk::wkt("POLYGON ((1 1, 0 1, 0 0, 1 0, 1 1))", crs = "EPSG:4326"),
+  3112
+)
+#> <wk_wkt[1] with CRS=EPSG:3112>
+#> [1] POLYGON ((-1.351177e+07 -7779443, ...))
+```
+
+When the input has a CRS (via `wk_crs()`), the `source_crs` argument can be omitted — `proj_trans()` reads it from the data using `wk_crs_proj_definition()`.
+
+## The +type=crs distinction
+
+This is worth emphasizing because it catches people. In PROJ 6+, a bare proj-string like `"+proj=laea"` is a *coordinate operation*, not a CRS. The library draws a hard line between "a description of a coordinate reference system" and "a description of a mathematical operation to apply to coordinates."
+
+To specify a CRS using a proj-string, you *must* include `+type=crs`:
+
+```r
+## CRS — works as source/target for transformations
+proj_crs_text("+proj=laea +type=crs", format = 0L)
+## returns proper WKT2
+
+## coordinate operation — not a CRS
+proj_crs_text("+proj=laea", format = 0L)
+## NOT a CRS definition
+```
+
+Object codes (`"EPSG:4326"`), WKT2, and PROJJSON are unambiguous — they always describe a CRS. Proj-strings need the `+type=crs` disambiguation. The recommendation from the PROJ documentation is to prefer authority:code strings or WKT2 for CRS definitions. But, use proj strings because they are easy and expressive, when you need a formal WKT2 for a particular operation define it carefully. 
+
+## How this connects to reproj
+
+The [reproj](https://hypertidy.github.io/reproj/) package (see the reproj post in this series) uses `PROJ::proj_trans()` under the hood. 
+The relationship is:
+
+- **reproj** — high-level generic, format-agnostic, delegates to PROJ
+- **PROJ** — mid-level wrapper around the PROJ C library, returns wk types, uses `wk_crs_proj_definition()` for CRS resolution
+- **wk** — the geometry representation, streaming protocol, and CRS bridge generic
+- **PROJ C library** (`libproj`) — the actual math, `proj_create()` does the parsing
+
+If you want maximum control and reusable transformation objects, use `proj_trans_create()` + `wk_transform()` directly. If you want a quick one-liner for a matrix of coordinates, use `reproj()`. They're different interfaces to the same underlying capability.
+
+## Further reading
+
+- [PROJ C API: Transformation setup](https://proj.org/en/stable/development/reference/functions.html#transformation-setup) — the canonical reference for what `proj_create()` accepts
+- [PROJJSON schema](https://proj.org/schemas/v0.4/projjson.schema.json)
+- [wk `wk_crs_proj_definition()` docs](https://paleolimbot.github.io/wk/reference/wk_crs_proj_definition.html)
+- [PROJ R package `proj_trans()` docs](https://hypertidy.github.io/PROJ/reference/proj_trans.html)
+- [wk `wk_transform()` docs](https://paleolimbot.github.io/wk/reference/wk_transform.html)
+
+Install from CRAN:
+
+```r
+install.packages("PROJ")
+install.packages("wk")
+```

@@ -1,0 +1,261 @@
+---
+title: "Map Reprojection and Map Edges"
+author: "Michael Sumner"
+date: "2026-02-20"
+categories:
+  - code
+  - projections
+  - maps
+  - spatial
+---
+
+# Map Reprojection
+
+A recent [issue on the tmap package](https://github.com/r-tmap/tmap/issues/1136) reports a
+white patch appearing at the top of a map rendered in an Albers Equal Area projection. The
+basemap tiles don't fill the whole plot area. It's tempting to call this a tmap bug, but the
+underlying problem is more general. It affects any tool that needs to compute the geographic
+footprint of a projected extent: tile-fetching packages, GDAL utilities, raster warping
+workflows, and vector reprojection. An almost identical issue was
+[reported against GDAL's gdal_translate](https://github.com/OSGeo/gdal/issues/12100) and
+[fixed in GDAL 3.11](https://gdal.org/en/stable/programs/gdal_translate.html) by densifying
+the `projwin` boundary instead of transforming only corner points.
+
+The core question is: when you have a rectangular region in a map, what
+area does it cover in another map projection? If you only transform the four corners, you get a
+quadrilateral. But the actual footprint is a curved shape, because straight lines in the
+projected CRS trace curves through geographic space. For conic projections like Albers, the
+top edge of the rectangle sweeps a wider arc in longitude than the corners alone suggest. The
+difference between the four-corner bounding box and the true footprint is the missing area in
+the map.
+
+## A picture of the problem
+
+The fix is to *densify* the boundary of the projected rectangle before transforming it. Add
+intermediate vertices along each edge, then reproject the resulting polygon, and compute the
+bounding box of that. The more vertices you add, the better the approximation.
+
+```r
+library(terra)
+vdsn <- "/vsizip//vsicurl/https://github.com/user-attachments/files/20692539/AEA_polygon.zip"
+v <- vect(vdsn)
+
+## The extent as a polygon in projected space
+box_proj <- as.polygons(ext(v))
+crs(box_proj) <- crs(v)
+
+## Transform with sparse corners only
+box_ll_sparse <- project(box_proj, "EPSG:4326")
+
+## Densify first (add vertices every 10 km), then transform
+box_dense <- densify(box_proj, interval = 10000)
+box_ll_dense <- project(box_dense, "EPSG:4326")
+
+## Compare the extents
+ext(box_ll_sparse)
+ext(box_ll_dense)
+
+## Plot them together
+plot(box_ll_dense, border = "blue", lwd = 2, main = "Sparse corners vs. densified boundary")
+plot(box_ll_sparse, border = "red", lwd = 2, add = TRUE)
+legend("bottomright", legend = c("Densified", "Sparse (4 corners)"),
+       col = c("blue", "red"), lwd = 2)
+```
+
+The gap between the red quadrilateral and the blue curve is exactly the area that goes missing
+when software transforms only the corner points.
+
+## How this relates to map tiles
+
+Web map tile services (TMS, WMTS, XYZ) serve imagery in tiles at fixed zoom levels, typically
+in Web Mercator (EPSG:3857). Packages like
+[maptiles](https://github.com/riatelab/maptiles),
+[ceramic](https://github.com/hypertidy/ceramic), and
+[rosm](https://github.com/paleolimbot/rosm)
+do an excellent job of fetching, compositing, and caching these tiles for use in R.
+Their workflow is roughly: determine the geographic extent needed, request the right tiles at
+the right zoom level, stitch them, and return a raster in the desired CRS.
+
+The extent determination step is where the densification problem bites. If the user's map is
+in a conic projection and the package computes the longlat extent by transforming only the
+viewport corners, the requested tiles won't cover the full area.
+
+There is an alternative approach that sidesteps tile-fetching entirely, by treating the tile
+server as a GDAL data source and using `gdalwarp` to produce an image directly on a target
+grid. GDAL's warper handles extent computation internally via `GDALSuggestedWarpOutput()`,
+which densifies the source boundary as part of its calculation. This means the "white patch"
+problem doesn't occur.
+
+## Using GDAL warp with a tile server
+
+A TMS or WMTS endpoint can be opened by GDAL as a raster data source, given the right
+connection string. The `esri()` helper function below constructs a WMTS connection string
+from an ArcGIS REST service URL:
+
+```r
+## Helper functions:
+## esri() builds a WMTS connection string from an ArcGIS REST Services URL
+## fit_dims() computes aspect-ratio-preserving pixel dimensions
+## (fit_dims is available in the hypertidy/vaster package)
+
+esri <- function(url) {
+  sprintf("WMTS:%s/WMTS/1.0.0/WMTSCapabilities.xml", url)
+}
+
+## fit_dims is also available from vaster::fit_dims()
+fit_dims <- function(size = 1024L, wh = c(size, size)) {
+  wh <- rep(wh, length.out = 2L)
+  w <- wh[1L]; h <- wh[2L]
+  as.integer(ceiling(size * c(w, h) / max(w, h)))
+}
+```
+
+With these in hand, the workflow is:
+
+```r
+library(terra)
+
+dsn <- esri(url = "https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer")
+vdsn <- "/vsizip//vsicurl/https://github.com/user-attachments/files/20692539/AEA_polygon.zip"
+
+v <- vect(vdsn)
+
+## Compute pixel dimensions that preserve the aspect ratio of the extent
+dm <- fit_dims(1024, diff(as.vector(ext(v)))[c(1L, 3L)])
+
+source <- rast(dsn)
+
+## Build the target grid: same CRS and extent as the input vector data,
+## with the computed dimensions, and matching number of layers (RGB)
+target <- rast(ext(v), ncols = dm[1L], nrows = dm[2L],
+               crs = crs(v), nlyr = nlyr(source))
+
+## Warp the tile server imagery onto the target grid
+## by_util = TRUE calls gdalwarp rather than terra's internal resampler
+im <- project(rast(dsn), target, by_util = TRUE)
+
+plotRGB(im)
+plot(v, add = TRUE)
+```
+
+The `project()` call with `by_util = TRUE` invokes `gdalwarp` under the hood, which reads
+tiles from the server as needed to fill the target grid. GDAL computes the correct source
+extent internally, including the densification step.
+
+A few details worth noting about this code:
+
+- The `nlyr = nlyr(source)` argument on the target raster is necessary so that all bands (RGB)
+  are included. Without it, the target would default to a single band.
+- The `by_util = TRUE` flag is essential. Without it, `project()` uses terra's internal logic driving a lower level part of the GDAL api, which does not automatically target the appropriate resolution level (it will take forever to process pixels that are not needed).
+- The `dsn` variable is a WMTS connection string that GDAL opens as a raster source. The same
+  approach works with TMS (XYZ) endpoints, though the connection string format is different
+  (it requires a small XML file or an inline XML specification; a good reference is the
+  [GDAL TMS driver documentation](https://gdal.org/en/stable/drivers/raster/wms.html)).
+
+## Reprojecting the target grid definition
+
+If the desired output CRS is different from the input vector CRS, the key insight is to
+reproject the *target grid definition*, not the image data. Build the target grid in the
+source CRS first (where the extent is known), then reproject the empty grid to the desired
+output CRS. GDAL's warp step will then fill it correctly.
+
+```r
+## Build the target in the vector's native CRS
+target0 <- rast(ext(v), ncols = dm[1L], nrows = dm[2L],
+                crs = crs(v), nlyr = nlyr(source))
+
+## Reproject the empty grid definition to Web Mercator
+target <- project(target0, "EPSG:3857")
+
+## Warp the source imagery onto the reprojected target
+im <- project(rast(dsn), target, by_util = TRUE)
+plotRGB(im)
+plot(project(v, "EPSG:3857"), add = TRUE)
+```
+
+Reprojecting an empty raster grid with `project()` (or equivalently, `gdalwarp` on a small
+raster) computes the appropriate output extent and resolution by densifying the source boundary
+before transforming. This is a lightweight way to answer the question "what does this extent
+look like in another CRS?"
+
+## Extent reprojection as a general operation
+
+The task of computing a bounding box in one CRS from a bounding box in another CRS appears in
+many contexts. Several tools address it:
+
+- `reproj::reproj_extent()` in the [reproj](https://hypertidy.github.io/reproj/) package does
+  this directly. It densifies the input extent boundary, transforms the points, and returns
+  the bounding box. The documentation describes it as a simple version of what GDAL's
+  `GDALSuggestedWarpOutput()` does.
+
+- `terra::project()` applied to a `SpatExtent` or an empty `SpatRaster` achieves the same
+  result, using GDAL internally.
+
+- In sf and stars, `sf::st_transform()` on an `sfc_POLYGON` representing the bounding box
+  will reproject the boundary (sf applies segmentization as part of its transformation
+  pipeline when working with s2). `st_bbox()` of the result gives the target extent.
+
+- In gdalraster, `gdalraster::warp()` with appropriate `-te` and `-te_srs` arguments lets
+  you specify the target extent in a different CRS from the output. The `-te_srs` option tells
+  `gdalwarp` to interpret the `-te` coordinates in the given CRS and transform them (with
+  densification) to the output CRS.
+
+- Similarly, `gdal_translate` has `-projwin_srs`, which specifies the CRS of the
+  `-projwin` coordinates. As of
+  [GDAL 3.11](https://gdal.org/en/stable/programs/gdal_translate.html), the projwin boundary
+  is fully densified before transformation. In earlier versions, only the two corner points
+  were transformed, leading to the same class of error described here.
+
+All of these ultimately rely on the same principle: you cannot determine the geographic
+footprint of a projected rectangle from its corners alone. The boundary must be sampled
+densely enough to capture the curvature of the transformation.
+
+## The vector side: densifying features
+
+The same issue applies to vector geometries. A polygon or line with sparse vertices in one CRS
+will have incorrect geometry after reprojection if the segments are long relative to the
+curvature of the transformation. This is not about datum shifts or projection accuracy at
+individual points — point reprojection is exact. It is about the fact that a straight line
+segment in one CRS is not, in general, a straight line in another.
+
+Consider a coastline polygon with vertices every 100 km, stored in an Albers Equal Area CRS.
+Those long straight edges are reasonable approximations of the coastline *in that projection*.
+But when reprojected to longitude/latitude, each straight edge should trace a curve through
+geographic space. Without densification, the reprojected polygon connects the transformed
+endpoints with straight lines in the target CRS, which follow different paths than the
+original segments.
+
+`sf::st_segmentize()` and `terra::densify()` add intermediate vertices along existing edges.
+The critical point is that this must happen *before* reprojection, in the source CRS, so that
+the added vertices capture the geometry as it was defined. After reprojection, the denser
+vertex set produces a polygon that faithfully represents the original shape in the new CRS.
+
+Neither sf nor terra applies densification automatically during reprojection. It is the
+caller's responsibility to decide whether it is needed and to choose an appropriate segment
+length. For small-area, high-resolution data the effect is negligible, but for continental
+extents or coarse geometries it can be significant.
+
+## Summary
+
+The white patch in the tmap basemap, the missing data in `gdal_translate -projwin_srs` before
+GDAL 3.11, and the distortion of coarse polygons after reprojection are all the same problem.
+A rectangular extent in a projected CRS is not a rectangle in geographic coordinates. The
+boundary curves, and capturing that curvature requires sampling it with enough points.
+
+This applies whenever software needs to answer the question "what geographic area does this
+projected region cover?" The answer is to densify before transforming — whether the input is a
+viewport boundary for fetching tiles, a bounding box for subsetting, or the edges of a polygon
+for display.
+
+The GDAL warp approach to tile servers avoids the problem for raster imagery by letting GDAL
+handle extent computation internally. For vector data, `st_segmentize()` or `densify()` should
+be part of any reprojection workflow involving coarse geometries.
+
+Code and helper functions used in this post are available at
+[this gist](https://gist.github.com/mdsumner/264b80cae0bb1e72d93b22b6edd19a27).
+
+---
+
+*Possible future additions: equivalent workflows using sf::gdal_utils(), gdalraster::warp(),
+and vapour::vapour_warp_raster() to show the same operations without terra.*
+

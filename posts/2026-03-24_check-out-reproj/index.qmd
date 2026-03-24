@@ -1,0 +1,132 @@
+---
+title: "Check it out: reproj"
+author: "Michael Sumner"
+date: "2026-03-24"
+categories: [r-packages, projections]
+---
+
+The [reproj](https://hypertidy.github.io/reproj/) package provides a single generic function, `reproj()`, for transforming coordinates between map projections. It works with matrices, data frames, and anything else that a package author cares to add a method for.
+
+Coordinate transformation is a basic operation on numbers, it shouldn't require a specific spatial data format.
+
+## The generic
+
+```r
+library(reproj)
+
+## matrix in, matrix out
+reproj(cbind(147, -42), target = "+proj=laea +datum=WGS84", source = "OGC:CRS84")
+#>          [,1]     [,2] [,3]
+#> [1,] 5969744 -9803200    0
+```
+
+The `source` and `target` arguments accept anything that the PROJ library understands: EPSG codes, proj-strings, WKT2, authority:code strings. The output is always a matrix — 2, 3, or 4 columns depending on input and the `four` argument.
+
+Convenience helpers `reproj_xy()` and `reproj_xyz()` force 2- or 3-column output:
+
+```r
+reproj_xy(cbind(147, -42), target = "+proj=laea +datum=WGS84", source = "OGC:CRS84")
+#>          [,1]     [,2]
+#> [1,] 5969744 -9803200
+```
+
+## The generic method model
+
+`reproj()` is an S3 generic. This means any package can import it and add a method for its own spatial type. The method extracts the source CRS from the object and the user only needs to supply the target:
+
+```r
+## hypothetical method for a spatial type that carries its own CRS
+reproj.my_spatial_thing <- function(x, target, ...) {
+  coords <- extract_coords(x)
+  source <- get_crs(x)
+  result <- reproj(coords, target = target, source = source, ...)
+  rebuild_my_thing(x, result, crs = target)
+}
+```
+
+This pattern is already used by the silicate and quadmesh packages — their `reproj()` methods know where the coordinates live and what the source CRS is, so the user just says `reproj(my_mesh, target_crs)`.
+
+The value of this design is that the generic lives in a small, dependency-light package. A downstream package can `@importFrom reproj reproj` without pulling in GDAL or any heavy spatial stack. The transformation itself is done by the PROJ library via the `PROJ` R package (preferred) or the `proj4` package as fallback.
+
+For example we could write a `reproj.sf` and a `.sfc`: 
+
+```r
+reproj.sfc <- function(x, target, ..., source = NULL) {
+  ## handle this format with wk
+  handled <- wk::as_wkb(x)
+  crs <- wk::wk_crs(handled)$wkt
+  ## stop if not a valid crs, we need source specified
+  if (is.null(source)) {
+    stopifnot(!is.na(crs))
+  } else {
+    crs <- source
+ }
+ trans <- PROJ::proj_trans_create(crs, target)
+ sf::st_as_sfc(wk::wk_transform(handled, trans))
+}
+
+reproj.sf <- function(x, target, ..., source = NULL) {
+ sf::st_set_geometry(x, reproj.sfc(sf::st_geometry(x), target, source = source))
+}
+
+```
+
+That's not very useful since `sf::st_transform` already exists but demonstrates the utility for any other object, and you can force input of a source if your object does not support that already.  We could decompose our object to coordinates and transform those more directly, but anything handled by wk is already supported by this simpler mechanism. 
+
+## CRS preservation
+
+A key principle: when reproj transforms an object that has a method, the *output carries the new CRS*. The silicate method rebuilds the mesh with the target CRS attached. The quadmesh method does the same. The idea is that format-specific methods preserve the full object structure while updating both coordinates and CRS metadata.
+
+For plain matrices and data frames, there's no CRS to carry, and the target and source must be specified. 
+
+## Under the hood: PROJ package
+
+reproj delegates the actual math to the [PROJ](https://hypertidy.github.io/PROJ/) R package, which wraps the PROJ C library. The PROJ package provides:
+
+- `PROJ::proj_trans()` — transform coordinates, accepting wk types
+- `PROJ::proj_trans_create()` — create a reusable transformation object (a `wk_trans`)
+- `PROJ::proj_crs_text()` — convert between CRS representations (WKT2, proj-string, PROJJSON)
+
+
+## reproj vs sf::st_transform vs terra::project
+
+sf and terra both have projection functions, but they're tied to their respective data models. `sf::st_transform()` works on sf objects. `terra::project()` works on SpatVector and SpatRaster.
+
+reproj works on *anything*. It's deliberately format-agnostic: give it a matrix of coordinates, a source CRS, and a target CRS. This makes it useful for packages that don't depend on sf or terra, and for workflows where spatial data isn't in a standard spatial format — track data as data frames, coordinates pulled from a netCDF, vertices from an rgl mesh, cell centres computed from a grid specification.
+
+## Example: transforming track data
+
+```r
+library(reproj)
+
+## some GPS fixes as a plain data frame
+tracks <- data.frame(
+  lon = c(147.3, 147.4, 147.5),
+  lat = c(-42.9, -42.8, -42.7),
+  time = as.POSIXct(c("2024-01-01 08:00", "2024-01-01 09:00", "2024-01-01 10:00"))
+)
+
+## transform to a local projection
+xy <- reproj_xy(
+  cbind(tracks$lon, tracks$lat),
+  target = "+proj=utm +zone=55 +south +datum=WGS84",
+  source = "EPSG:4326"
+)
+
+tracks$x <- xy[, 1]
+tracks$y <- xy[, 2]
+```
+
+Install from CRAN:
+
+```r
+install.packages("reproj")
+```
+
+Links:
+
+- [reproj on CRAN](https://CRAN.R-project.org/package=reproj)
+- [reproj documentation](https://hypertidy.github.io/reproj/)
+- [PROJ on CRAN](https://CRAN.R-project.org/package=PROJ)
+- [GitHub (reproj)](https://github.com/hypertidy/reproj)
+- [GitHub (PROJ)](https://github.com/hypertidy/PROJ)

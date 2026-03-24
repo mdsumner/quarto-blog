@@ -131,11 +131,10 @@ window.Quarto = {
 </script>
 
 <link rel="stylesheet" href="styles.css">
-<link rel="alternate" type="application/rss+xml" title="hypertidy-blog" href="index.xml" data-external="1"><meta property="og:title" content="hypertidy-blog">
-<meta property="og:site_name" content="hypertidy-blog">
-<meta name="twitter:title" content="hypertidy-blog">
-<meta name="twitter:creator" content="@mdsumner">
-<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/rss+xml" title="hypertidy" href="index.xml" data-external="1"><meta property="og:title" content="hypertidy">
+<meta property="og:site_name" content="hypertidy">
+<meta name="twitter:title" content="hypertidy">
+<meta name="twitter:card" content="summary">
 </head>
 
 <body class="nav-fixed">
@@ -146,7 +145,7 @@ window.Quarto = {
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a class="navbar-brand" href="./index.html">
-    <span class="navbar-title">hypertidy-blog</span>
+    <span class="navbar-title">hypertidy</span>
     </a>
   </div>
             <div id="quarto-search" class="" title="Search"></div>
@@ -156,8 +155,16 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
     <a class="nav-link" href="./packages.html"> 
 <span class="menu-text">Packages</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./projects.html"> 
+<span class="menu-text">Projects</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./about.html"> 
@@ -208,7 +215,7 @@ window.Quarto = {
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(17)</span></div><div class="category" data-category="Y2VyYW1pYw==">ceramic <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Y29kZQ==">code <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Z2RhbA==">gdal <span class="quarto-category-count">(8)</span></div><div class="category" data-category="bWVzaA==">mesh <span class="quarto-category-count">(2)</span></div><div class="category" data-category="bmV0Y2Rm">netcdf <span class="quarto-category-count">(5)</span></div><div class="category" data-category="bmV3cw==">news <span class="quarto-category-count">(1)</span></div><div class="category" data-category="b3ZlcnZpZXc=">overview <span class="quarto-category-count">(3)</span></div><div class="category" data-category="cHJvamVjdGlvbnM=">projections <span class="quarto-category-count">(2)</span></div><div class="category" data-category="ci1wYWNrYWdlcw==">r-packages <span class="quarto-category-count">(2)</span></div><div class="category" data-category="cmFzdGVy">raster <span class="quarto-category-count">(7)</span></div><div class="category" data-category="cmds">rgl <span class="quarto-category-count">(2)</span></div><div class="category" data-category="dmFzdGVy">vaster <span class="quarto-category-count">(1)</span></div><div class="category" data-category="emFycg==">zarr <span class="quarto-category-count">(1)</span></div></div></div>
+    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(24)</span></div><div class="category" data-category="Y2VyYW1pYw==">ceramic <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Y29kZQ==">code <span class="quarto-category-count">(3)</span></div><div class="category" data-category="Z2RhbA==">gdal <span class="quarto-category-count">(10)</span></div><div class="category" data-category="bWFwcw==">maps <span class="quarto-category-count">(1)</span></div><div class="category" data-category="bWVzaA==">mesh <span class="quarto-category-count">(2)</span></div><div class="category" data-category="bmV0Y2Rm">netcdf <span class="quarto-category-count">(5)</span></div><div class="category" data-category="bmV3cw==">news <span class="quarto-category-count">(2)</span></div><div class="category" data-category="b3ZlcnZpZXc=">overview <span class="quarto-category-count">(3)</span></div><div class="category" data-category="cHJvamVjdGlvbnM=">projections <span class="quarto-category-count">(5)</span></div><div class="category" data-category="ci1wYWNrYWdlcw==">r-packages <span class="quarto-category-count">(7)</span></div><div class="category" data-category="cmFzdGVy">raster <span class="quarto-category-count">(9)</span></div><div class="category" data-category="cmds">rgl <span class="quarto-category-count">(2)</span></div><div class="category" data-category="c3BhdGlhbA==">spatial <span class="quarto-category-count">(2)</span></div><div class="category" data-category="dmFzdGVy">vaster <span class="quarto-category-count">(1)</span></div><div class="category" data-category="dmVjdG9y">vector <span class="quarto-category-count">(4)</span></div><div class="category" data-category="emFycg==">zarr <span class="quarto-category-count">(1)</span></div></div></div>
 <!-- main -->
 <main class="content quarto-banner-title-block column-page-left" id="quarto-document-content">
 
@@ -222,7 +229,283 @@ window.Quarto = {
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
 <div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-categories="Z2RhbCUyQ3Jhc3RlciUyQ25ldGNkZiUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1770422400000" data-listing-file-modified-sort="1770722050804" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1570">
+<div class="quarto-post image-right" data-index="0" data-categories="ci1wYWNrYWdlcyUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1774310400000" data-listing-file-modified-sort="1774312409754" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="757">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external"></a></p><a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external">Check it out: reproj</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('ci1wYWNrYWdlcw=='); return false;">
+r-packages
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('cHJvamVjdGlvbnM='); return false;">
+projections
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external">The reproj package provides a single generic function, <code>reproj()</code>, for transforming coordinates between map projections. It works with matrices, data frames, and anything else…</a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-24_check-out-reproj/index.html" class="no-external">
+<div class="listing-date">
+Mar 24, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="1" data-categories="ci1wYWNrYWdlcyUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1774310400000" data-listing-file-modified-sort="1774313243491" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="14" data-listing-word-count-sort="2699">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external"></a></p><a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external">Check it out: PROJ::proj_trans_create and wk::wk_transform</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('ci1wYWNrYWdlcw=='); return false;">
+r-packages
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('cHJvamVjdGlvbnM='); return false;">
+projections
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external">The PROJ R package provides <code>proj_trans_create()</code>, which creates a reusable coordinate transformation object that plugs directly into wk’s <code>wk_transform()</code>. This is the…</a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-24_check-out-proj-wk-transform/index.html" class="no-external">
+<div class="listing-date">
+Mar 24, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="2" data-categories="ci1wYWNrYWdlcyUyQ3ZlY3Rvcg==" data-listing-date-sort="1774310400000" data-listing-file-modified-sort="1774313755688" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="639">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external"></a></p><a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external">check out wk</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('ci1wYWNrYWdlcw=='); return false;">
+r-packages
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('dmVjdG9y'); return false;">
+vector
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external">The wk package is a foundation for geometry handling in R. It’s a lightweight, dependency-free geometry column with CRS support, vctrs integration, and a handler-based…</a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-24_check-out-wk/index.html" class="no-external">
+<div class="listing-date">
+Mar 24, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="3" data-categories="ci1wYWNrYWdlcyUyQ3ZlY3Rvcg==" data-listing-date-sort="1774310400000" data-listing-file-modified-sort="1774313661016" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="599">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external"></a></p><a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external">Check it out: geos</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('ci1wYWNrYWdlcw=='); return false;">
+r-packages
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('dmVjdG9y'); return false;">
+vector
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external">The geos package provides a direct R interface to the GEOS library. It operates on a <code>geos_geometry</code> vector type and speaks wk natively — any wk-handleable geometry can be…</a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-24_check-out-geos/index.html" class="no-external">
+<div class="listing-date">
+Mar 24, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="4" data-categories="ci1wYWNrYWdlcyUyQ2dkYWwlMkNyYXN0ZXIlMkN2ZWN0b3I=" data-listing-date-sort="1774310400000" data-listing-file-modified-sort="1774313499540" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="591">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external"></a></p><a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external">Check it out: gdalraster</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('ci1wYWNrYWdlcw=='); return false;">
+r-packages
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('Z2RhbA=='); return false;">
+gdal
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('cmFzdGVy'); return false;">
+raster
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('dmVjdG9y'); return false;">
+vector
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external">The gdalraster package provides a comprehensive interface to the GDAL library for R. It handles raster I/O, vector I/O, the virtual filesystem, coordinate transformation…</a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-24_check-out-gdalraster/index.html" class="no-external">
+<div class="listing-date">
+Mar 24, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="5" data-categories="Y29kZSUyQ25ld3MlMkNyYXN0ZXIlMkN2ZWN0b3IlMkNnZGFsJTJDc3BhdGlhbA==" data-listing-date-sort="1773705600000" data-listing-file-modified-sort="1773784489376" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1349">
+<div class="thumbnail">
+<p><a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external"></a></p><a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external">What’s on geodata.ucdavis.edu and how to access it</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('Y29kZQ=='); return false;">
+code
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('bmV3cw=='); return false;">
+news
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('cmFzdGVy'); return false;">
+raster
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('dmVjdG9y'); return false;">
+vector
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('Z2RhbA=='); return false;">
+gdal
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('c3BhdGlhbA=='); return false;">
+spatial
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external">The R package geodata provides functions for downloading climate, elevation, soil, crop, species occurrence, and administrative boundary data. All of its raster and vector…<code></code></a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-03-17_geodata-package-data/index.html" class="no-external">
+<div class="listing-date">
+Mar 17, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="6" data-categories="Y29kZSUyQ3Byb2plY3Rpb25zJTJDbWFwcyUyQ3NwYXRpYWw=" data-listing-date-sort="1771545600000" data-listing-file-modified-sort="1771574703560" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="9" data-listing-word-count-sort="1673">
+<div class="thumbnail">
+<p><a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external"></a></p><a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external">
+<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
+</a><p><a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external">Map Reprojection and Map Edges</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('Y29kZQ=='); return false;">
+code
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('cHJvamVjdGlvbnM='); return false;">
+projections
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('bWFwcw=='); return false;">
+maps
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('c3BhdGlhbA=='); return false;">
+spatial
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external">A recent issue on the tmap package reports a white patch appearing at the top of a map rendered in an Albers Equal Area projection. The basemap tiles don’t fill the whole…<code></code></a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/2026-02-20_map-extent-projection/index.html" class="no-external">
+<div class="listing-date">
+Feb 20, 2026
+</div>
+<div class="listing-author">
+Michael Sumner
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="7" data-categories="Z2RhbCUyQ3Jhc3RlciUyQ25ldGNkZiUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1770422400000" data-listing-file-modified-sort="1770722050804" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1570">
 <div class="thumbnail">
 <p><a href="./posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear.html" class="no-external"></a></p><a href="./posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -264,7 +547,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="1" data-categories="cmFzdGVyJTJDdmFzdGVy" data-listing-date-sort="1766275200000" data-listing-file-modified-sort="1770722050808" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="15" data-listing-word-count-sort="2909">
+<div class="quarto-post image-right" data-index="8" data-categories="cmFzdGVyJTJDdmFzdGVy" data-listing-date-sort="1766275200000" data-listing-file-modified-sort="1770722050808" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="15" data-listing-word-count-sort="2909">
 <div class="thumbnail">
 <p><a href="./posts/2025-12-21_vaster-grid-logic/vaster-grid-logic.html" class="no-external"></a></p><a href="./posts/2025-12-21_vaster-grid-logic/vaster-grid-logic.html" class="no-external">
 <p class="card-img-top"><img src="posts/2025-12-21_vaster-grid-logic/vaster-grid-logic_files/figure-html/image-model-1.png"  class="thumbnail-image card-img"/></p>
@@ -300,7 +583,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="2" data-categories="bmV0Y2RmJTJDZ2RhbA==" data-listing-date-sort="1756944000000" data-listing-file-modified-sort="1770722050808" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="12" data-listing-word-count-sort="2265">
+<div class="quarto-post image-right" data-index="9" data-categories="bmV0Y2RmJTJDZ2RhbA==" data-listing-date-sort="1756944000000" data-listing-file-modified-sort="1770722050808" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="12" data-listing-word-count-sort="2265">
 <div class="thumbnail">
 <p><a href="./posts/2025-09-04_broken-netcdf/index.html" class="no-external"></a></p><a href="./posts/2025-09-04_broken-netcdf/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2025-09-04_broken-netcdf/index_files/figure-html/coords-1.png"  class="thumbnail-image card-img"/></p>
@@ -336,7 +619,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="3" data-categories="Z2RhbCUyQ3phcnIlMkNuZXRjZGY=" data-listing-date-sort="1751241600000" data-listing-file-modified-sort="1770722050812" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1381">
+<div class="quarto-post image-right" data-index="10" data-categories="Z2RhbCUyQ3phcnIlMkNuZXRjZGY=" data-listing-date-sort="1751241600000" data-listing-file-modified-sort="1770722050812" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1381">
 <div class="thumbnail">
 <p><a href="./posts/2025-03-12_r-py-multidim/r-py-multidim.html" class="no-external"></a></p><a href="./posts/2025-03-12_r-py-multidim/r-py-multidim.html" class="no-external">
 <p class="card-img-top"><img src="posts/2025-03-12_r-py-multidim/r-py-multidim_files/figure-html/osm-1.png"  class="thumbnail-image card-img"/></p>
@@ -375,7 +658,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="4" data-categories="Z2RhbCUyQ3Jhc3Rlcg==" data-listing-date-sort="1733875200000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="490">
+<div class="quarto-post image-right" data-index="11" data-categories="Z2RhbCUyQ3Jhc3Rlcg==" data-listing-date-sort="1733875200000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="490">
 <div class="thumbnail">
 <p><a href="./posts/2024-12-11_conservative_gdal/index.html" class="no-external"></a></p><a href="./posts/2024-12-11_conservative_gdal/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2024-12-11_conservative_gdal/index_files/figure-html/resize-1.png"  class="thumbnail-image card-img"/></p>
@@ -411,7 +694,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="5" data-categories="b3ZlcnZpZXc=" data-listing-date-sort="1733356800000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="6" data-listing-word-count-sort="1040">
+<div class="quarto-post image-right" data-index="12" data-categories="b3ZlcnZpZXc=" data-listing-date-sort="1733356800000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="6" data-listing-word-count-sort="1040">
 <div class="thumbnail">
 <p><a href="./posts/2024-12-05_idea_update/idea-update.html" class="no-external"></a></p><a href="./posts/2024-12-05_idea_update/idea-update.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -444,7 +727,7 @@ Michael Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="6" data-categories="cmFzdGVyJTJDZ2RhbA==" data-listing-date-sort="1733270400000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="221">
+<div class="quarto-post image-right" data-index="13" data-categories="cmFzdGVyJTJDZ2RhbA==" data-listing-date-sort="1733270400000" data-listing-file-modified-sort="1770722050816" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="221">
 <div class="thumbnail">
 <p><a href="./posts/2024-12-04_plot_native/index.html" class="no-external"></a></p><a href="./posts/2024-12-04_plot_native/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2024-12-04_plot_native/index_files/figure-html/image-1.png"  class="thumbnail-image card-img"/></p>
@@ -480,7 +763,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="7" data-categories="Z2RhbCUyQ3ItcGFja2FnZXMlMkNjZXJhbWlj" data-listing-date-sort="1682121600000" data-listing-file-modified-sort="1770722050820" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="702">
+<div class="quarto-post image-right" data-index="14" data-categories="Z2RhbCUyQ3ItcGFja2FnZXMlMkNjZXJhbWlj" data-listing-date-sort="1682121600000" data-listing-file-modified-sort="1770722050820" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="702">
 <div class="thumbnail">
 <p><a href="./posts/2023-04-22_gdal_image_tiles/index.html" class="no-external"></a></p><a href="./posts/2023-04-22_gdal_image_tiles/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2023-04-22_gdal_image_tiles/index_files/figure-html/hobart-image-1.png"  class="thumbnail-image card-img"/></p>
@@ -519,7 +802,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="8" data-categories="bmV0Y2RmJTJDcmFzdGVy" data-listing-date-sort="1670544000000" data-listing-file-modified-sort="1770722050820" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="5" data-listing-word-count-sort="811">
+<div class="quarto-post image-right" data-index="15" data-categories="bmV0Y2RmJTJDcmFzdGVy" data-listing-date-sort="1670544000000" data-listing-file-modified-sort="1770722050820" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="5" data-listing-word-count-sort="811">
 <div class="thumbnail">
 <p><a href="./posts/2022-12-09_netcdf-degenerate-rectilinear/index.html" class="no-external"></a></p><a href="./posts/2022-12-09_netcdf-degenerate-rectilinear/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/grid-stuff-1.png"  class="thumbnail-image card-img"/></p>
@@ -555,7 +838,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="9" data-categories="Z2RhbCUyQ3Jhc3Rlcg==" data-listing-date-sort="1651622400000" data-listing-file-modified-sort="1770722050824" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="594">
+<div class="quarto-post image-right" data-index="16" data-categories="Z2RhbCUyQ3Jhc3Rlcg==" data-listing-date-sort="1651622400000" data-listing-file-modified-sort="1770722050824" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="594">
 <div class="thumbnail">
 <p><a href="./posts/2022-04-05_gdal_raster_blocks/index.html" class="no-external"></a></p><a href="./posts/2022-04-05_gdal_raster_blocks/index.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -591,7 +874,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="10" data-categories="bmV3cyUyQ2NvZGU=" data-listing-date-sort="1650844800000" data-listing-file-modified-sort="1751248378640" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="6" data-listing-word-count-sort="1093">
+<div class="quarto-post image-right" data-index="17" data-categories="bmV3cyUyQ2NvZGU=" data-listing-date-sort="1650844800000" data-listing-file-modified-sort="1751248378640" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="6" data-listing-word-count-sort="1093">
 <div class="thumbnail">
 <p><a href="./posts/2022-04-25_gdalwarper-in-R/index.html" class="no-external"></a></p><a href="./posts/2022-04-25_gdalwarper-in-R/index.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -627,7 +910,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="11" data-categories="bWVzaCUyQ3JnbA==" data-listing-date-sort="1559088000000" data-listing-file-modified-sort="1770722050824" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="9" data-listing-word-count-sort="1714">
+<div class="quarto-post image-right" data-index="18" data-categories="bWVzaCUyQ3JnbA==" data-listing-date-sort="1559088000000" data-listing-file-modified-sort="1770722050824" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="9" data-listing-word-count-sort="1714">
 <div class="thumbnail">
 <p><a href="./posts/2019-05-29_recent-rgl-format-changes/index.html" class="no-external"></a></p><a href="./posts/2019-05-29_recent-rgl-format-changes/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2019-05-29_recent-rgl-format-changes/index_files/figure-html/vertices-1.png"  class="thumbnail-image card-img"/></p>
@@ -663,7 +946,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="12" data-categories="Z2RhbCUyQ292ZXJ2aWV3" data-listing-date-sort="1504224000000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1552">
+<div class="quarto-post image-right" data-index="19" data-categories="Z2RhbCUyQ292ZXJ2aWV3" data-listing-date-sort="1504224000000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1552">
 <div class="thumbnail">
 <p><a href="./posts/2017-09-01_gdal-in-r/index.html" class="no-external"></a></p><a href="./posts/2017-09-01_gdal-in-r/index.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -699,7 +982,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="13" data-categories="bmV0Y2RmJTJDci1wYWNrYWdlcw==" data-listing-date-sort="1500940800000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="9" data-listing-word-count-sort="1656">
+<div class="quarto-post image-right" data-index="20" data-categories="bmV0Y2RmJTJDci1wYWNrYWdlcw==" data-listing-date-sort="1500940800000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="9" data-listing-word-count-sort="1656">
 <div class="thumbnail">
 <p><a href="./posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html" class="no-external"></a></p><a href="./posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2017-07-25_erddap-in-sf-and-ggplot2/index_files/figure-html/unnamed-chunk-4-1.png"  class="thumbnail-image card-img"/></p>
@@ -735,7 +1018,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="14" data-categories="b3ZlcnZpZXc=" data-listing-date-sort="1484006400000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1387">
+<div class="quarto-post image-right" data-index="21" data-categories="b3ZlcnZpZXc=" data-listing-date-sort="1484006400000" data-listing-file-modified-sort="1770722050828" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1387">
 <div class="thumbnail">
 <p><a href="./posts/2017-01-10_r-spatial-2017/index.html" class="no-external"></a></p><a href="./posts/2017-01-10_r-spatial-2017/index.html" class="no-external">
 <div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
@@ -768,7 +1051,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="15" data-categories="bWVzaCUyQ3JnbCUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1451260800000" data-listing-file-modified-sort="1770722050832" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1541">
+<div class="quarto-post image-right" data-index="22" data-categories="bWVzaCUyQ3JnbCUyQ3Byb2plY3Rpb25z" data-listing-date-sort="1451260800000" data-listing-file-modified-sort="1770722050832" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8" data-listing-word-count-sort="1541">
 <div class="thumbnail">
 <p><a href="./posts/2015-12-28_gis3d/index.html" class="no-external"></a></p><a href="./posts/2015-12-28_gis3d/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2015-12-28_gis3d/index_files/figure-html/unnamed-chunk-4-1.png"  class="thumbnail-image card-img"/></p>
@@ -807,7 +1090,7 @@ Michael D. Sumner
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="16" data-categories="cmFzdGVy" data-listing-date-sort="1397692800000" data-listing-file-modified-sort="1770722050832" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="432">
+<div class="quarto-post image-right" data-index="23" data-categories="cmFzdGVy" data-listing-date-sort="1397692800000" data-listing-file-modified-sort="1770722050832" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="432">
 <div class="thumbnail">
 <p><a href="./posts/2014-04-17_r-matrices-and-image/index.html" class="no-external"></a></p><a href="./posts/2014-04-17_r-matrices-and-image/index.html" class="no-external">
 <p class="card-img-top"><img src="posts/2014-04-17_r-matrices-and-image/index_files/figure-html/unnamed-chunk-8-1.png"  class="thumbnail-image card-img"/></p>

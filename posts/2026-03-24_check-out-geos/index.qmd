@@ -1,0 +1,177 @@
+---
+title: "Check it out: geos"
+author: "Michael Sumner"
+date: "2026-03-24"
+categories: [r-packages, vector]
+---
+
+The [geos](https://paleolimbot.github.io/geos/) package provides a direct R interface to the GEOS library. It operates on a `geos_geometry` vector type and speaks wk natively — any wk-handleable geometry can be passed in, and the results can flow back out to wk, sf, or anything else.
+
+This is the geometry engine for the wk ecosystem. Where wk handles representation and PROJ handles transformation, geos handles *computation*: buffers, intersections, unions, predicates, distances, triangulations.
+
+## Geometry vectors
+
+geos stores geometries in an external pointer vector class:
+
+```r
+library(geos)
+
+g <- as_geos_geometry(c(
+  "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))",
+  "POINT (5 5)",
+  "LINESTRING (0 0, 10 10)"
+))
+g
+#> <geos_geometry[3]>
+#> [1] <POLYGON [0 0...10 10]>
+#> [2] <POINT [5 5]>
+#> [3] <LINESTRING [0 0...10 10]>
+```
+
+The input can be WKT strings, WKB, wk vectors, or sf objects — anything with a `wk_handle()` method gets converted automatically:
+
+```r
+## from wk::xy()
+as_geos_geometry(wk::xy(1:5, 1:5))
+
+## from sf
+library(sf)
+nc <- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
+nc_geos <- as_geos_geometry(nc)
+```
+
+## Operations
+
+geos provides vectorized access to the GEOS C API. Operations are functions, not methods — they take geometry vectors and return geometry vectors or values:
+
+```r
+## buffer
+geos_buffer(g[1], distance = 2)
+
+## intersection
+geos_intersection(g[1], geos_buffer(g[2], 3))
+
+## union
+geos_unary_union(g)
+
+## simplify
+geos_simplify(g[3], tolerance = 1)
+
+## centroid
+geos_centroid(g[1])
+```
+
+Binary predicates are also vectorized:
+
+```r
+geos_intersects(g[1], g[2])
+#> [1] TRUE
+
+geos_contains(g[1], g[2])
+#> [1] TRUE
+
+geos_disjoint(g[1], g[3])
+#> [1] FALSE
+```
+
+## Spatial indexing
+
+geos includes an STRtree implementation for fast spatial queries:
+
+```r
+## build a spatial index
+pts <- as_geos_geometry(wk::xy(runif(10000), runif(10000)))
+tree <- geos_strtree(pts)
+
+## query the index
+query_geom <- as_geos_geometry("POLYGON ((0.4 0.4, 0.6 0.4, 0.6 0.6, 0.4 0.6, 0.4 0.4))")
+geos_strtree_query(tree, query_geom)
+```
+
+The newer `geos_basic_strtree()` uses `wk::wk_envelope()` for index construction, which is extremely efficient for `wk::xy()` input — the envelope is just the point itself, computed without any geometry parsing overhead.
+
+## Construction from coordinates
+
+You don't need to go through WKT to build geometries. geos provides direct constructors:
+
+```r
+## points from x, y
+geos_make_point(1:3, 1:3)
+
+## linestring from coordinates
+geos_make_linestring(c(0, 1, 2, 3), c(0, 1, 0, 1))
+
+## polygon from coordinates (ring is closed automatically)
+geos_make_polygon(c(0, 10, 10, 0), c(0, 0, 10, 10))
+
+## collections
+geos_make_collection(
+  c("POINT (0 0)", "POINT (1 1)"),
+  type_id = "multipoint"
+)
+```
+
+These constructors use `feature_id` and `ring_id` arguments for building multi-part and multi-ring geometries from flat coordinate vectors, similar to how data often arrives from databases or CSV files.
+
+## wk compatibility
+
+geos implements `wk_handle()` for its geometry type, so all wk operations work:
+
+```r
+## extract coordinates
+wk::wk_coords(nc_geos)
+
+## compute bounding boxes
+wk::wk_envelope(nc_geos)
+
+## convert to wk types
+wk::as_wkt(nc_geos)
+wk::as_wkb(nc_geos)
+
+## convert to sf
+sf::st_as_sfc(nc_geos)
+```
+
+This means geos integrates into any workflow that uses wk as the interchange format. Read vector data with gdalraster (WKB output), convert to geos for geometric operations, transform with PROJ, write back with gdalraster — all through wk.
+
+## geos vs sf for geometric operations
+
+sf uses GEOS internally for its geometry operations (`st_buffer()`, `st_intersection()`, etc.). The difference is:
+
+- **sf** wraps GEOS through its own C++ layer, with results returned as sfc geometry columns inside sf data frames. The operations are tightly integrated with the sf data model.
+- **geos** wraps GEOS directly, with results as standalone geometry vectors. No data frame, no attributes — just geometry in, geometry out.
+
+If you're working within sf, use sf's functions. If you're working outside sf — with wk vectors, plain data frames, or formats that don't map to sf's model — geos gives you the same geometric operations without the sf world view.
+
+Workflows can deliberately separate I/O (gdalraster/vapour), geometry (wk/geos), transformation (PROJ/reproj), and even grid logic (vaster), geos is the geometric computation layer. 
+
+## Measurement and properties
+
+```r
+geos_area("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")
+#> [1] 100
+
+geos_length("LINESTRING (0 0, 10 0, 10 10)")
+#> [1] 20
+
+geos_is_valid("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")
+#> [1] TRUE
+
+geos_is_empty("POINT EMPTY")
+#> [1] TRUE
+
+geos_num_coordinates("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")
+#> [1] 5
+```
+
+Install from CRAN:
+
+```r
+install.packages("geos")
+```
+
+Links:
+
+- [geos on CRAN](https://CRAN.R-project.org/package=geos)
+- [geos documentation](https://paleolimbot.github.io/geos/)
+- [GitHub](https://github.com/paleolimbot/geos)

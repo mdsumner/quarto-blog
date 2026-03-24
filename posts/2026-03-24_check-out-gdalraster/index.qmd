@@ -1,0 +1,147 @@
+---
+title: "Check it out: gdalraster"
+author: "Michael Sumner"
+date: "2026-03-24"
+categories: [r-packages, gdal, raster, vector]
+---
+
+The [gdalraster](https://firelab.github.io/gdalraster/) package  provides a comprehensive interface to the GDAL library for R. It handles raster I/O, vector I/O, the virtual filesystem, coordinate transformation, and a large collection of GDAL utilities — all through a direct, low-level API that doesn't impose a high-level spatial data model.
+
+
+## Raster I/O
+
+The core raster interface is `GDALRaster`, an Rcpp module class that wraps a GDAL dataset handle:
+
+```r
+library(gdalraster)
+
+f <- system.file("extdata/storm_lake.lcp", package = "gdalraster")
+ds <- new(GDALRaster, f, TRUE)
+
+ds$info()
+ds$dim()       # c(ncol, nrow, nbands)
+ds$res()       # c(xres, yres)
+ds$bbox()      # c(xmin, ymin, xmax, ymax)
+ds$getProjection()
+
+## read a band
+data <- ds$read(band = 1,
+                xoff = 0, yoff = 0,
+                xsize = ds$getRasterXSize(),
+                ysize = ds$getRasterYSize(),
+                out_xsize = ds$getRasterXSize(),
+                out_ysize = ds$getRasterYSize())
+
+ds$close()
+```
+
+The `read()` method maps directly to GDAL's `RasterIO` — you specify the source window and the output size. This gives full control over decimation, oversampling, and partial reads. No intermediate abstraction, no automatic resampling decisions you didn't ask for.
+
+## Vector I/O
+
+gdalraster provides vector read/write through OGR:
+
+```r
+## list layers in a data source
+dsn <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+ogr_ds_layer_names(dsn)
+
+## feature count and extent
+ogr_ds_layer_count(dsn)
+ogr_layer_field_names(dsn, "mtbs_perims")
+
+## read features as a data frame with WKB geometry
+lyr <- new(GDALVector, dsn, "mtbs_perims", read_only = TRUE)
+feat <- lyr$fetch(-1)  # all features
+lyr$close()
+```
+
+The geometry comes back as WKB — directly compatible with wk. You can pass it to `wk::as_wkt()`, `geos::as_geos_geometry()`, or `sf::st_as_sfc()` as needed. gdalraster reads the data; what you do with the geometry is up to you and whatever packages you choose.
+
+## Virtual filesystem
+
+GDAL's `/vsicurl/`, `/vsizip/`, `/vsimem/` and other virtual filesystem handlers are all available:
+
+```r
+## read a remote file without downloading
+vsi_read_dir("/vsicurl/https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/")
+
+## open a GeoPackage over HTTP
+dsn <- "/vsicurl/https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/gadm41_AUS.gpkg"
+ogr_ds_layer_names(dsn)
+
+## read inside a remote zip
+vsi_read_dir("/vsizip//vsicurl/https://github.com/OSGeo/gdal/raw/refs/heads/master/autotest/gcore/data/byte.tif.zip")
+#[1] "byte.tif"
+
+```
+
+This is essential for cloud-native workflows. The same dataset string that works locally works over HTTP, S3, or Azure — GDAL handles the transport.
+
+## The warper
+
+`warp()` provides access to GDAL's warper API for raster reprojection and resampling:
+
+```r
+## warp to a new projection
+warp(
+  src_filename = "input.tif",
+  dst_filename = "output.tif",
+  t_srs = "EPSG:3577",
+  tr = c(100, 100),           # target resolution
+  r = "bilinear"              # resampling method
+)
+```
+
+This is the same warper that `gdalwarp` uses on the command line. For building VRTs, mosaics, and complex raster pipelines, gdalraster provides `buildVRT()`, `translate()`, and `rasterFromRaster()`.
+
+## VRT construction
+
+One of the most powerful features is programmatic VRT (Virtual Raster) construction:
+
+```r
+## create a VRT from multiple source files
+buildVRT(
+  vrt_filename = "mosaic.vrt",
+  input_rasters = c("tile1.tif", "tile2.tif", "tile3.tif")
+)
+
+## add sources to a VRT programmatically
+ds <- new(GDALRaster, "output.vrt", FALSE)
+ds$addSimpleSource(band = 1, src_filename = "source.tif", ...)
+ds$close()
+```
+
+VRTs are GDAL's answer to lazy raster operations — the XML file describes the operation but nothing is computed until you read pixels. 
+
+## Configuration and utilities
+
+gdalraster exposes GDAL configuration options:
+
+```r
+## set GDAL config for performance tuning
+set_config_option("GDAL_CACHEMAX", "512")
+set_config_option("GDAL_HTTP_MULTIRANGE", "YES")
+set_config_option("GDAL_NUM_THREADS", "ALL_CPUS")
+
+## check what's set
+get_config_option("GDAL_CACHEMAX")
+
+## GDAL/PROJ/GEOS version info
+gdal_version()
+```
+
+Plus a full set of geometry utilities (`g_buffer()`, `g_intersection()`, etc.) that use GEOS through GDAL's OGR layer, and coordinate transformation via `transform_xy()`.
+
+
+Install from CRAN:
+
+```r
+install.packages("gdalraster")
+```
+
+Links:
+
+- [gdalraster on CRAN](https://CRAN.R-project.org/package=gdalraster)
+- [gdalraster documentation](https://usdaforestservice.github.io/gdalraster/)
+- [GitHub](https://github.com/USDAForestService/gdalraster)
