@@ -109,7 +109,7 @@ wk itself includes several useful operations that don't require GEOS:
 - `wk_collection()` — collect simple geometries into multi/collection types
 - `wk_linestring()` / `wk_polygon()` — construct from coordinates
 - `wk_set_z()` / `wk_drop_z()` — add or remove Z dimension
-- `wk_clockwise()` / `wk_counterclockwise()` — rewind polygon rings
+- `wk_orient()` / `wk_clockwise()` / `wk_counterclockwise()` — rewind polygon rings
 
 For geometric predicates, buffering, intersection and the like you need [geos](https://paleolimbot.github.io/geos/) (see the geos post in this series).
 
