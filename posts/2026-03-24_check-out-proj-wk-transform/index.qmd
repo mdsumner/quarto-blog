@@ -417,3 +417,13 @@ Install from CRAN:
 install.packages("PROJ")
 install.packages("wk")
 ```
+
+## Check it out series
+
+This is part of a series of posts for foundational spatial support in R. These posts include: 
+
+- [wk](https://www.hypertidy.org/posts/2026-03-24_check-out-wk/)
+- [reproj](https://www.hypertidy.org/posts/2026-03-24_check-out-reproj/)
+- [PROJ/wk transform](https://www.hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/)
+- [gdalraster](https://www.hypertidy.org/posts/2026-03-24_check-out-gdalraster/)
+- [geos](https://www.hypertidy.org/posts/2026-03-24_check-out-geos/)

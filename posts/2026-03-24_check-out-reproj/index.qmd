@@ -130,3 +130,16 @@ Links:
 - [PROJ on CRAN](https://CRAN.R-project.org/package=PROJ)
 - [GitHub (reproj)](https://github.com/hypertidy/reproj)
 - [GitHub (PROJ)](https://github.com/hypertidy/PROJ)
+
+
+## Check it out series
+
+This is part of a series of posts for foundational spatial support in R. These posts include: 
+
+- [wk](https://www.hypertidy.org/posts/2026-03-24_check-out-wk/)
+- [reproj](https://www.hypertidy.org/posts/2026-03-24_check-out-reproj/)
+- [PROJ/wk transform](https://www.hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/)
+- [gdalraster](https://www.hypertidy.org/posts/2026-03-24_check-out-gdalraster/)
+- [geos](https://www.hypertidy.org/posts/2026-03-24_check-out-geos/)
+
+
