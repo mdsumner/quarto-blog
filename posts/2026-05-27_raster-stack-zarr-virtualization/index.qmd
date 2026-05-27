@@ -14,7 +14,7 @@ categories:
 
 A common scenario in geospatial data workflows is multiple raster files. Let's consider 23 snapshots of OISST sea surface temperature spread across 2025. One NetCDF file per date, each raster is the same grid, four variables each. Let's see what R does with that. Here we assume `files` is a vector of paths to the NetCDF files.
 
-(Fully reproducible setup, downloading directly from NCEI is in the appendix.)
+(Fully [reproducible setup](#appendix-setup), downloading directly from NCEI is in the appendix.)
 
 ```r
 str(basename(files))
@@ -181,9 +181,9 @@ If you work with time series of raster files and you've felt this friction:
 
 ---
 
-## Appendix: a progressive tour on 23 OISST files
+## Appendix: a progressive tour on 23 OISST files {#appendix}
 
-### Setup: download 23 OISST files from NCEI
+### Setup: download 23 OISST files from NCEI {#appendix-setup}
 
 All code below uses only this setup — no internal data infrastructure required.
 
