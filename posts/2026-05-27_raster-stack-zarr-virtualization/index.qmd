@@ -583,6 +583,28 @@ stars::read_mdim(
 # time  16 [days since 1978-01-01T12:00:00]        udunits
 ```
 
+Oh, and turns out `terra::rast()` *does* support multidim: 
+
+
+```R
+r <- rast(  "ZARR:\"/vsicurl/https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr\"", md  = TRUE)
+class       : SpatRaster
+size        : 720, 1440, 92  (nrow, ncol, nlyr)
+resolution  : 0.25, 0.25  (x, y)
+extent      : 0, 360, -90, 90  (xmin, xmax, ymin, ymax)
+coord. ref. : lon/lat WGS 84 (CRS84) (OGC:CRS84)
+sources     : sst_virtual.zarr
+varnames    : anom (Daily sea surface temperature anomalies)
+              err (Estimated error standard deviation of analysed_sst)
+              ice (Sea ice concentration)
+              sst (Daily sea surface temperature)
+names       : anom_~v=0_1, anom_~v=0_2, anom_~v=0_3, anom_~v=0_4, anom_~v=0_5, anom_~v=0_6, ...
+unit        :     Celsius,     Celsius,     Celsius,     Celsius,     Celsius,     Celsius, ...
+depth       : 0
+time (days) : 2025-01-01 to 2025-12-19 (23 steps)
+```
+
+There's a lot here. 
 
 ---
 
