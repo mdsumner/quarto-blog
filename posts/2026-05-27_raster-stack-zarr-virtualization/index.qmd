@@ -201,6 +201,14 @@ files <- file.path(dir, basename(urls))
 download.file(urls, files, method = "libcurl", mode = "wb")
 ```
 
+#### Setup part 2: create a GDAL multidimensional VRT
+
+```r
+writeLines(glue::glue("/vsicurl/{urls}"), tf <- tempfile())
+system(glue::glue("gdal mdim mosaic @{tf} oisst_2025_sample.vrt"))
+## piggyback::pb_upload("oisst_2025_sample.vrt")
+```
+
 The URL structure itself is the catalogue: a simple path template over date components, no database required. 23 files, ~3.5MB each, ~80MB total.
 
 ### Step 1 — terra: `rast()`, band-stacked, all variables, time preserved
@@ -384,7 +392,10 @@ The reading side (`zaro`) is already there. The indexing side (`rhdf5-dev`) is a
 
 ### Step 8 — tidync dev: multi-file remote concat in one call *(unmerged dev branch)*
 
-And then this happened.
+tidync recently got an update in a dev branch to input multiple files, this was a long wishlist that was
+out of reach in the early years of the package. I had forgotten also that remote access to NetCDF is possible
+via its own library by appending `#mode=bytes` to the URL - this means we don't always need an OpenDAP-enabled
+server for remote read. (GDAL uses its own techniques for this remote access via `/vsicurl/` on Linux). 
 
 ```r
 # remotes::install_github("hypertidy/tidync@multi-input")
@@ -419,32 +430,96 @@ tidync::tidync(
 #   D3   lon     1440    0.125   359.88  FALSE  TRUE
 ```
 
-No download. No VRT. No pre-built reference store. Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — `#mode=bytes` vectorized over the URL vector, a synthetic time axis injected via `concat_dim`, all four variables on the active grid, unlimited time dimension, proper coordinates throughout.
+Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — `#mode=bytes` vectorized over the URL vector, a synthetic time axis injected via `concat_dim`, all four variables on the active grid, unlimited time dimension, proper coordinates throughout. We have tested this on the full set of 16000 URLs and it opens in less than a minute when we use the `fast` and `concat_dim` mechanism to declare the values on the concatentating dimension. 
 
-The "not a file / attempting remote connection / Connection succeeded" in the output is tidync doing its own detective work: it knows this isn't a local path, tries the remote connection, and succeeds. The `#mode=bytes` suffix — the ncdf4 workaround from Step 6, quietly rediscovered after a few years — turns out to be the key that unlocks the whole thing.
+The "not a file / attempting remote connection / Connection succeeded" in the output is tidync doing its own detective work: it knows this isn't a local path, tries the remote connection, and succeeds. The `#mode=bytes` suffix — the ncdf4 workaround from Step 6 unlocks the whole thing.
 
-What this gives you is the R equivalent of the xarray VirtualiZarr open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a Parquet store — but it's remarkably clean code, and the `tidync` object it produces is fully navigable with `hyper_filter()` and `hyper_array()` without touching the data.
+This is an R equivalent of the xarray VirtualiZarr open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a Parquet store - and the `tidync` object it produces is fully navigable with `hyper_filter()` and `hyper_array()` without touching the data.
 
-The serializable recipe (the Parquet store, the multidim VRT) is still the goal for sharing and interoperability. But as a working representation for analysis, this is already there.
+The serializable recipe (the Parquet store, the multidim VRT) is still the goal for sharing and interoperability. But as a working representation for analysis, this is worth exploring.
 
 ### The xarray counterpart — for comparison
 
+First create the VirtualiZarr version. We use the GDAl mdim VRT hosted above because it's convenient, and that's where this effort will start - GDAL already has all the metadata and array concatenating logic, we can pair that with byte reference extraction improvements to GDAL's `GetRawBlockInfo()`. 
+
 ```python
-ds = xr.open_dataset("sst_virtual.parquet", engine="kerchunk")
-# <xarray.Dataset>
-# Dimensions:  (time: 23, zlev: 1, lat: 720, lon: 1440)
-# Coordinates:
-#   * time     (time) datetime64[ns] 2025-01-01 ... 2025-12-19
-#   * lat      (lat) float32 -90.0 ... 89.75
-#   * lon      (lon) float32 0.0 ... 359.75
-# Data variables: sst, anom, err, ice
+from lxml import etree
+import requests
+from urllib.parse import urlparse
+import xarray as xr
+from obstore.store import HTTPStore
+from obspec_utils.registry import ObjectStoreRegistry
+from virtualizarr import open_virtual_mfdataset
+from virtualizarr.parsers import HDFParser
+
+# 1. parse the VRT to get source URLs
+r = requests.get(
+    "https://github.com/mdsumner/quarto-blog/releases/download/latest/oisst_2025_sample.vrt"
+)
+tree = etree.fromstring(r.content)
+urls = sorted(set(             # sorted: set() loses order, filenames are date-stamped
+    el.text.replace("/vsicurl/", "")
+    for el in tree.findall(".//SourceFilename")
+))
+
+# 2. set up the object store (anonymous HTTP)
+parsed = urlparse(urls[0])
+bucket = f"{parsed.scheme}://{parsed.netloc}"
+registry = ObjectStoreRegistry({bucket: HTTPStore.from_url(bucket)})
+parser = HDFParser()
+
+# 3. open as a single virtual dataset — no data read, no files downloaded
+combined = open_virtual_mfdataset(
+    urls,
+    concat_dim="time",
+    parser=parser,
+    registry=registry,
+    combine="nested",
+)
+
+# 4. serialize — a ~15KB Parquet file describing all 23 files
+combined.virtualize.to_kerchunk("sst_virtual.parquet", format="parquet")
 ```
 
-Opened from a ~15KB Parquet reference store. Fully lazy — no data read yet. The store is the recipe; the original netCDF files are the data. Structurally this is what Steps 5–7 are reaching toward: the multidim VRT is GDAL's version of the Parquet store, and converting between them is the near-term target. The VirtualiZarr store goes one level deeper — chunk-level byte references rather than file-level references — which is what makes it S3-native and format-library-free. That's the remaining gap, and it's closing.
+Now open this with xarray. 
+
+```python
+ds = xr.open_dataset("sst_virtual.zarr", engine="kerchunk")
+ds
+#<xarray.Dataset> Size: 763MB
+#Dimensions:  (time: 23, zlev: 1, lat: 720, lon: 1440)
+#Coordinates:
+#  * time     (time) datetime64[ns] 184B 2025-01-01T12:00:00 ... 2025-12-19T12...
+#  * zlev     (zlev) float32 4B 0.0
+#  * lat      (lat) float32 3kB -89.88 -89.62 -89.38 -89.12 ... 89.38 89.62 89.88
+#  * lon      (lon) float32 6kB 0.125 0.375 0.625 0.875 ... 359.4 359.6 359.9
+#Data variables:
+#    anom     (time, zlev, lat, lon) float64 191MB ...
+#    err      (time, zlev, lat, lon) float64 191MB ...
+#    ice      (time, zlev, lat, lon) float64 191MB ...
+#    sst      (time, zlev, lat, lon) float64 191MB ...
+#Attributes: (12/37)
+#    Conventions:                CF-1.6, ACDD-1.3
+#    title:                      NOAA/NCEI 1/4 Degree Daily Optimum Interpolat...
+#    references:                 Reynolds, et al.(2007) Daily High-Resolution-...
+#    source:                     ICOADS, NCEP_GTS, GSFC_ICE, NCEP_ICE, Pathfin...
+#    id:                         oisst-avhrr-v02r01.20250101.nc
+#    naming_authority:           gov.noaa.ncei
+#    ...                         ...
+#    time_coverage_start:        2025-01-01T00:00:00Z
+#    time_coverage_end:          2025-01-01T23:59:59Z
+#    metadata_link:              https://doi.org/10.25921/RE9P-PT57
+#    ncei_template_version:      NCEI_NetCDF_Grid_Template_v2.0
+#    comment:                    Data was converted from NetCDF-3 to NetCDF-4 ...
+#    sensor:                     Thermometer, AVHRR
+
+```
+
+Opened from a ~15KB Parquet reference store. Fully lazy — no data read yet. The store is the recipe; the original NetCDF files are the data. Structurally this is what Steps 5–7 are reaching toward: the multidim VRT is GDAL's version of the Parquet store, and converting between them is the near-term target. The VirtualiZarr store goes one level deeper — chunk-level byte references rather than file-level references — which is what makes it S3-native and format-library-free. That's the remaining gap. 
 
 ---
 
-*Michael Sumner is a geospatial researcher at the Australian Antarctic Division. Packages mentioned — `tidync`, `vapour`, `terra`, `stars`, `vrtstack`, `zaro` — are part of or adjacent to the [hypertidy](https://github.com/hypertidy) ecosystem.*
+*Michael Sumner is research software engineer at the Australian Antarctic Division. Packages mentioned — `tidync` is rOpenSci reviewed, `vapour`, `vrtstack`, `zaro` — are part of the [hypertidy](https://github.com/hypertidy) ecosystem.*
 
 ---
 
