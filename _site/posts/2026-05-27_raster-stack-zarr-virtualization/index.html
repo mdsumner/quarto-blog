@@ -391,7 +391,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>A common scenario in geospatial data workflows is multiple raster files. Let’s consider 23 snapshots of OISST sea surface temperature spread across 2025. One NetCDF file per date, each raster is the same grid, four variables each. Let’s see what R does with that. Here we assume <code>files</code> is a vector of paths to the NetCDF files.</p>
-<p>(Fully reproducible setup, downloading directly from NCEI is in the appendix.)</p>
+<p>(Fully <a href="#appendix-setup">reproducible setup</a>, downloading directly from NCEI is in the appendix.)</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(<span class="fu">basename</span>(files))</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># chr [1:23] "oisst-avhrr-v02r01.20250101.nc" "oisst-avhrr-v02r01.20250117.nc" "oisst-avhrr-v02r01.20250202.nc" ...</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
@@ -514,10 +514,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <hr>
 </section>
-<section id="appendix-a-progressive-tour-on-23-oisst-files" class="level2">
-<h2 class="anchored" data-anchor-id="appendix-a-progressive-tour-on-23-oisst-files">Appendix: a progressive tour on 23 OISST files</h2>
-<section id="setup-download-23-oisst-files-from-ncei" class="level3">
-<h3 class="anchored" data-anchor-id="setup-download-23-oisst-files-from-ncei">Setup: download 23 OISST files from NCEI</h3>
+<section id="appendix" class="level2">
+<h2 class="anchored" data-anchor-id="appendix">Appendix: a progressive tour on 23 OISST files</h2>
+<section id="appendix-setup" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-setup">Setup: download 23 OISST files from NCEI</h3>
 <p>All code below uses only this setup — no internal data infrastructure required.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glue)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
