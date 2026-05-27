@@ -96,7 +96,7 @@ The deeper insight comes when you realize that **HDF5, netCDF4, GeoTIFF, GRIB, a
 
 [kerchunk](https://github.com/fsspec/kerchunk) and its successor [VirtualiZarr](https://virtualizarr.readthedocs.io/) do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files. It's worth noting that this idea is not new — NASA and Unidata's [DMR++](https://opendap.github.io/DMRpp-wiki/DMRpp.html) format did the same thing for OPeNDAP, indexing chunk byte-ranges in HDF5/netCDF files as a sidecar that an OPeNDAP server can serve directly. [Cloud-Optimized GeoTIFF](https://cogeo.org) is the same idea applied to TIFF: the IFD tile index is moved to the front of the file so a client can read the chunk map in one range request and fetch only what it needs thereafter. The difference is that Zarr's client-side framing made the pattern composable and ecosystem-wide rather than tied to a specific server or format.
 
-NOTE: this is very much pseudo code showing the overall style, we have a real example in the appendix. 
+NOTE: this is very much pseudo code showing the overall style - see the [Usage VirtualiZarr pages](https://virtualizarr.readthedocs.io/en/latest/usage.html) for more examples, and we have a real example in the appendix. 
 
 ```python
 from virtualizarr import open_virtual_dataset
@@ -120,7 +120,7 @@ ds = xr.open_dataset("sst_virtual.zarr/", engine="kerchunk")
 # Data variables: anom, err, ice, sst
 ```
 
-The store is kilobytes of metadata. The data stays where it is. The n-D structure is fully encoded. Compare this to the terra output above:
+The store is kilobytes of metadata, the actual data stays where it is, and the n-D structure is fully encoded. Compare this to the terra output above:
 
 - `sst`, `anom`, `err`, `ice` as **named variables**, not interleaved bands
 - `time` as a real coordinate with date values, not layer indices `r_1..r_23`
@@ -147,15 +147,15 @@ Converting a GDAL multidim VRT to a Zarr reference store is a small transformati
 
 R can *read* virtual stores — Zarr and multidim VRT and VirtualiZarr Parquet reference via `stars::read_mdim()`, `gdalraster::mdim_translate` or [`zaro`](https://github.com/hypertidy/zaro) or real Zarr with [pizzarr](https://CRAN.R-project.org/package=pizzarr) or [zarr](https://CRAN.R-project.org/package=zarr). What R can't yet do is *create* the chunk-level byte-reference stores that VirtualiZarr generates for HDF5 and netCDF.
 
-That's a frontier, and the pieces are converging:
+That's a frontier, and I've been exloring where the pieces could converge:
 
 **`gdal mdim mosaic`** creates multidim VRTs from file collections today. The XML fully describes what a VirtualiZarr store needs — shape, chunks, coordinate values, source file paths and byte offsets. This is the hard structural work; emitting the Zarr reference store format from it is a straightforward conversion.
 
-**`rhdf5`** can now open remote HDF5 files at URLs or on S3 (dev version on GitHub). The next step is extracting chunk byte-reference indices directly — the core operation VirtualiZarr performs in Python. Step 7 in the appendix shows what this already looks like.
+**`rhdf5`** can now open remote HDF5 files at URLs or on S3 (dev version on GitHub). The next step is extracting chunk byte-reference indices directly -  a core operation that VirtualiZarr performs in Python (with HDF5 library, GRIB libraries, TIFF libraries some in C++ and some in Rust). Step 7 in the appendix shows remote access, and a pending PR in my rhdf5 fork has already use that to harvest remote byte references from HDF5 and NetCDF.
 
 **`zaro`** (pure-R Zarr reader via Arrow) already reads VirtualiZarr Parquet stores. The reading side is there, and needs comparison with `pizzarr`, and `zarr` and other zarr-enabled packages.
 
-**`vrtstack`** generates multidim VRTs from 2D raster collections in R — the `gdal mdim mosaic` equivalent without leaving R.
+**`vrtstack`** generates multidim VRTs from 2D raster collections in R - the `gdal mdim mosaic` equivalent *for simple cases of multiple 2D raster* -  without leaving R.
 
 The path: `vrtstack` or `gdal mdim mosaic` for file collections → emit Zarr reference store → readable by `zaro`, xarray, or any Zarr-aware tool. In this way R can become a first-class creator of portable dataset descriptions, not just a consumer of what Python produces.
 
@@ -163,11 +163,11 @@ The path: `vrtstack` or `gdal mdim mosaic` for file collections → emit Zarr re
 
 ## Why this matters beyond R
 
-A Zarr reference store created in R from OISST netCDF files is immediately openable in Python, Julia, a browser via Zarr.js, any tool that speaks Zarr. No conversion. No data copy. No format negotiation.
+A Zarr reference store created from OISST netCDF files is immediately openable in Python, R, GDAL and in theory any tool that speaks Zarr. 
 
-STAC is complementary but different: STAC describes *where* files are and their spatiotemporal footprint. A virtual store describes *what the dataset structurally is* — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG. They compose; they don't overlap.
+STAC is complementary but different: STAC describes *where* files are and their spatiotemporal footprint. A virtual store describes *what the dataset structurally is* — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG. 
 
-The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. We are not catching up to Python — we are building on the same foundation, and there are things we can do with it that aren't on their roadmap yet.
+The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not catching just catching up, there are things we can do that aren't on any other roadmap that I can find.
 
 ---
 
@@ -176,11 +176,11 @@ The R community has genuine leverage here. GDAL is the common substrate between 
 If you work with time series of raster files and you've felt this friction:
 
 - **Talk about your use case** — what files, what structure, what would a portable dataset description let you do that you can't do today?
-- **Try `terra::vrt()` with `vrt://` URI syntax** for netCDF subdataset selection — it's underused and solves real problems
+- **Try `terra::vrt()` and try the `vrt://` URI syntax** for netCDF subdataset selection. 
 - **Try `stars::read_mdim()` on a `gdal mdim mosaic` VRT** — the full tour in the appendix shows how these fit together
-- **Try `remotes::install_github("hypertidy/tidync@multi-input")`** if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like
-- **Look at `vrtstack` and `zaro`** on the [hypertidy GitHub](https://github.com/hypertidy) to poke at the frontier
-- **File issues against GDAL's multidim API** when you find gaps — R users exercising it in real workflows makes it better for everyone
+- **Try `remotes::install_github("hypertidy/tidync@multi-input")`** if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like. 
+- **Look at `vrtstack` and `zaro`** on the [hypertidy GitHub](https://github.com/hypertidy), vrtstack builds a multidim VRT from 2D rasters (multidim GDAL supports COG, but doesn't support *builiding these*), zaro is a read-implementation for Zarr that is primarily based around Arrow.
+- **File issues against GDAL's multidim API** when you find gaps — R users exercising it in real workflows makes it better for everyone. 
 
 ---
 
@@ -188,7 +188,7 @@ If you work with time series of raster files and you've felt this friction:
 
 ### Setup: download 23 OISST files from NCEI {#appendix-setup}
 
-All code below uses only this setup — no internal data infrastructure required.
+All code below uses only this setup, and we use a multidim VRT representation later to act as an intermediate form.
 
 ```r
 library(glue)
@@ -228,7 +228,9 @@ rast(files)
 # time (days) : 2025-01-01 to 2025-12-19 (23 steps)
 ```
 
-terra uses the `ncdf4` R package for netCDF reads — a design inherited from the `raster` package — rather than routing through GDAL. This is why its behaviour differs subtly from stars proxy mode. The time axis survives via ncdf4's own metadata handling. The n-D structure is flattened into 92 bands; recovering it means knowing the 4-variable interleaving convention.
+terra uses the `ncdf4` R package for netCDF reads — a design inherited from the `raster` package - rather than routing through GDAL. This is why its behaviour differs from stars proxy mode. The time axis survives via ncdf4's own metadata handling. The n-D structure is flattened into 92 bands; recovering it means knowing the 4-variable interleaving convention.
+
+Bundling all bands from all variables that share the same dimensions is a choice made by terra, GDAL has a similar capacity but it is not used here (and is in fact unusable by these files for other reasons). 
 
 ### Step 2 — terra: `vrt()` with `vrt://`, single variable, time lost
 
@@ -245,7 +247,7 @@ vrt(
 # names       : r_1, r_2, r_3, ..., r_23
 ```
 
-`vrt://` URI syntax selects a subdataset inline; `?sd_name=sst` is the query param. Vectorises cleanly with `sprintf`. The result is a real file — a 2D recipe for this one variable. Trade-off: time coordinate is gone, layer names are positional. The 2D VRT has no slot for dimension coordinates.
+`vrt://` URI syntax selects a subdataset inline; `?sd_name=sst` is the query param.. The result is a real file — a 2D recipe for this one variable. But trade-offs: time coordinate is gone, layer names are positional. The 2D VRT has no slot for dimension coordinates, it can only carry raw metadata on a dataset or on a band.
 
 ### Step 3 — stars: `read_stars()` proxy, GDAL classic raster, variables separated
 
@@ -266,7 +268,7 @@ read_stars(files)
 # time    1   23     NA    NA      NA
 ```
 
-stars proxy mode uses GDAL classic raster and separates variables as attributes rather than interleaving as bands — a meaningful structural difference from terra. Time is present as a dimension but without coordinate values. Fully lazy.
+stars proxy mode uses GDAL classic raster and separates variables as attributes rather than interleaving as bands — a meaningful structural difference from terra. Time is present as a dimension but without coordinate values, it's fully lazy at this point as made clear by the lists of files in subdataset syntax. 
 
 ### Step 4 — stars: `read_mdim()` on a single file, right model, wrong scope
 
@@ -287,11 +289,11 @@ stars::read_mdim(files[1L])
 # time    1    1  17532 [days since 1978-01-01 12:00:00]  NA  udunits
 ```
 
-Now we're talking. `read_mdim()` goes through GDAL's multidimensional API: named attributes, labelled dimensions, udunits-encoded time coordinate, proper spatial reference. This is the right representation of the dataset.
+`read_mdim()` goes through GDAL's multidimensional API: named attributes, labelled dimensions, udunits-encoded time coordinate, proper spatial reference. This is a rich representation of the dataset.
 
-But pass it all 23 files and it silently opens only the first. It's not multi-file aware. You get one timestep, and no error to tell you so.
+But pass stars all 23 files and it silently opens only the first, one timestep, and no error. stars has other ways of concatenating files `along` dimensions but it's only applied to GDAL classic raster context. 
 
-This is the pivot point.
+This is a pivot point.
 
 ### Step 5 — `gdal mdim mosaic` + `read_mdim()`, the full tour
 
@@ -357,7 +359,7 @@ ncdf4::nc_open(sprintf("%s#mode=bytes", urls[1]))
 
 It works — but you have to know the magic suffix. And because terra's netCDF reading is backed by ncdf4, it inherits this same limitation: plain HTTPS URLs don't work without `#mode=bytes`, and OPeNDAP `dodsC` URLs are the usual workaround for terra users working with remote data.
 
-This is the library-identity problem in miniature: the same URL, three different outcomes depending on which library is doing the opening. GDAL's cloud-native HTTP access is a first-class citizen; ncdf4's is an afterthought requiring a non-obvious suffix. The recipe format inherits these differences — a VRT that references HTTPS URLs is GDAL-native and just works; a workflow built on ncdf4 needs extra plumbing.
+This is the library-identity problem: the same URL provides three different outcomes depending on which library is doing the opening. GDAL's cloud-native HTTP access is a first-class citizen but the '/vsi*' prefix is clearly not popular in some communities; NetCDF's is an afterthought requiring a suffix that hardly anyone seems to know about. The recipe format inherits these differences — a VRT that references HTTPS URLs is GDAL-native and just works; a workflow built on NetCDF needs extra plumbing.
 
 ### Step 7 — rhdf5-dev: opening the door to chunk indexing *(dev, not yet on CRAN)*
 
@@ -435,6 +437,8 @@ Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a sin
 The "not a file / attempting remote connection / Connection succeeded" in the output is tidync doing its own detective work: it knows this isn't a local path, tries the remote connection, and succeeds. The `#mode=bytes` suffix — the ncdf4 workaround from Step 6 — unlocks the whole thing.
 
 This is an R equivalent of the xarray open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a store on disk — and the `tidync` object it produces is fully navigable with `hyper_filter()` and `hyper_array()` without touching the data. The serializable recipe (the Zarr store, the multidim VRT) is still the goal for sharing and interoperability, but as a working representation for analysis, this is already there.
+
+In the last section of the appendix we virtualize to the "normal" xarray/Zarr model, but then open that again with different tools. The same store, opened by four different tools across two languages - there's a recipe, but it's not a nailed down ecosystem yet. 
 
 ### The xarray counterpart — for comparison
 
@@ -576,7 +580,6 @@ stars::read_mdim(
 # time  16 [days since 1978-01-01T12:00:00]        udunits
 ```
 
-The same store, opened by four different tools across two languages - there's a recipe, but it's not a nailed down format yet. 
 
 ---
 

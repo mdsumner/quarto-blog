@@ -446,7 +446,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Zarr is a chunked array format. An array is split into regular chunks; each chunk is compressed independently and stored as a separate object — a file, an S3 object, a range of bytes in a larger store. The chunks themselves are opaque: raw numeric arrays in compressed bytes, not self-describing. What makes Zarr work is the metadata sidecar: a small JSON file that records the shape, dtype, chunk layout, compression codec, and dimension coordinates — everything xarray needs to provide a rich, self-describing interface over the data. This is really good for cloud access: fetch only the chunks you need, in parallel, without a format-specific library. It’s a bit like taking a pile of NetCDF files and turning them inside out — all the metadata (tiny in comparison to the data) is placed upfront in JSON, and all the compressed opaque chunks are stored as individually addressable objects.</p>
 <p>The deeper insight comes when you realize that <strong>HDF5, netCDF4, GeoTIFF, GRIB, and others already store their data in chunks</strong>. The chunks are buried inside files that require format-specific libraries to navigate, but the byte ranges are all there. We just need an index.</p>
 <p><a href="https://github.com/fsspec/kerchunk">kerchunk</a> and its successor <a href="https://virtualizarr.readthedocs.io/">VirtualiZarr</a> do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files. It’s worth noting that this idea is not new — NASA and Unidata’s <a href="https://opendap.github.io/DMRpp-wiki/DMRpp.html">DMR++</a> format did the same thing for OPeNDAP, indexing chunk byte-ranges in HDF5/netCDF files as a sidecar that an OPeNDAP server can serve directly. <a href="https://cogeo.org">Cloud-Optimized GeoTIFF</a> is the same idea applied to TIFF: the IFD tile index is moved to the front of the file so a client can read the chunk map in one range request and fetch only what it needs thereafter. The difference is that Zarr’s client-side framing made the pattern composable and ecosystem-wide rather than tied to a specific server or format.</p>
-<p>NOTE: this is very much pseudo code showing the overall style, we have a real example in the appendix.</p>
+<p>NOTE: this is very much pseudo code showing the overall style - see the <a href="https://virtualizarr.readthedocs.io/en/latest/usage.html">Usage VirtualiZarr pages</a> for more examples, and we have a real example in the appendix.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> virtualizarr <span class="im">import</span> open_virtual_dataset</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> xarray <span class="im">as</span> xr</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -466,7 +466,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lat      (lat) float32 -90.0 ... 89.75</span></span>
 <span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lon      (lon) float32 0.0 ... 359.75</span></span>
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Data variables: anom, err, ice, sst</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The store is kilobytes of metadata. The data stays where it is. The n-D structure is fully encoded. Compare this to the terra output above:</p>
+<p>The store is kilobytes of metadata, the actual data stays where it is, and the n-D structure is fully encoded. Compare this to the terra output above:</p>
 <ul>
 <li><code>sst</code>, <code>anom</code>, <code>err</code>, <code>ice</code> as <strong>named variables</strong>, not interleaved bands</li>
 <li><code>time</code> as a real coordinate with date values, not layer indices <code>r_1..r_23</code></li>
@@ -487,19 +487,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="the-gap-creation-not-reading" class="level2">
 <h2 class="anchored" data-anchor-id="the-gap-creation-not-reading">The gap: creation, not reading</h2>
 <p>R can <em>read</em> virtual stores — Zarr and multidim VRT and VirtualiZarr Parquet reference via <code>stars::read_mdim()</code>, <code>gdalraster::mdim_translate</code> or <a href="https://github.com/hypertidy/zaro"><code>zaro</code></a> or real Zarr with <a href="https://CRAN.R-project.org/package=pizzarr">pizzarr</a> or <a href="https://CRAN.R-project.org/package=zarr">zarr</a>. What R can’t yet do is <em>create</em> the chunk-level byte-reference stores that VirtualiZarr generates for HDF5 and netCDF.</p>
-<p>That’s a frontier, and the pieces are converging:</p>
+<p>That’s a frontier, and I’ve been exloring where the pieces could converge:</p>
 <p><strong><code>gdal mdim mosaic</code></strong> creates multidim VRTs from file collections today. The XML fully describes what a VirtualiZarr store needs — shape, chunks, coordinate values, source file paths and byte offsets. This is the hard structural work; emitting the Zarr reference store format from it is a straightforward conversion.</p>
-<p><strong><code>rhdf5</code></strong> can now open remote HDF5 files at URLs or on S3 (dev version on GitHub). The next step is extracting chunk byte-reference indices directly — the core operation VirtualiZarr performs in Python. Step 7 in the appendix shows what this already looks like.</p>
+<p><strong><code>rhdf5</code></strong> can now open remote HDF5 files at URLs or on S3 (dev version on GitHub). The next step is extracting chunk byte-reference indices directly - a core operation that VirtualiZarr performs in Python (with HDF5 library, GRIB libraries, TIFF libraries some in C++ and some in Rust). Step 7 in the appendix shows remote access, and a pending PR in my rhdf5 fork has already use that to harvest remote byte references from HDF5 and NetCDF.</p>
 <p><strong><code>zaro</code></strong> (pure-R Zarr reader via Arrow) already reads VirtualiZarr Parquet stores. The reading side is there, and needs comparison with <code>pizzarr</code>, and <code>zarr</code> and other zarr-enabled packages.</p>
-<p><strong><code>vrtstack</code></strong> generates multidim VRTs from 2D raster collections in R — the <code>gdal mdim mosaic</code> equivalent without leaving R.</p>
+<p><strong><code>vrtstack</code></strong> generates multidim VRTs from 2D raster collections in R - the <code>gdal mdim mosaic</code> equivalent <em>for simple cases of multiple 2D raster</em> - without leaving R.</p>
 <p>The path: <code>vrtstack</code> or <code>gdal mdim mosaic</code> for file collections → emit Zarr reference store → readable by <code>zaro</code>, xarray, or any Zarr-aware tool. In this way R can become a first-class creator of portable dataset descriptions, not just a consumer of what Python produces.</p>
 <hr>
 </section>
 <section id="why-this-matters-beyond-r" class="level2">
 <h2 class="anchored" data-anchor-id="why-this-matters-beyond-r">Why this matters beyond R</h2>
-<p>A Zarr reference store created in R from OISST netCDF files is immediately openable in Python, Julia, a browser via Zarr.js, any tool that speaks Zarr. No conversion. No data copy. No format negotiation.</p>
-<p>STAC is complementary but different: STAC describes <em>where</em> files are and their spatiotemporal footprint. A virtual store describes <em>what the dataset structurally is</em> — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG. They compose; they don’t overlap.</p>
-<p>The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. We are not catching up to Python — we are building on the same foundation, and there are things we can do with it that aren’t on their roadmap yet.</p>
+<p>A Zarr reference store created from OISST netCDF files is immediately openable in Python, R, GDAL and in theory any tool that speaks Zarr.</p>
+<p>STAC is complementary but different: STAC describes <em>where</em> files are and their spatiotemporal footprint. A virtual store describes <em>what the dataset structurally is</em> — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG.</p>
+<p>The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not catching just catching up, there are things we can do that aren’t on any other roadmap that I can find.</p>
 <hr>
 </section>
 <section id="what-would-help" class="level2">
@@ -507,11 +507,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>If you work with time series of raster files and you’ve felt this friction:</p>
 <ul>
 <li><strong>Talk about your use case</strong> — what files, what structure, what would a portable dataset description let you do that you can’t do today?</li>
-<li><strong>Try <code>terra::vrt()</code> with <code>vrt://</code> URI syntax</strong> for netCDF subdataset selection — it’s underused and solves real problems</li>
+<li><strong>Try <code>terra::vrt()</code> and try the <code>vrt://</code> URI syntax</strong> for netCDF subdataset selection.</li>
 <li><strong>Try <code>stars::read_mdim()</code> on a <code>gdal mdim mosaic</code> VRT</strong> — the full tour in the appendix shows how these fit together</li>
-<li><strong>Try <code>remotes::install_github("hypertidy/tidync@multi-input")</code></strong> if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like</li>
-<li><strong>Look at <code>vrtstack</code> and <code>zaro</code></strong> on the <a href="https://github.com/hypertidy">hypertidy GitHub</a> to poke at the frontier</li>
-<li><strong>File issues against GDAL’s multidim API</strong> when you find gaps — R users exercising it in real workflows makes it better for everyone</li>
+<li><strong>Try <code>remotes::install_github("hypertidy/tidync@multi-input")</code></strong> if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like.</li>
+<li><strong>Look at <code>vrtstack</code> and <code>zaro</code></strong> on the <a href="https://github.com/hypertidy">hypertidy GitHub</a>, vrtstack builds a multidim VRT from 2D rasters (multidim GDAL supports COG, but doesn’t support <em>builiding these</em>), zaro is a read-implementation for Zarr that is primarily based around Arrow.</li>
+<li><strong>File issues against GDAL’s multidim API</strong> when you find gaps — R users exercising it in real workflows makes it better for everyone.</li>
 </ul>
 <hr>
 </section>
@@ -519,7 +519,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="appendix">Appendix: a progressive tour on 23 OISST files</h2>
 <section id="appendix-setup" class="level3">
 <h3 class="anchored" data-anchor-id="appendix-setup">Setup: download 23 OISST files from NCEI</h3>
-<p>All code below uses only this setup — no internal data infrastructure required.</p>
+<p>All code below uses only this setup, and we use a multidim VRT representation later to act as an intermediate form.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glue)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>date  <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">as.Date</span>(<span class="st">"2025-01-01"</span>), <span class="at">by =</span> <span class="st">"16 days"</span>, <span class="at">length.out =</span> <span class="dv">23</span>)</span>
@@ -550,7 +550,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : anom_zlev=0, err_zlev=0, ice_zlev=0, sst_zlev=0, ...</span></span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># unit        :      Celsius,    Celsius,          %,    Celsius, ...</span></span>
 <span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># time (days) : 2025-01-01 to 2025-12-19 (23 steps)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>terra uses the <code>ncdf4</code> R package for netCDF reads — a design inherited from the <code>raster</code> package — rather than routing through GDAL. This is why its behaviour differs subtly from stars proxy mode. The time axis survives via ncdf4’s own metadata handling. The n-D structure is flattened into 92 bands; recovering it means knowing the 4-variable interleaving convention.</p>
+<p>terra uses the <code>ncdf4</code> R package for netCDF reads — a design inherited from the <code>raster</code> package - rather than routing through GDAL. This is why its behaviour differs from stars proxy mode. The time axis survives via ncdf4’s own metadata handling. The n-D structure is flattened into 92 bands; recovering it means knowing the 4-variable interleaving convention.</p>
+<p>Bundling all bands from all variables that share the same dimensions is a choice made by terra, GDAL has a similar capacity but it is not used here (and is in fact unusable by these files for other reasons).</p>
 </section>
 <section id="step-2-terra-vrt-with-vrt-single-variable-time-lost" class="level3">
 <h3 class="anchored" data-anchor-id="step-2-terra-vrt-with-vrt-single-variable-time-lost">Step 2 — terra: <code>vrt()</code> with <code>vrt://</code>, single variable, time lost</h3>
@@ -564,7 +565,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 720, 1440, 23  (nrow, ncol, nlyr)</span></span>
 <span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># source      : sst_stack.vrt</span></span>
 <span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : r_1, r_2, r_3, ..., r_23</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><code>vrt://</code> URI syntax selects a subdataset inline; <code>?sd_name=sst</code> is the query param. Vectorises cleanly with <code>sprintf</code>. The result is a real file — a 2D recipe for this one variable. Trade-off: time coordinate is gone, layer names are positional. The 2D VRT has no slot for dimension coordinates.</p>
+<p><code>vrt://</code> URI syntax selects a subdataset inline; <code>?sd_name=sst</code> is the query param.. The result is a real file — a 2D recipe for this one variable. But trade-offs: time coordinate is gone, layer names are positional. The 2D VRT has no slot for dimension coordinates, it can only carry raw metadata on a dataset or on a band.</p>
 </section>
 <section id="step-3-stars-read_stars-proxy-gdal-classic-raster-variables-separated" class="level3">
 <h3 class="anchored" data-anchor-id="step-3-stars-read_stars-proxy-gdal-classic-raster-variables-separated">Step 3 — stars: <code>read_stars()</code> proxy, GDAL classic raster, variables separated</h3>
@@ -582,7 +583,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co"># y       1  720     90 -0.25      NA [y]</span></span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]    NA udunits</span></span>
 <span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23     NA    NA      NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>stars proxy mode uses GDAL classic raster and separates variables as attributes rather than interleaving as bands — a meaningful structural difference from terra. Time is present as a dimension but without coordinate values. Fully lazy.</p>
+<p>stars proxy mode uses GDAL classic raster and separates variables as attributes rather than interleaving as bands — a meaningful structural difference from terra. Time is present as a dimension but without coordinate values, it’s fully lazy at this point as made clear by the lists of files in subdataset syntax.</p>
 </section>
 <section id="step-4-stars-read_mdim-on-a-single-file-right-model-wrong-scope" class="level3">
 <h3 class="anchored" data-anchor-id="step-4-stars-read_mdim-on-a-single-file-right-model-wrong-scope">Step 4 — stars: <code>read_mdim()</code> on a single file, right model, wrong scope</h3>
@@ -600,9 +601,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720     -90   0.25  WGS 84 (CRS84) [y]</span></span>
 <span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]      NA         udunits</span></span>
 <span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1    1  17532 [days since 1978-01-01 12:00:00]  NA  udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Now we’re talking. <code>read_mdim()</code> goes through GDAL’s multidimensional API: named attributes, labelled dimensions, udunits-encoded time coordinate, proper spatial reference. This is the right representation of the dataset.</p>
-<p>But pass it all 23 files and it silently opens only the first. It’s not multi-file aware. You get one timestep, and no error to tell you so.</p>
-<p>This is the pivot point.</p>
+<p><code>read_mdim()</code> goes through GDAL’s multidimensional API: named attributes, labelled dimensions, udunits-encoded time coordinate, proper spatial reference. This is a rich representation of the dataset.</p>
+<p>But pass stars all 23 files and it silently opens only the first, one timestep, and no error. stars has other ways of concatenating files <code>along</code> dimensions but it’s only applied to GDAL classic raster context.</p>
+<p>This is a pivot point.</p>
 </section>
 <section id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour" class="level3">
 <h3 class="anchored" data-anchor-id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour">Step 5 — <code>gdal mdim mosaic</code> + <code>read_mdim()</code>, the full tour</h3>
@@ -645,7 +646,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   4 variables (excluding dimension variables):</span></span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   sst, anom, err, ice ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>It works — but you have to know the magic suffix. And because terra’s netCDF reading is backed by ncdf4, it inherits this same limitation: plain HTTPS URLs don’t work without <code>#mode=bytes</code>, and OPeNDAP <code>dodsC</code> URLs are the usual workaround for terra users working with remote data.</p>
-<p>This is the library-identity problem in miniature: the same URL, three different outcomes depending on which library is doing the opening. GDAL’s cloud-native HTTP access is a first-class citizen; ncdf4’s is an afterthought requiring a non-obvious suffix. The recipe format inherits these differences — a VRT that references HTTPS URLs is GDAL-native and just works; a workflow built on ncdf4 needs extra plumbing.</p>
+<p>This is the library-identity problem: the same URL provides three different outcomes depending on which library is doing the opening. GDAL’s cloud-native HTTP access is a first-class citizen but the ’/vsi*’ prefix is clearly not popular in some communities; NetCDF’s is an afterthought requiring a suffix that hardly anyone seems to know about. The recipe format inherits these differences — a VRT that references HTTPS URLs is GDAL-native and just works; a workflow built on NetCDF needs extra plumbing.</p>
 </section>
 <section id="step-7-rhdf5-dev-opening-the-door-to-chunk-indexing-dev-not-yet-on-cran" class="level3">
 <h3 class="anchored" data-anchor-id="step-7-rhdf5-dev-opening-the-door-to-chunk-indexing-dev-not-yet-on-cran">Step 7 — rhdf5-dev: opening the door to chunk indexing <em>(dev, not yet on CRAN)</em></h3>
@@ -711,6 +712,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — <code>#mode=bytes</code> vectorized over the URL vector, a synthetic time axis injected via <code>concat_dim</code>, all four variables on the active grid, unlimited time dimension, proper coordinates throughout. We have tested this on the full set of 16,000+ URLs and it opens in less than a minute using the <code>fast</code> and <code>concat_dim</code> mechanism to declare the values on the concatenating dimension.</p>
 <p>The “not a file / attempting remote connection / Connection succeeded” in the output is tidync doing its own detective work: it knows this isn’t a local path, tries the remote connection, and succeeds. The <code>#mode=bytes</code> suffix — the ncdf4 workaround from Step 6 — unlocks the whole thing.</p>
 <p>This is an R equivalent of the xarray open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a store on disk — and the <code>tidync</code> object it produces is fully navigable with <code>hyper_filter()</code> and <code>hyper_array()</code> without touching the data. The serializable recipe (the Zarr store, the multidim VRT) is still the goal for sharing and interoperability, but as a working representation for analysis, this is already there.</p>
+<p>In the last section of the appendix we virtualize to the “normal” xarray/Zarr model, but then open that again with different tools. The same store, opened by four different tools across two languages - there’s a recipe, but it’s not a nailed down ecosystem yet.</p>
 </section>
 <section id="the-xarray-counterpart-for-comparison" class="level3">
 <h3 class="anchored" data-anchor-id="the-xarray-counterpart-for-comparison">The xarray counterpart — for comparison</h3>
@@ -821,7 +823,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="co"># lat                                 0.25 WGS 84 (CRS84) [y]</span></span>
 <span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev                                  NA        udunits</span></span>
 <span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a><span class="co"># time  16 [days since 1978-01-01T12:00:00]        udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The same store, opened by four different tools across two languages - there’s a recipe, but it’s not a nailed down format yet.</p>
 <hr>
 <p><em>Michael Sumner is a research software engineer at the Australian Antarctic Division. Packages mentioned — <code>tidync</code> (rOpenSci reviewed), <code>vapour</code>, <code>vrtstack</code>, <code>zaro</code> — are part of the <a href="https://github.com/hypertidy">hypertidy</a> ecosystem.</em></p>
 
