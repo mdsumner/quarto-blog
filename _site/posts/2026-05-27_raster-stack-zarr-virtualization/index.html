@@ -427,15 +427,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>There’s no serializable recipe that is light, language-agnostic, and handles a broad variety of cases.</p>
 <section id="fifteen-minutes-with-xarray" class="level2">
 <h2 class="anchored" data-anchor-id="fifteen-minutes-with-xarray">Fifteen minutes with xarray</h2>
-<p>A key moment for me was while learning Python and xarray, I was impressed that xarray could open these files — a huge list of them (16,337 days of OISST at time of writing) as local files or remote URLs. xarray checks them all for consistency, detects that what is really there is four variables in longitude, latitude, and time, and that time is an implicit concatenation from a single time step in each of those thousands of files. It’s remarkable: one object in memory in Python, ready to lazy-read any part of the four 16337×720×1440 arrays. But that took about 15 minutes to run, let alone the software and computing infrastructure needed to get there. And then: how do you share that progress with colleagues?</p>
-<p>(I thought: <em>“hmmm, what’s the xarray equivalent of a VRT?”</em> Spoiler: there isn’t one - and although VirtualiZarr does serve that role, it’s missing an intermediate state where we only record what files were opened and what structure was learned.)</p>
+<p>A key moment for me was while learning Python and xarray, I was impressed that xarray could open these files — a huge list of them (16,337 days of OISST at time of writing) as local files or remote URLs. xarray checks them all for consistency, detects that what is really there is four variables in longitude, latitude, and time, and that time is an implicit concatenation from a single time step in each of those thousands of files. It’s remarkable: one object in memory in Python, ready to lazy-read any part of the four 16337×720×1440 arrays. But that took about 15 minutes to run, let alone the software and computing infrastructure setup I had been through. And then: how do you share that progress with colleagues?</p>
+<p>Everybody knows you aren’t supposed to serialize in-memory objects to <em>binary</em>, we all have scary experiences with <code>.Rdata</code> and <code>.rds</code>, and Python has the same with its <em>pickle</em>. (I thought: <em>“hmmm, what’s the xarray equivalent of a VRT?”</em> Spoiler: there isn’t one — and although VirtualiZarr does serve that role, it’s missing an intermediate state where we only record what files were opened and what structure was learned.)</p>
 <hr>
 </section>
 <section id="what-the-vrt-already-does" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-vrt-already-does">What the VRT already does</h2>
 <p>Back to our 23 files — a sample of the 16,337+ in the full OISST set as of writing.</p>
 <p>Open <code>/tmp/sst_stack.vrt</code> in a text editor (<code>browseURL("/tmp/sst_stack.vrt")</code> works too). It’s a few kilobytes of XML that fully describes a virtual 23-layer SST dataset — source files, spatial extent, band mapping. It’s a tiny file: you could email it, put it in a repository, or patch the source paths to <code>/vsicurl/https://....nc</code> URLs so it works without any local files at all. Anyone with GDAL can open it with <code>rast("sst_stack.vrt")</code> and get exactly what you built, without copying a byte of the underlying data.</p>
-<p>That’s a <em>recipe</em>, we’ve stacked our files into as simple chunk of text that GDAL can open very quickly.</p>
+<p>That’s a <em>recipe</em>: we’ve described our dataset as a small chunk of text that GDAL can open very quickly.</p>
 <p><strong>VRT</strong> <a href="https://gdal.org/en/stable/drivers/raster/vrt.html">(Virtual Format)</a> is a plain XML file that describes a virtual raster dataset. It can mosaic, warp, reproject, reband, and combine source files without touching the underlying data. For the 2D raster world it is exactly the recipe format that’s missing from the terra/stars in-memory story. The 2D VRT is one of GDAL’s most underappreciated features — already powering a lot of geospatial infrastructure, especially where band-stacking or tile-mosaicking is sufficient as the solution.</p>
 <p>So what about the full n-D case: multiple variables, time coordinates, arbitrary dimensions?</p>
 <hr>
@@ -445,7 +445,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The Python/xarray community has been working on exactly this problem, approaching it from the chunk level rather than the file level.</p>
 <p>Zarr is a chunked array format. An array is split into regular chunks; each chunk is compressed independently and stored as a separate object — a file, an S3 object, a range of bytes in a larger store. The chunks themselves are opaque: raw numeric arrays in compressed bytes, not self-describing. What makes Zarr work is the metadata sidecar: a small JSON file that records the shape, dtype, chunk layout, compression codec, and dimension coordinates — everything xarray needs to provide a rich, self-describing interface over the data. This is really good for cloud access: fetch only the chunks you need, in parallel, without a format-specific library. It’s a bit like taking a pile of NetCDF files and turning them inside out — all the metadata (tiny in comparison to the data) is placed upfront in JSON, and all the compressed opaque chunks are stored as individually addressable objects.</p>
 <p>The deeper insight comes when you realize that <strong>HDF5, netCDF4, GeoTIFF, GRIB, and others already store their data in chunks</strong>. The chunks are buried inside files that require format-specific libraries to navigate, but the byte ranges are all there. We just need an index.</p>
-<p><a href="https://github.com/fsspec/kerchunk">kerchunk</a> and its successor <a href="https://virtualizarr.readthedocs.io/">VirtualiZarr</a> do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files. It’s worth noting that this idea is not new — NASA and Unidata’s <a href="https://opendap.github.io/DMRpp-wiki/DMRpp.html">DMR++</a> format did the same thing for OPeNDAP. <a href="https://cogeo.org">Cloud-Optimized GeoTIFF</a> is the same idea applied to TIFF: the IFD tile index is moved to the front of the file so a client can read the chunk map in one range request and fetch only what it needs thereafter. The difference is that Zarr’s client-side framing made the pattern composable and ecosystem-wide rather than server-specific.</p>
+<p><a href="https://github.com/fsspec/kerchunk">kerchunk</a> and its successor <a href="https://virtualizarr.readthedocs.io/">VirtualiZarr</a> do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files. It’s worth noting that this idea is not new — NASA and Unidata’s <a href="https://opendap.github.io/DMRpp-wiki/DMRpp.html">DMR++</a> format did the same thing for OPeNDAP, indexing chunk byte-ranges in HDF5/netCDF files as a sidecar that an OPeNDAP server can serve directly. <a href="https://cogeo.org">Cloud-Optimized GeoTIFF</a> is the same idea applied to TIFF: the IFD tile index is moved to the front of the file so a client can read the chunk map in one range request and fetch only what it needs thereafter. The difference is that Zarr’s client-side framing made the pattern composable and ecosystem-wide rather than tied to a specific server or format.</p>
+<p>NOTE: this is very much pseudo code showing the overall style, we have a real example in the appendix.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> virtualizarr <span class="im">import</span> open_virtual_dataset</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> xarray <span class="im">as</span> xr</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -454,10 +455,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    [open_virtual_dataset(f) <span class="cf">for</span> f <span class="kw">in</span> files],</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    dim<span class="op">=</span><span class="st">"time"</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>combined.virtualize.to_kerchunk(<span class="st">"sst_virtual.parquet"</span>, <span class="bu">format</span><span class="op">=</span><span class="st">"parquet"</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>combined.virtualize.to_kerchunk(<span class="st">"sst_virtual.zarr"</span>, <span class="bu">format</span><span class="op">=</span><span class="st">"zarr"</span>)</span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># open it — chunk-aware, lazy, S3-ready, fully structured</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> xr.open_dataset(<span class="st">"sst_virtual.parquet"</span>, engine<span class="op">=</span><span class="st">"kerchunk"</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> xr.open_dataset(<span class="st">"sst_virtual.zarr/"</span>, engine<span class="op">=</span><span class="st">"kerchunk"</span>)</span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># &lt;xarray.Dataset&gt;</span></span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions:  (time: 23, zlev: 1, lat: 720, lon: 1440)</span></span>
 <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Coordinates:</span></span>
@@ -470,15 +471,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>sst</code>, <code>anom</code>, <code>err</code>, <code>ice</code> as <strong>named variables</strong>, not interleaved bands</li>
 <li><code>time</code> as a real coordinate with date values, not layer indices <code>r_1..r_23</code></li>
 <li><code>lat</code>, <code>lon</code>, <code>zlev</code> as labelled dimensions with coordinate values</li>
-<li>the whole thing serialized as a file anyone with Zarr support can open</li>
+<li>the whole thing serialized as a directory anyone with Zarr support can open</li>
 </ul>
-<p>This is what <code>stars::read_mdim()</code> is reaching toward in R — the representation is structurally similar. The difference is that the xarray object came from a 12KB Parquet file, not from reconstructing structure at runtime over 23 original netCDF files. That difference is the recipe.</p>
+<p>This is what <code>stars::read_mdim()</code> is reaching toward in R — the representation is structurally similar. The difference is that the xarray object came from a small Zarr store, not from reconstructing structure at runtime over 23 original netCDF files. That difference is the recipe.</p>
 <hr>
 </section>
 <section id="gdal-is-the-bridge" class="level2">
 <h2 class="anchored" data-anchor-id="gdal-is-the-bridge">GDAL is the bridge</h2>
 <p>GDAL already spans both worlds.</p>
-<p>GDAL has a <a href="https://gdal.org/en/stable/user/multidim_raster_data_model.html"><strong>multidimensional API</strong></a> (the “mdim” layer) that represents data as named arrays with labelled dimensions — the same model as xarray, not the band-stacked model of classic GDAL rasters. GDAL’s Zarr driver can open VirtualiZarr/kerchunk Parquet reference stores through this API. A store created in Python is readable via GDAL — which means it’s reachable from R today.</p>
+<p>GDAL has a <a href="https://gdal.org/en/stable/user/multidim_raster_data_model.html"><strong>multidimensional API</strong></a> (the “mdim” layer) that represents data as named arrays with labelled dimensions — the same model as xarray, not the band-stacked model of classic GDAL rasters. GDAL’s Zarr driver can open VirtualiZarr/kerchunk reference stores through this API. A store created in Python is readable via GDAL — which means it’s reachable from R today.</p>
 <p>More importantly, GDAL has <a href="https://gdal.org/en/stable/programs/gdal_mdim_mosaic.html"><code>gdal mdim mosaic</code></a> — a tool that takes a collection of raster files and produces a <strong>multidim VRT</strong> describing them as a unified n-D array dataset. This VRT encodes the array structure, dimension names, coordinate values, and source file mapping. It is the GDAL-native recipe for an n-D dataset — and as shown in the appendix, <code>stars::read_mdim()</code> opens it faithfully, giving you the full multi-file dataset with the right structure, right coordinates, and a serializable description that travels independently of the original files.</p>
 <p>Converting a GDAL multidim VRT to a Zarr reference store is a small transformation on kilobytes of XML, not a data operation. That’s the near-term path to R-native VirtualiZarr creation.</p>
 <hr>
@@ -530,69 +531,75 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>dir   <span class="ot">&lt;-</span> <span class="fu">tempdir</span>()</span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>files <span class="ot">&lt;-</span> <span class="fu">file.path</span>(dir, <span class="fu">basename</span>(urls))</span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="fu">download.file</span>(urls, files, <span class="at">method =</span> <span class="st">"libcurl"</span>, <span class="at">mode =</span> <span class="st">"wb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="setup-part-2-create-a-gdal-multidimensional-vrt" class="level4">
+<h4 class="anchored" data-anchor-id="setup-part-2-create-a-gdal-multidimensional-vrt">Setup part 2: create a GDAL multidimensional VRT</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">writeLines</span>(glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"/vsicurl/{urls}"</span>), tf <span class="ot">&lt;-</span> <span class="fu">tempfile</span>())</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system</span>(glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"gdal mdim mosaic @{tf} oisst_2025_sample.vrt"</span>))</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="do">## piggyback::pb_upload("oisst_2025_sample.vrt")</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The URL structure itself is the catalogue: a simple path template over date components, no database required. 23 files, ~3.5MB each, ~80MB total.</p>
+</section>
 </section>
 <section id="step-1-terra-rast-band-stacked-all-variables-time-preserved" class="level3">
 <h3 class="anchored" data-anchor-id="step-1-terra-rast-band-stacked-all-variables-time-preserved">Step 1 — terra: <code>rast()</code>, band-stacked, all variables, time preserved</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rast</span>(files)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 720, 1440, 92  (nrow, ncol, nlyr)</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># sources     : oisst-avhrr-v02r01.20250101.nc (4 layers)</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#               ... and 22 more sources</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># varnames    : anom, err, ice, sst, anom, err, ice, sst, ...</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : anom_zlev=0, err_zlev=0, ice_zlev=0, sst_zlev=0, ...</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># unit        :      Celsius,    Celsius,          %,    Celsius, ...</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># time (days) : 2025-01-01 to 2025-12-19 (23 steps)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rast</span>(files)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 720, 1440, 92  (nrow, ncol, nlyr)</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># sources     : oisst-avhrr-v02r01.20250101.nc (4 layers)</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#               ... and 22 more sources</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"># varnames    : anom, err, ice, sst, anom, err, ice, sst, ...</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : anom_zlev=0, err_zlev=0, ice_zlev=0, sst_zlev=0, ...</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># unit        :      Celsius,    Celsius,          %,    Celsius, ...</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># time (days) : 2025-01-01 to 2025-12-19 (23 steps)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>terra uses the <code>ncdf4</code> R package for netCDF reads — a design inherited from the <code>raster</code> package — rather than routing through GDAL. This is why its behaviour differs subtly from stars proxy mode. The time axis survives via ncdf4’s own metadata handling. The n-D structure is flattened into 92 bands; recovering it means knowing the 4-variable interleaving convention.</p>
 </section>
 <section id="step-2-terra-vrt-with-vrt-single-variable-time-lost" class="level3">
 <h3 class="anchored" data-anchor-id="step-2-terra-vrt-with-vrt-single-variable-time-lost">Step 2 — terra: <code>vrt()</code> with <code>vrt://</code>, single variable, time lost</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vrt</span>(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">"vrt://%s?sd_name=sst"</span>, files),</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"/tmp/sst_stack.vrt"</span>,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">options =</span> <span class="st">"-separate"</span>,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">overwrite =</span> <span class="cn">TRUE</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 720, 1440, 23  (nrow, ncol, nlyr)</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># source      : sst_stack.vrt</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : r_1, r_2, r_3, ..., r_23</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vrt</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">"vrt://%s?sd_name=sst"</span>, files),</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"/tmp/sst_stack.vrt"</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">options =</span> <span class="st">"-separate"</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">overwrite =</span> <span class="cn">TRUE</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 720, 1440, 23  (nrow, ncol, nlyr)</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># source      : sst_stack.vrt</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># names       : r_1, r_2, r_3, ..., r_23</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>vrt://</code> URI syntax selects a subdataset inline; <code>?sd_name=sst</code> is the query param. Vectorises cleanly with <code>sprintf</code>. The result is a real file — a 2D recipe for this one variable. Trade-off: time coordinate is gone, layer names are positional. The 2D VRT has no slot for dimension coordinates.</p>
 </section>
 <section id="step-3-stars-read_stars-proxy-gdal-classic-raster-variables-separated" class="level3">
 <h3 class="anchored" data-anchor-id="step-3-stars-read_stars-proxy-gdal-classic-raster-variables-separated">Step 3 — stars: <code>read_stars()</code> proxy, GDAL classic raster, variables separated</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_stars</span>(files)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars_proxy object with 4 attributes in 92 file(s):</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># $sst</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">#  [1] "[...]/oisst-avhrr-v02r01.20250101.nc:sst"</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#  [2] "[...]/oisst-avhrr-v02r01.20250117.nc:sst"</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">#  ...</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># $anom, $err, $ice  (similarly, 23 files each)</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to offset delta  refsys x/y</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co"># x       1 1440      0  0.25      NA [x]</span></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="co"># y       1  720     90 -0.25      NA [y]</span></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]    NA udunits</span></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23     NA    NA      NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_stars</span>(files)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars_proxy object with 4 attributes in 92 file(s):</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># $sst</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#  [1] "[...]/oisst-avhrr-v02r01.20250101.nc:sst"</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#  [2] "[...]/oisst-avhrr-v02r01.20250117.nc:sst"</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#  ...</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># $anom, $err, $ice  (similarly, 23 files each)</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to offset delta  refsys x/y</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co"># x       1 1440      0  0.25      NA [x]</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co"># y       1  720     90 -0.25      NA [y]</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]    NA udunits</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23     NA    NA      NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>stars proxy mode uses GDAL classic raster and separates variables as attributes rather than interleaving as bands — a meaningful structural difference from terra. Time is present as a dimension but without coordinate values. Fully lazy.</p>
 </section>
 <section id="step-4-stars-read_mdim-on-a-single-file-right-model-wrong-scope" class="level3">
 <h3 class="anchored" data-anchor-id="step-4-stars-read_mdim-on-a-single-file-right-model-wrong-scope">Step 4 — stars: <code>read_mdim()</code> on a single file, right model, wrong scope</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(files[<span class="dv">1</span>L])</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 4 dimensions and 4 attributes</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s):</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#            Min.  1st Qu.  Median      Mean  3rd Qu.   Max.     NAs</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C]  -1.80    -1.80   -1.78  -1.70779    -1.64  -1.03   89635</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># anom [°C] -0.72    -0.08   -0.02  -0.03531     0.00   0.49   89635</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># err [°C]   0.30     0.30    0.30   0.30446     0.30   0.35   89635</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co"># ice [%]    0.19     0.81    0.95   0.87747     0.98   1.00   91877</span></span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to  offset  delta          refsys x/y</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440       0   0.25  WGS 84 (CRS84) [x]</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720     -90   0.25  WGS 84 (CRS84) [y]</span></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]      NA         udunits</span></span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1    1  17532 [days since 1978-01-01 12:00:00]  NA  udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(files[<span class="dv">1</span>L])</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 4 dimensions and 4 attributes</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s):</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co">#            Min.  1st Qu.  Median      Mean  3rd Qu.   Max.     NAs</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C]  -1.80    -1.80   -1.78  -1.70779    -1.64  -1.03   89635</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co"># anom [°C] -0.72    -0.08   -0.02  -0.03531     0.00   0.49   89635</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co"># err [°C]   0.30     0.30    0.30   0.30446     0.30   0.35   89635</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co"># ice [%]    0.19     0.81    0.95   0.87747     0.98   1.00   91877</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to  offset  delta          refsys x/y</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440       0   0.25  WGS 84 (CRS84) [x]</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720     -90   0.25  WGS 84 (CRS84) [y]</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1  0 [m]      NA         udunits</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1    1  17532 [days since 1978-01-01 12:00:00]  NA  udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Now we’re talking. <code>read_mdim()</code> goes through GDAL’s multidimensional API: named attributes, labelled dimensions, udunits-encoded time coordinate, proper spatial reference. This is the right representation of the dataset.</p>
 <p>But pass it all 23 files and it silently opens only the first. It’s not multi-file aware. You get one timestep, and no error to tell you so.</p>
 <p>This is the pivot point.</p>
@@ -600,20 +607,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour" class="level3">
 <h3 class="anchored" data-anchor-id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour">Step 5 — <code>gdal mdim mosaic</code> + <code>read_mdim()</code>, the full tour</h3>
 <p><code>gdal mdim mosaic</code> is the missing piece. It takes a collection of files and produces a multidim VRT that describes them as a unified n-D array — dimension coordinates and all:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim mosaic <span class="dt">\</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">$(</span><span class="bu">printf</span> <span class="st">'NETCDF:%s:sst '</span> <span class="va">$(</span><span class="fu">cat</span> filelist.txt<span class="va">))</span> <span class="dt">\</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /tmp/sst_mdim.vrt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim mosaic <span class="dt">\</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">$(</span><span class="bu">printf</span> <span class="st">'NETCDF:%s:sst '</span> <span class="va">$(</span><span class="fu">cat</span> filelist.txt<span class="va">))</span> <span class="dt">\</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /tmp/sst_mdim.vrt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Or from R via <code>vrtstack</code> or a direct <code>system()</code> call. Now hand that VRT to <code>read_mdim()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="st">"/tmp/sst_mdim.vrt"</span>)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 3 dimensions and 1 attribute</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s):</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Min.  1st Qu. Median    Mean 3rd Qu.  Max.    NAs</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C] -1.80    -1.80  -1.55  -1.198   -1.03  29.0 357256</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to                        offset  delta          refsys x/y</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440                             0   0.25  WGS 84 (CRS84) [x]</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720                           -90   0.25  WGS 84 (CRS84) [y]</span></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23  2025-01-01T00:00:00+00:00  16 days         POSIXct</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="st">"/tmp/sst_mdim.vrt"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 3 dimensions and 1 attribute</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s):</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Min.  1st Qu. Median    Mean 3rd Qu.  Max.    NAs</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C] -1.80    -1.80  -1.55  -1.198   -1.03  29.0 357256</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to                        offset  delta          refsys x/y</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440                             0   0.25  WGS 84 (CRS84) [x]</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720                           -90   0.25  WGS 84 (CRS84) [y]</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23  2025-01-01T00:00:00+00:00  16 days         POSIXct</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>23 timesteps. Named attribute. Real time coordinates as POSIXct with a 16-day delta. Proper spatial reference. And <code>/tmp/sst_mdim.vrt</code> is a file — a few kilobytes of XML — that fully describes this dataset spanning the year. Hand it to a colleague and they get the same thing. Put it in a repository. Point <code>tidync</code> or <code>vapour</code> at it. Open it in Python via GDAL. It’s the recipe.</p>
 <p>This is what <code>gdal mdim mosaic</code> unlocks: <code>read_mdim()</code> was always the right model. It just needed the VRT to make the multi-file case work.</p>
 </section>
@@ -621,131 +628,202 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="step-6-skip-the-download-url-access-who-can-and-cant">Step 6 — skip the download: URL access, who can and can’t</h3>
 <p>The files we downloaded are publicly accessible over plain HTTPS. Why download at all? Let’s see who can open them directly.</p>
 <p><strong>GDAL</strong> — just works. GDAL’s <code>/vsicurl/</code> virtual filesystem handles HTTP range requests transparently, and both <code>terra::rast()</code> (via GDAL for the spatial read) and <code>stars::read_mdim()</code> can open the URLs directly once you prefix them appropriately. No download needed.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># GDAL-backed read direct from URL</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="fu">paste0</span>(<span class="st">"/vsicurl/"</span>, urls[<span class="dv">1</span>L]))</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 4 dimensions and 4 attributes</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ... same output as Step 4, no local file required</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># GDAL-backed read direct from URL</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="fu">paste0</span>(<span class="st">"/vsicurl/"</span>, urls[<span class="dv">1</span>L]))</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 4 dimensions and 4 attributes</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ... same output as Step 4, no local file required</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>ncdf4</strong> — the picture is more complicated. ncdf4 routes through the netCDF-C library, which expects either a local file path or an OPeNDAP/Thredds <code>dodsC</code> URL. A plain HTTPS URL fails, and the error is instructive:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>ncdf4<span class="sc">::</span><span class="fu">nc_open</span>(urls[<span class="dv">1</span>])</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co"># syntax error, unexpected WORD_WORD, expecting SCAN_ATTR or</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># SCAN_DATASET or SCAN_ERROR</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># context: &lt;!DOCTYPE^ HTML PUBLIC ...&gt;&lt;h1&gt;Not Found&lt;/h1&gt;...</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Error in ncdf4::nc_open: NetCDF: file not found</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ncdf4<span class="sc">::</span><span class="fu">nc_open</span>(urls[<span class="dv">1</span>])</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># syntax error, unexpected WORD_WORD, expecting SCAN_ATTR or</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># SCAN_DATASET or SCAN_ERROR</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># context: &lt;!DOCTYPE^ HTML PUBLIC ...&gt;&lt;h1&gt;Not Found&lt;/h1&gt;...</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Error in ncdf4::nc_open: NetCDF: file not found</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>ncdf4 tried to parse the 404 HTML response as netCDF syntax. But there’s a workaround — the <code>#mode=bytes</code> suffix instructs the HDF5 layer to use HTTP byte-range requests rather than treating the URL as a file path:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ncdf4<span class="sc">::</span><span class="fu">nc_open</span>(<span class="fu">sprintf</span>(<span class="st">"%s#mode=bytes"</span>, urls[<span class="dv">1</span>]))</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># File https://...oisst-avhrr-v02r01.20250101.nc#mode=bytes</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># (NC_FORMAT_NETCDF4):</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   4 variables (excluding dimension variables):</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   sst, anom, err, ice ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>ncdf4<span class="sc">::</span><span class="fu">nc_open</span>(<span class="fu">sprintf</span>(<span class="st">"%s#mode=bytes"</span>, urls[<span class="dv">1</span>]))</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co"># File https://...oisst-avhrr-v02r01.20250101.nc#mode=bytes</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># (NC_FORMAT_NETCDF4):</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   4 variables (excluding dimension variables):</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   sst, anom, err, ice ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>It works — but you have to know the magic suffix. And because terra’s netCDF reading is backed by ncdf4, it inherits this same limitation: plain HTTPS URLs don’t work without <code>#mode=bytes</code>, and OPeNDAP <code>dodsC</code> URLs are the usual workaround for terra users working with remote data.</p>
 <p>This is the library-identity problem in miniature: the same URL, three different outcomes depending on which library is doing the opening. GDAL’s cloud-native HTTP access is a first-class citizen; ncdf4’s is an afterthought requiring a non-obvious suffix. The recipe format inherits these differences — a VRT that references HTTPS URLs is GDAL-native and just works; a workflow built on ncdf4 needs extra plumbing.</p>
 </section>
 <section id="step-7-rhdf5-dev-opening-the-door-to-chunk-indexing-dev-not-yet-on-cran" class="level3">
 <h3 class="anchored" data-anchor-id="step-7-rhdf5-dev-opening-the-door-to-chunk-indexing-dev-not-yet-on-cran">Step 7 — rhdf5-dev: opening the door to chunk indexing <em>(dev, not yet on CRAN)</em></h3>
-<p>The final step in this tour is a preview. The development version of <code>rhdf5</code> on GitHub can open remote HDF5 files over HTTPS and S3 using the ROS3 virtual file driver — no download, no <code>#mode=bytes</code> workaround, just direct anonymous access:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># remotes::install_github("grimbough/rhdf5")</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rhdf5)</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>fapl <span class="ot">&lt;-</span> <span class="fu">H5Pcreate</span>(<span class="st">"H5P_FILE_ACCESS"</span>)</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">H5Pset_fapl_ros3</span>(fapl)   <span class="co"># no credentials → anonymous mode</span></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>fid <span class="ot">&lt;-</span> <span class="fu">H5Fopen</span>(urls[<span class="dv">1</span>], <span class="at">flags =</span> <span class="st">"H5F_ACC_RDONLY"</span>, <span class="at">fapl =</span> fapl)</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>fid</span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="co"># HDF5 FILE</span></span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="co">#         name /</span></span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="co">#     filename</span></span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="co">#   name       otype       dclass              dim</span></span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 0 anom  H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
-<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 1 err   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
-<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 2 ice   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
-<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="co"># 3 lat   H5I_DATASET      FLOAT  720</span></span>
-<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 4 lon   H5I_DATASET      FLOAT  1440</span></span>
-<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 5 sst   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
-<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 6 time  H5I_DATASET      FLOAT  1</span></span>
-<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 7 zlev  H5I_DATASET      FLOAT  1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The development version of <code>rhdf5</code> on GitHub can open remote HDF5 files over HTTPS and S3 using the ROS3 virtual file driver — no download, no <code>#mode=bytes</code> workaround, just direct anonymous access:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># remotes::install_github("grimbough/rhdf5")</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rhdf5)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>fapl <span class="ot">&lt;-</span> <span class="fu">H5Pcreate</span>(<span class="st">"H5P_FILE_ACCESS"</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="fu">H5Pset_fapl_ros3</span>(fapl)   <span class="co"># no credentials → anonymous mode</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>fid <span class="ot">&lt;-</span> <span class="fu">H5Fopen</span>(urls[<span class="dv">1</span>], <span class="at">flags =</span> <span class="st">"H5F_ACC_RDONLY"</span>, <span class="at">fapl =</span> fapl)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>fid</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="co"># HDF5 FILE</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="co">#         name /</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co">#     filename</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="co">#   name       otype       dclass              dim</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 0 anom  H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 1 err   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 2 ice   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="co"># 3 lat   H5I_DATASET      FLOAT  720</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 4 lon   H5I_DATASET      FLOAT  1440</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 5 sst   H5I_DATASET    INTEGER  1440 x 720 x 1 x 1</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 6 time  H5I_DATASET      FLOAT  1</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 7 zlev  H5I_DATASET      FLOAT  1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>What you’re seeing here is the raw HDF5 structure of the file — variables as datasets, dimensions as separate float arrays, all visible without reading a single data value. This is exactly the level at which VirtualiZarr operates: it walks this structure, reads the chunk B-tree for each dataset, and records the byte offset and length of every chunk.</p>
 <p>Once <code>rhdf5</code> can expose those chunk byte-references — which is the next step in its development — R will have a native path to VirtualiZarr store creation without Python, without shelling out, and working directly on files at HTTPS or S3 URLs. The <code>H5Pset_fapl_ros3()</code> call with no credentials is the anonymous S3/HTTPS access pattern: it works for any publicly accessible endpoint that supports range requests, including NCEI, NASA Earthdata public buckets, and most open data archives.</p>
 <p>The reading side (<code>zaro</code>) is already there. The indexing side (<code>rhdf5-dev</code>) is almost there. The assembly side (<code>gdal mdim mosaic</code> → Zarr reference store) is a small conversion on top of infrastructure that already exists. The pieces are in place.</p>
 </section>
 <section id="step-8-tidync-dev-multi-file-remote-concat-in-one-call-unmerged-dev-branch" class="level3">
 <h3 class="anchored" data-anchor-id="step-8-tidync-dev-multi-file-remote-concat-in-one-call-unmerged-dev-branch">Step 8 — tidync dev: multi-file remote concat in one call <em>(unmerged dev branch)</em></h3>
-<p>And then this happened.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># remotes::install_github("hypertidy/tidync@multi-input")</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>tidync<span class="sc">::</span><span class="fu">tidync</span>(</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">"%s#mode=bytes"</span>, urls),</span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">fast =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">concat_dim =</span> <span class="fu">list</span>(<span class="at">name =</span> <span class="st">"time"</span>, <span class="at">values =</span> date)</span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co"># not a file:</span></span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="co"># ' https://.../oisst-avhrr-v02r01.20250101.nc#mode=bytes '</span></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="co"># ... attempting remote connection</span></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Connection succeeded.</span></span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Data Source (23): oisst-avhrr-v02r01.20250101.nc#mode=bytes,</span></span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="co">#                   oisst-avhrr-v02r01.20250117.nc#mode=bytes ...</span></span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Concatenated along 'time' (23/23 steps, 23 sources, fast mode)</span></span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Grids (5) &lt;dimension family&gt; : &lt;associated variables&gt;</span></span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="co"># [1]   D3,D2,D1,D0 : sst, anom, err, ice    **ACTIVE GRID**</span></span>
-<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="co"># [2]   D0          : time</span></span>
-<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a><span class="co"># [3]   D1          : zlev</span></span>
-<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a><span class="co"># [4]   D2          : lat</span></span>
-<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a><span class="co"># [5]   D3          : lon</span></span>
-<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions 4 (all active):</span></span>
-<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="co">#   dim  name  length     min       max  unlim coord_dim</span></span>
-<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a><span class="co">#   D0   time      23   20089     20441   TRUE  TRUE</span></span>
-<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a><span class="co">#   D1   zlev       1       0         0  FALSE  TRUE</span></span>
-<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a><span class="co">#   D2   lat      720  -89.875   89.875  FALSE  TRUE</span></span>
-<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a><span class="co">#   D3   lon     1440    0.125   359.88  FALSE  TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>No download. No VRT. No pre-built reference store. Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — <code>#mode=bytes</code> vectorized over the URL vector, a synthetic time axis injected via <code>concat_dim</code>, all four variables on the active grid, unlimited time dimension, proper coordinates throughout.</p>
-<p>The “not a file / attempting remote connection / Connection succeeded” in the output is tidync doing its own detective work: it knows this isn’t a local path, tries the remote connection, and succeeds. The <code>#mode=bytes</code> suffix — the ncdf4 workaround from Step 6, quietly rediscovered after a few years — turns out to be the key that unlocks the whole thing.</p>
-<p>What this gives you is the R equivalent of the xarray VirtualiZarr open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a Parquet store — but it’s remarkably clean code, and the <code>tidync</code> object it produces is fully navigable with <code>hyper_filter()</code> and <code>hyper_array()</code> without touching the data.</p>
-<p>The serializable recipe (the Parquet store, the multidim VRT) is still the goal for sharing and interoperability. But as a working representation for analysis, this is already there.</p>
+<p>tidync recently got an update in a dev branch to accept multiple files — long on the wishlist but out of reach in the early years of the package. I had also forgotten that remote access to NetCDF is possible via its own library by appending <code>#mode=bytes</code> to the URL — this means we don’t always need an OPeNDAP-enabled server for remote read. (GDAL uses its own techniques for remote access via <code>/vsicurl/</code>.)</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># remotes::install_github("hypertidy/tidync@multi-input")</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>tidync<span class="sc">::</span><span class="fu">tidync</span>(</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">"%s#mode=bytes"</span>, urls),</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">fast =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">concat_dim =</span> <span class="fu">list</span>(<span class="at">name =</span> <span class="st">"time"</span>, <span class="at">values =</span> date)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co"># not a file:</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="co"># ' https://.../oisst-avhrr-v02r01.20250101.nc#mode=bytes '</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="co"># ... attempting remote connection</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Connection succeeded.</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Data Source (23): oisst-avhrr-v02r01.20250101.nc#mode=bytes,</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="co">#                   oisst-avhrr-v02r01.20250117.nc#mode=bytes ...</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Concatenated along 'time' (23/23 steps, 23 sources, fast mode)</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Grids (5) &lt;dimension family&gt; : &lt;associated variables&gt;</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a><span class="co"># [1]   D3,D2,D1,D0 : sst, anom, err, ice    **ACTIVE GRID**</span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a><span class="co"># [2]   D0          : time</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a><span class="co"># [3]   D1          : zlev</span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a><span class="co"># [4]   D2          : lat</span></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="co"># [5]   D3          : lon</span></span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions 4 (all active):</span></span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a><span class="co">#   dim  name  length     min       max  unlim coord_dim</span></span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a><span class="co">#   D0   time      23   20089     20441   TRUE  TRUE</span></span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a><span class="co">#   D1   zlev       1       0         0  FALSE  TRUE</span></span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a><span class="co">#   D2   lat      720  -89.875   89.875  FALSE  TRUE</span></span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a><span class="co">#   D3   lon     1440    0.125   359.88  FALSE  TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — <code>#mode=bytes</code> vectorized over the URL vector, a synthetic time axis injected via <code>concat_dim</code>, all four variables on the active grid, unlimited time dimension, proper coordinates throughout. We have tested this on the full set of 16,000+ URLs and it opens in less than a minute using the <code>fast</code> and <code>concat_dim</code> mechanism to declare the values on the concatenating dimension.</p>
+<p>The “not a file / attempting remote connection / Connection succeeded” in the output is tidync doing its own detective work: it knows this isn’t a local path, tries the remote connection, and succeeds. The <code>#mode=bytes</code> suffix — the ncdf4 workaround from Step 6 — unlocks the whole thing.</p>
+<p>This is an R equivalent of the xarray open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a store on disk — and the <code>tidync</code> object it produces is fully navigable with <code>hyper_filter()</code> and <code>hyper_array()</code> without touching the data. The serializable recipe (the Zarr store, the multidim VRT) is still the goal for sharing and interoperability, but as a working representation for analysis, this is already there.</p>
 </section>
 <section id="the-xarray-counterpart-for-comparison" class="level3">
 <h3 class="anchored" data-anchor-id="the-xarray-counterpart-for-comparison">The xarray counterpart — for comparison</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> xr.open_dataset(<span class="st">"sst_virtual.parquet"</span>, engine<span class="op">=</span><span class="st">"kerchunk"</span>)</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co"># &lt;xarray.Dataset&gt;</span></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions:  (time: 23, zlev: 1, lat: 720, lon: 1440)</span></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Coordinates:</span></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   * time     (time) datetime64[ns] 2025-01-01 ... 2025-12-19</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lat      (lat) float32 -90.0 ... 89.75</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lon      (lon) float32 0.0 ... 359.75</span></span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Data variables: sst, anom, err, ice</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Opened from a ~15KB Parquet reference store. Fully lazy — no data read yet. The store is the recipe; the original netCDF files are the data. Structurally this is what Steps 5–7 are reaching toward: the multidim VRT is GDAL’s version of the Parquet store, and converting between them is the near-term target. The VirtualiZarr store goes one level deeper — chunk-level byte references rather than file-level references — which is what makes it S3-native and format-library-free. That’s the remaining gap, and it’s closing.</p>
+<p>First create the VirtualiZarr version. We use the GDAL mdim VRT hosted above because it’s convenient — and that’s where this effort will start: GDAL already has all the metadata and array concatenating logic, and we can pair that with byte reference extraction improvements to GDAL’s <code>GetRawBlockInfo()</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lxml <span class="im">import</span> etree</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> requests</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> urllib.parse <span class="im">import</span> urlparse</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> xarray <span class="im">as</span> xr</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> obstore.store <span class="im">import</span> HTTPStore</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> obspec_utils.registry <span class="im">import</span> ObjectStoreRegistry</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> virtualizarr <span class="im">import</span> open_virtual_mfdataset</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> virtualizarr.parsers <span class="im">import</span> HDFParser</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. parse the VRT to get source URLs</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>r <span class="op">=</span> requests.get(</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/mdsumner/quarto-blog/releases/download/latest/oisst_2025_sample.vrt"</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>tree <span class="op">=</span> etree.fromstring(r.content)</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>urls <span class="op">=</span> <span class="bu">sorted</span>(<span class="bu">set</span>(             <span class="co"># sorted: set() loses order, filenames are date-stamped</span></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>    el.text.replace(<span class="st">"/vsicurl/"</span>, <span class="st">""</span>)</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> el <span class="kw">in</span> tree.findall(<span class="st">".//SourceFilename"</span>)</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>))</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. set up the object store (anonymous HTTP)</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>parsed <span class="op">=</span> urlparse(urls[<span class="dv">0</span>])</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>bucket <span class="op">=</span> <span class="ss">f"</span><span class="sc">{</span>parsed<span class="sc">.</span>scheme<span class="sc">}</span><span class="ss">://</span><span class="sc">{</span>parsed<span class="sc">.</span>netloc<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>registry <span class="op">=</span> ObjectStoreRegistry({bucket: HTTPStore.from_url(bucket)})</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>parser <span class="op">=</span> HDFParser()</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. open as a single virtual dataset — no data read, no files downloaded</span></span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a>combined <span class="op">=</span> open_virtual_mfdataset(</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a>    urls,</span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a>    concat_dim<span class="op">=</span><span class="st">"time"</span>,</span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a>    parser<span class="op">=</span>parser,</span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a>    registry<span class="op">=</span>registry,</span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a>    combine<span class="op">=</span><span class="st">"nested"</span>,</span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-35"><a href="#cb17-35" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. serialize — a directory store describing all 23 files</span></span>
+<span id="cb17-36"><a href="#cb17-36" aria-hidden="true" tabindex="-1"></a>combined.virtualize.to_kerchunk(<span class="st">"sst_virtual.zarr"</span>, <span class="bu">format</span><span class="op">=</span><span class="st">"zarr"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Now open with xarray:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># note the trailing slash — this is a Zarr directory store, not a single file</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># fsspec needs it to resolve the .zmetadata index correctly</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> xr.open_dataset(<span class="st">"sst_virtual.zarr/"</span>, engine<span class="op">=</span><span class="st">"kerchunk"</span>)</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># &lt;xarray.Dataset&gt; Size: 763MB</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions:  (time: 23, zlev: 1, lat: 720, lon: 1440)</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Coordinates:</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   * time  (time) datetime64[ns] 2025-01-01T12:00:00 ... 2025-12-19T12:00:00</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   * zlev  (zlev) float32 0.0</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lat   (lat) float32 -89.88 -89.62 ... 89.62 89.88</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="co">#   * lon   (lon) float32 0.125 0.375 ... 359.6 359.9</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Data variables:</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="co">#     anom  (time, zlev, lat, lon) float64 191MB ...</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co">#     err   (time, zlev, lat, lon) float64 191MB ...</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="co">#     ice   (time, zlev, lat, lon) float64 191MB ...</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="co">#     sst   (time, zlev, lat, lon) float64 191MB ...</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Attributes: (12/37)</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="co">#     Conventions:   CF-1.6, ACDD-1.3</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="co">#     title:         NOAA/NCEI 1/4 Degree Daily Optimum Interpolation ...</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="co">#     metadata_link: https://doi.org/10.25921/RE9P-PT57</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a><span class="co">#     sensor:        Thermometer, AVHRR</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That virtual store is available here:</p>
+<pre><code>https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr</code></pre>
+<p>Open with xarray directly from the URL (note the trailing slash):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>xr.open_dataset(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr/"</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    engine<span class="op">=</span><span class="st">"kerchunk"</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Open with GDAL:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> osgeo <span class="im">import</span> gdal</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>ds <span class="op">=</span> gdal.OpenEx(</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ZARR:</span><span class="ch">\"</span><span class="st">/vsicurl/https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr</span><span class="ch">\"</span><span class="st">"</span>,</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    gdal.OF_MULTIDIM_RASTER</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim info <span class="st">"ZARR:</span><span class="dt">\"</span><span class="st">/vsicurl/https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr</span><span class="dt">\"</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Open with zaro:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>z <span class="ot">&lt;-</span> <span class="fu">zaro</span>(<span class="st">"virtualizarr://https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr"</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">zaro_meta</span>(z)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># [zaro] found .zmetadata (Zarr V2 consolidated)</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># [zaro]   8 arrays: anom, err, ice, lat, lon, sst, time, zlev</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="co"># &lt;zaro::ZaroMeta&gt;</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co">#  @ zarr_format    : int 2</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co">#  @ node_type      : chr "group"</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="co">#  @ attributes     :List of 37</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a><span class="co">#  .. $ Conventions: chr "CF-1.6, ACDD-1.3"</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="co">#  .. $ title      : chr "NOAA/NCEI 1/4 Degree Daily Optimum Interpolation ..."</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="co">#  .. $ metadata_link: chr "https://doi.org/10.25921/RE9P-PT57"</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a><span class="co">#  ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Open with stars:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ZARR:</span><span class="sc">\"</span><span class="st">/vsicurl/https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr</span><span class="sc">\"</span><span class="st">"</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 4 dimensions and 4 attributes</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s), summary of first 1e+05 cells:</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="co">#            Min. 1st Qu. Median       Mean 3rd Qu. Max.   NAs</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co"># anom [°C] -1.58   -0.61  -0.43 -0.3861891   -0.20 1.45 89635</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co"># err [°C]   0.30    0.30   0.30  0.3042393    0.30 0.35 89635</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="co"># ice [%]    0.16    0.62   0.87  0.7743456    0.96 1.00 93223</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C]  -1.80   -1.80  -1.66 -1.4256025   -1.29 1.19 89635</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to                                 offset</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440                                      0</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720                                    -90</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev    1    1                                  0 [m]</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23  17167 [days since 1978-01-01T12:00:00]</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a><span class="co">#                                    delta         refsys x/y</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a><span class="co"># lon                                 0.25 WGS 84 (CRS84) [x]</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="co"># lat                                 0.25 WGS 84 (CRS84) [y]</span></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev                                  NA        udunits</span></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a><span class="co"># time  16 [days since 1978-01-01T12:00:00]        udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The same store, opened by four different tools across two languages - there’s a recipe, but it’s not a nailed down format yet.</p>
 <hr>
-<p><em>Michael Sumner is a geospatial researcher at the Australian Antarctic Division. Packages mentioned — <code>tidync</code>, <code>vapour</code>, <code>terra</code>, <code>stars</code>, <code>vrtstack</code>, <code>zaro</code> — are part of or adjacent to the <a href="https://github.com/hypertidy">hypertidy</a> ecosystem.</em></p>
-<hr>
-<!-- AUTHOR NOTES FOR LATER INCLUSION — not for publication yet -->
-<!--
-NOTE 1 — vrt:// vs rast(files, "sst")
-rast(<files>, "sst") sidesteps the vrt:// trick and selects the subdataset
-directly — but this is a non-GDAL pathway (ncdf4-backed), whereas vrt() goes
-through GDAL and produces a real file. The contrast makes a strong point about
-backend differences and why the GDAL path is worth the extra step.
-
-NOTE 2 — "email the sst_stack.vrt" / patching in /vsicurl/ URLs
-The VRT could reference /vsicurl/https://... URLs instead of local paths —
-making it a truly portable recipe that works anywhere with GDAL, no local
-files required. Worth mentioning. Caveats: (a) the VRT needs updating as new
-daily files are produced, so "use URLs" implies a maintenance story; (b) URL
-access is still a can of worms across tools — GDAL handles it cleanly, Python
-fsspec handles it, but ncdf4/terra have the #mode=bytes wrinkle. Good
-opportunity to tie back to Step 6.
-
-NOTE 3 — DMR++ in the "What Zarr figured out" section
-Mention DMR++ as a nod to the Unidata/NASA old-school confluence with
-kerchunk. DMR++ is OPeNDAP's equivalent — a sidecar metadata file that indexes
-chunk byte-ranges in HDF5/netCDF files, predating kerchunk but solving the
-same problem from the server side. The kerchunk/VirtualiZarr community and the
-DMR++ community have been converging. Worth a sentence acknowledging this
-lineage: the idea of separating the chunk index from the data is not new, it
-just took Zarr's client-side framing to make it composable.
--->
+<p><em>Michael Sumner is a research software engineer at the Australian Antarctic Division. Packages mentioned — <code>tidync</code> (rOpenSci reviewed), <code>vapour</code>, <code>vrtstack</code>, <code>zaro</code> — are part of the <a href="https://github.com/hypertidy">hypertidy</a> ecosystem.</em></p>
 
 
 </section>
