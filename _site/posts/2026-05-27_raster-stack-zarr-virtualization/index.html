@@ -9,7 +9,7 @@
 <meta name="author" content="Michael Sumner">
 <meta name="dcterms.date" content="2026-05-27">
 
-<title>R, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy</title>
+<title>R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -114,10 +114,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="R, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy">
+<meta property="og:title" content="R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy">
 <meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta property="og:site_name" content="hypertidy">
-<meta name="twitter:title" content="R, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy">
+<meta name="twitter:title" content="R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets – hypertidy">
 <meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta name="twitter:card" content="summary">
 </head>
@@ -344,7 +344,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">R, Zarr, and the Missing Recipe Format for Raster Datasets</h1>
+      <h1 class="title">R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">code</div>
                 <div class="quarto-category">news</div>
@@ -499,7 +499,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="why-this-matters-beyond-r">Why this matters beyond R</h2>
 <p>A Zarr reference store created from OISST netCDF files is immediately openable in Python, R, GDAL and in theory any tool that speaks Zarr.</p>
 <p>STAC is complementary but different: STAC describes <em>where</em> files are and their spatiotemporal footprint. A virtual store describes <em>what the dataset structurally is</em> — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG.</p>
-<p>The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not catching just catching up, there are things we can do that aren’t on any other roadmap that I can find.</p>
+<p>The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not just catching up, there are things we can do that aren’t on any other roadmap.</p>
 <hr>
 </section>
 <section id="what-would-help" class="level2">
@@ -512,6 +512,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>Try <code>remotes::install_github("hypertidy/tidync@multi-input")</code></strong> if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like.</li>
 <li><strong>Look at <code>vrtstack</code> and <code>zaro</code></strong> on the <a href="https://github.com/hypertidy">hypertidy GitHub</a>, vrtstack builds a multidim VRT from 2D rasters (multidim GDAL supports COG, but doesn’t support <em>builiding these</em>), zaro is a read-implementation for Zarr that is primarily based around Arrow.</li>
 <li><strong>File issues against GDAL’s multidim API</strong> when you find gaps — R users exercising it in real workflows makes it better for everyone.</li>
+<li><strong>Check out gdalraster (and my multidim branch)</strong> there’s a long way to go for multidim but <a href="https://firelab.github.io/gdalraster/">gdalraster</a> is a rich package has a super strong basis for faithfully carrying the core facilities of the multidim api <a href="https://github.com/mdsumner/gdalraster/tree/gdalmultidim-api">exposed to R</a>.</li>
 </ul>
 <hr>
 </section>

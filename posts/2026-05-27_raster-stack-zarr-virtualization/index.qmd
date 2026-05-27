@@ -1,5 +1,5 @@
 ---
-title: "R, Zarr, and the Missing Recipe Format for Raster Datasets"
+title: "R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets"
 author: "Michael Sumner"
 date: "2026-05-27"
 categories:
@@ -167,7 +167,7 @@ A Zarr reference store created from OISST netCDF files is immediately openable i
 
 STAC is complementary but different: STAC describes *where* files are and their spatiotemporal footprint. A virtual store describes *what the dataset structurally is* — how chunks map to array coordinates, what the dimensions mean, how to reassemble a slice. A STAC item can point to a virtual store the way it points to a COG. 
 
-The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not catching just catching up, there are things we can do that aren't on any other roadmap that I can find.
+The R community has genuine leverage here. GDAL is the common substrate between R and the xarray/Zarr ecosystem. R is not just catching up, there are things we can do that aren't on any other roadmap.
 
 ---
 
@@ -181,6 +181,7 @@ If you work with time series of raster files and you've felt this friction:
 - **Try `remotes::install_github("hypertidy/tidync@multi-input")`** if you have remote netCDF files and want to skip the download entirely — Step 8 in the appendix shows what this already looks like. 
 - **Look at `vrtstack` and `zaro`** on the [hypertidy GitHub](https://github.com/hypertidy), vrtstack builds a multidim VRT from 2D rasters (multidim GDAL supports COG, but doesn't support *builiding these*), zaro is a read-implementation for Zarr that is primarily based around Arrow.
 - **File issues against GDAL's multidim API** when you find gaps — R users exercising it in real workflows makes it better for everyone. 
+- **Check out gdalraster (and my multidim branch)** there's a long way to go for multidim but [gdalraster](https://firelab.github.io/gdalraster/) is a rich  package has a super strong basis for faithfully carrying the core facilities of the multidim api [exposed to R](https://github.com/mdsumner/gdalraster/tree/gdalmultidim-api). 
 
 ---
 
