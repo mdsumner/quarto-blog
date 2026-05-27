@@ -12,7 +12,7 @@ categories:
   - netcdf
 ---
 
-A common scenario in geospatial data workflows is multiple raster files. Let's consider 23 snapshots of OISST sea surface temperature spread across 2025. One NetCDF file per date, each raster is the same grid, four variables each. Let's see what R does with that. Here we assume `files` is a vector of paths to the NetCDF files. 
+A common scenario in geospatial data workflows is multiple raster files. Let's consider 23 snapshots of OISST sea surface temperature spread across 2025. One NetCDF file per date, each raster is the same grid, four variables each. Let's see what R does with that. Here we assume `files` is a vector of paths to the NetCDF files.
 
 (Fully reproducible setup, downloading directly from NCEI is in the appendix.)
 
@@ -34,9 +34,9 @@ rast(files)
 # time (days) : 2025-01-01 to 2025-12-19 (23 steps)
 ```
 
-The result is pretty good, `terra::rast()` is wielding some smarts here: it reads all subdatasets across all files, concatenates band-wise, preserves the time axis, carries units, and records depth metadata. For a lot of workflows this is exactly what is needed, it's also lazy — no pixel values are read until they are needed.
+The result is pretty good. `terra::rast()` is no slouch: it reads all subdatasets across all files, concatenates band-wise, preserves the time axis, carries units, and records depth metadata. For a lot of workflows this is exactly what is needed, and it's lazy — no pixel values are read until they are needed.
 
-But look at the names: `anom_zlev=0`, `err_zlev=0`, `ice_zlev=0`, `sst_zlev=0` — repeated 23 times, 92 layers total. Four variables and 23 timesteps are there, flattened into band order. The n-D structure — *this is a (variable × time × lat × lon) array* — is implicit in the interleaving, not encoded anywhere. There's an implicit contract about how this was unrolled, there are conventions for band ordering, workarounds for the `_zlev=0` naming. Nothing is wrong, but the band-stack model forces all of that n-D structure into a single axis, and recovering it requires a lot of information that is not *usual* in the multi-band model.
+But look at the names: `anom_zlev=0`, `err_zlev=0`, `ice_zlev=0`, `sst_zlev=0` — repeated 23 times, 92 layers total. Four variables and 23 timesteps are there, flattened into band order. The n-D structure — *this is a (variable × time × lat × lon) array* — is implicit in the interleaving, not encoded anywhere. There's an implicit contract about how this was unrolled, there are conventions for band ordering, workarounds for the `_zlev=0` naming. Nothing is wrong, but the band-stack model forces all of that n-D structure into a single axis, and recovering it requires a lot of information that is not usual in the multi-band model.
 
 We can sidestep the variable interleaving with the `vrt://` URI syntax:
 
@@ -53,30 +53,33 @@ vrt(
 # names       : r_1, r_2, r_3, ..., r_23
 ```
 
-One variable, 23 layers. The `vrt://` GDAL protocol is worth knowing, allowing us to name a subdataset in a URI query string, vectorizing cleanly with `sprintf` and using the underlying raster-stack capability of GDAL VRT (`-separate`). But there's a trade-off: no time axis, layer names are `r_1` through `r_23`, rather than dates. We fixed the variable interleaving problem and lost the coordinate metadata.
+One variable, 23 layers. The `vrt://` GDAL protocol is worth knowing: it lets us name a subdataset in a URI query string, vectorizing cleanly with `sprintf` and using the underlying raster-stack capability of GDAL VRT (`-separate`). But there's a trade-off: no time axis, layer names are `r_1` through `r_23` rather than dates. We fixed the variable interleaving problem and lost the coordinate metadata.
 
-`stars` approaches this differently. In default *proxy* mode (a.k.a. *lazy*) it uses GDAL classic raster and keeps variables as separate attributes, file-per-timestep structure explicit, and does this by harvesting metadata from the underlying files that is carried by GDAL (as bare metadata). `stars::read_mdim()` goes further - it uses the GDAL multidimensional API and gives named attributes, real dimension coordinates with udunits, proper n-D structure. The representation is right, but it's also limited and we've parked details on that in the appendix. 
+`rast(files, "sst")` also selects a single subdataset without the `vrt://` syntax, and produces the same 23-layer result — but it goes through the `ncdf4` backend rather than GDAL, so it doesn't produce a VRT file and doesn't carry the same interoperability guarantees. The two approaches look similar but are doing different things underneath, and that distinction matters for what comes next.
 
-None of these approaches is *the best* - each embeds real expertise and genuine design choices, but  with excellent tools like terra and stars, **you still can't hand someone a file that says "this is a year of global SST."** You can hand them code, or you can hand them gigabytes. The code only works if they have the same files in the same place. The gigabytes require a format decision and a copy operation.
+`stars` approaches this differently. In default *proxy* (lazy) mode it uses GDAL classic raster and keeps variables as separate attributes, file-per-timestep structure explicit, doing this by harvesting metadata from the underlying files as carried by GDAL. `stars::read_mdim()` goes further — it uses the GDAL multidimensional API and gives named attributes, real dimension coordinates with udunits, proper n-D structure. The representation is right, but it too has limits; details are in the appendix.
 
-There's no serializable recipe that is light, language-agnostic, and able to handle a broad variety of cases. 
+None of these approaches is *the best* — each embeds real expertise and genuine design choices. But with excellent tools like terra and stars, **you still can't hand someone a file that says "this is a year of global SST."** You can hand them code, or you can hand them gigabytes. The code only works if they have the same files in the same place. The gigabytes require a format decision and a copy operation.
 
-I'll add a clear case that was a key moment in my journey, learning Python and xarray I was impressed that xarray could open these files, a huge list of them (16337 days of OISST at time of writing) as local files or remote URLs - xarray checks them all for consistency and detects that what is really there is four variables in longitude, latitude, and time - and that time is an implicit concatenation from a single time step in those thousands of files. It's amazing, one object in memory in Python ready to lazy-read any part of the 4 16337x720x1440 arrays: but, that took about ~15 minutes to run let alone the software and computing infrastructure I had to set up, how can I share that progress with my colleagues? (I thought, "hmmm what's the xarray-VRT ..." spoiler:  there isn't one - although virtual-zarr does serve that role, it's missing an intermediate state where we just remember what files we opened and what was learned). 
+There's no serializable recipe that is light, language-agnostic, and handles a broad variety of cases.
 
-NOTE:  `vrt://<path>?sd_name=<subdataset>` vs `rast(files, <subdataset>)`: `rast(<files>, "sst")` sidesteps the `vrt://` trick and selects the subdataset directly — but this is a non-GDAL pathway ({ncdf4}-backed and specific to the {terra} package), whereas `vrt()` goes through GDAL and produces a real file. These backend differences have subtleties and some work better than others depending on circumstances, there's no one good approach. 
+## Fifteen minutes with xarray 
+
+A key moment for me was while learning Python and xarray, I was impressed that xarray could open these files — a huge list of them (16,337 days of OISST at time of writing) as local files or remote URLs. xarray checks them all for consistency, detects that what is really there is four variables in longitude, latitude, and time, and that time is an implicit concatenation from a single time step in each of those thousands of files. It's remarkable: one object in memory in Python, ready to lazy-read any part of the four 16337×720×1440 arrays. But that took about 15 minutes to run, let alone the software and computing infrastructure needed to get there. And then: how do you share that progress with colleagues? 
+
+(I thought: *"hmmm, what's the xarray equivalent of a VRT?"* Spoiler: there isn't one - and although VirtualiZarr does serve that role, it's missing an intermediate state where we only record what files were opened and what structure was learned.)
 
 ---
 
 ## What the VRT already does
 
-Back to our 23 files (a sample of the 16337+ in the full OISST set as of 2026-05-27). 
+Back to our 23 files — a sample of the 16,337+ in the full OISST set as of writing.
 
-Open `/tmp/sst_stack.vrt` in a text editor. `browseURL("/tmp/sst_stack.vrt")` It's a few kilobytes of XML that fully describes a virtual 23-layer SST dataset — source files, spatial extent, band mapping. It's a tiny file, we could email it, we can put it in a repository, the source paths can be `/vsicurl/https://....nc` urls. Anyone with GDAL can open it with `rast("sst_stack.vrt")` and get exactly what you built, without copying a byte of the underlying data.
+Open `/tmp/sst_stack.vrt` in a text editor (`browseURL("/tmp/sst_stack.vrt")` works too). It's a few kilobytes of XML that fully describes a virtual 23-layer SST dataset — source files, spatial extent, band mapping. It's a tiny file: you could email it, put it in a repository, or patch the source paths to `/vsicurl/https://....nc` URLs so it works without any local files at all. Anyone with GDAL can open it with `rast("sst_stack.vrt")` and get exactly what you built, without copying a byte of the underlying data.
 
-That's a recipe, GDAL has had it for a long time.
+That's a *recipe*, we've stacked our files into as simple chunk of text that GDAL can open very quickly. 
 
-**VRT** (Virtual Format) is a plain XML file that describes a virtual raster dataset. It can mosaic, warp, reproject, reband, and combine source files without touching the underlying data. It is for the 2D raster world exactly the recipe format that's missing from the terra/stars in-memory story. The 2D VRT is one of GDAL's most underappreciated features — already powering
-a  lot of geospatial infrastructure especially where band-stacking or tile-mosaicing is sufficient as the solution.
+**VRT** [(Virtual Format)](https://gdal.org/en/stable/drivers/raster/vrt.html) is a plain XML file that describes a virtual raster dataset. It can mosaic, warp, reproject, reband, and combine source files without touching the underlying data. For the 2D raster world it is exactly the recipe format that's missing from the terra/stars in-memory story. The 2D VRT is one of GDAL's most underappreciated features — already powering a lot of geospatial infrastructure, especially where band-stacking or tile-mosaicking is sufficient as the solution.
 
 So what about the full n-D case: multiple variables, time coordinates, arbitrary dimensions?
 
@@ -86,11 +89,11 @@ So what about the full n-D case: multiple variables, time coordinates, arbitrary
 
 The Python/xarray community has been working on exactly this problem, approaching it from the chunk level rather than the file level.
 
-Zarr is a chunked array format. An array is split into regular chunks; each chunk is compressed independently and stored as a separate object — a file, an S3 object, bytes somewhere. (The chunk is a very much non human-readable and non self-describing, a raw numeric array in bytes that is *compressed*). Metadata  lives in a small JSON sidecar: metadata here is the details of what the numbers in the compressed chunk *are*, and how that array of values inhabits a slot in a large store. The metadata is in fact everything needed for xarray to provide a rich self-describing interface that can work with the data. This is *really* good for cloud access: fetch only the chunks you need, in parallel, without a format-specific library, and that is Zarr in a nutshell. It's a bit like all the NetCDF files were turned inside out, with all the metadata (tiny in comparison) put upfront in JSON, and all the gnarly compressed opaque chunks stored at their own s3 URL. 
+Zarr is a chunked array format. An array is split into regular chunks; each chunk is compressed independently and stored as a separate object — a file, an S3 object, a range of bytes in a larger store. The chunks themselves are opaque: raw numeric arrays in compressed bytes, not self-describing. What makes Zarr work is the metadata sidecar: a small JSON file that records the shape, dtype, chunk layout, compression codec, and dimension coordinates — everything xarray needs to provide a rich, self-describing interface over the data. This is really good for cloud access: fetch only the chunks you need, in parallel, without a format-specific library. It's a bit like taking a pile of NetCDF files and turning them inside out — all the metadata (tiny in comparison to the data) is placed upfront in JSON, and all the compressed opaque chunks are stored as individually addressable objects.
 
-A deeper insight comes when you realize that **HDF5, netCDF4, GeoTIFF, GRIB and others already store their data in chunks**. The chunks are buried inside files that require format-specific libraries to navigate, but the byte ranges are all there. We just need an index.
+The deeper insight comes when you realize that **HDF5, netCDF4, GeoTIFF, GRIB, and others already store their data in chunks**. The chunks are buried inside files that require format-specific libraries to navigate, but the byte ranges are all there. We just need an index.
 
-[kerchunk](https://github.com/fsspec/kerchunk) and its successor [VirtualiZarr](https://virtualizarr.readthedocs.io/) do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files.
+[kerchunk](https://github.com/fsspec/kerchunk) and its successor [VirtualiZarr](https://virtualizarr.readthedocs.io/) do exactly that: open your existing files, find where each chunk lives (file path, byte offset, byte length), and write that index as a JSON or Parquet reference store. The bulk data never moves. What you get is a Zarr-shaped recipe that points back into your original files. It's worth noting that this idea is not new — NASA and Unidata's [DMR++](https://opendap.github.io/DMRpp-wiki/DMRpp.html) format did the same thing for OPeNDAP. [Cloud-Optimized GeoTIFF](https://cogeo.org) is the same idea applied to TIFF: the IFD tile index is moved to the front of the file so a client can read the chunk map in one range request and fetch only what it needs thereafter. The difference is that Zarr's client-side framing made the pattern composable and ecosystem-wide rather than server-specific.
 
 ```python
 from virtualizarr import open_virtual_dataset
@@ -119,7 +122,7 @@ The store is kilobytes of metadata. The data stays where it is. The n-D structur
 - `sst`, `anom`, `err`, `ice` as **named variables**, not interleaved bands
 - `time` as a real coordinate with date values, not layer indices `r_1..r_23`
 - `lat`, `lon`, `zlev` as labelled dimensions with coordinate values
-- the whole thing serialised as a file anyone with Zarr support can open
+- the whole thing serialized as a file anyone with Zarr support can open
 
 This is what `stars::read_mdim()` is reaching toward in R — the representation is structurally similar. The difference is that the xarray object came from a 12KB Parquet file, not from reconstructing structure at runtime over 23 original netCDF files. That difference is the recipe.
 
@@ -129,9 +132,9 @@ This is what `stars::read_mdim()` is reaching toward in R — the representation
 
 GDAL already spans both worlds.
 
-GDAL has a **multidimensional API** (the "mdim" layer) that represents data as named arrays with labelled dimensions — the same model as xarray, not the band-stacked model of classic GDAL rasters. GDAL's Zarr driver can open VirtualiZarr/kerchunk Parquet reference stores through this API. A store created in Python is readable via GDAL — which means it's reachable from R today.
+GDAL has a [**multidimensional API**](https://gdal.org/en/stable/user/multidim_raster_data_model.html) (the "mdim" layer) that represents data as named arrays with labelled dimensions — the same model as xarray, not the band-stacked model of classic GDAL rasters. GDAL's Zarr driver can open VirtualiZarr/kerchunk Parquet reference stores through this API. A store created in Python is readable via GDAL — which means it's reachable from R today.
 
-More importantly, GDAL has `gdal mdim mosaic` — a tool that takes a collection of raster files and produces a **multidim VRT** describing them as a unified n-D array dataset. This VRT encodes the array structure, dimension names, coordinate values, and source file mapping. It is the GDAL-native recipe for an n-D dataset — and as shown in the appendix, `stars::read_mdim()` opens it faithfully, giving you the full multi-file dataset with the right structure, right coordinates, and a serialisable description that travels independently of the original files.
+More importantly, GDAL has [`gdal mdim mosaic`](https://gdal.org/en/stable/programs/gdal_mdim_mosaic.html) — a tool that takes a collection of raster files and produces a **multidim VRT** describing them as a unified n-D array dataset. This VRT encodes the array structure, dimension names, coordinate values, and source file mapping. It is the GDAL-native recipe for an n-D dataset — and as shown in the appendix, `stars::read_mdim()` opens it faithfully, giving you the full multi-file dataset with the right structure, right coordinates, and a serializable description that travels independently of the original files.
 
 Converting a GDAL multidim VRT to a Zarr reference store is a small transformation on kilobytes of XML, not a data operation. That's the near-term path to R-native VirtualiZarr creation.
 
@@ -139,19 +142,19 @@ Converting a GDAL multidim VRT to a Zarr reference store is a small transformati
 
 ## The gap: creation, not reading
 
-R can *read* virtual stores — multidim VRT via `tidync`/`vapour`/`stars::read_mdim()`, and VirtualiZarr Parquet reference stores via `zaro`. What R can't yet do is *create* the chunk-level byte-reference stores that VirtualiZarr generates for HDF5 and netCDF.
+R can *read* virtual stores — Zarr and multidim VRT and VirtualiZarr Parquet reference via `stars::read_mdim()`, `gdalraster::mdim_translate` or  [`zaro`](https://github.com/hypertidy/zaro) or real Zarr with  [pizzarr](https://CRAN.R-project.org/package=pizzarr) or [zarr](https://CRAN.R-project.org/package=zarr). What R can't yet do is *create* the chunk-level byte-reference stores that VirtualiZarr generates for HDF5 and netCDF.
 
-That's the frontier, and the pieces are converging:
+That's a frontier, and the pieces are converging:
 
 **`gdal mdim mosaic`** creates multidim VRTs from file collections today. The XML fully describes what a VirtualiZarr store needs — shape, chunks, coordinate values, source file paths and byte offsets. This is the hard structural work; emitting the Zarr reference store format from it is a straightforward conversion.
 
 **`rhdf5`** can now open remote HDF5 files at URLs or on S3 (dev version on GitHub). The next step is extracting chunk byte-reference indices directly — the core operation VirtualiZarr performs in Python. Step 7 in the appendix shows what this already looks like.
 
-**`zaro`** (pure-R Zarr reader via Arrow) already reads VirtualiZarr Parquet stores. The reading side is there.
+**`zaro`** (pure-R Zarr reader via Arrow) already reads VirtualiZarr Parquet stores. The reading side is there, and needs comparison with `pizzarr`, and `zarr` and other zarr-enabled packages.
 
 **`vrtstack`** generates multidim VRTs from 2D raster collections in R — the `gdal mdim mosaic` equivalent without leaving R.
 
-The path: `vrtstack` or `gdal mdim mosaic` for file collections → emit Zarr reference store → readable by `zaro`, xarray, or any Zarr-aware tool. R becomes a first-class creator of portable dataset descriptions, not just a consumer of what Python produces.
+The path: `vrtstack` or `gdal mdim mosaic` for file collections → emit Zarr reference store → readable by `zaro`, xarray, or any Zarr-aware tool. In this way R can become a first-class creator of portable dataset descriptions, not just a consumer of what Python produces.
 
 ---
 
@@ -416,13 +419,13 @@ tidync::tidync(
 #   D3   lon     1440    0.125   359.88  FALSE  TRUE
 ```
 
-No download. No VRT. No pre-built reference store. Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — `#mode=bytes` vectorised over the URL vector, a synthetic time axis injected via `concat_dim`, all four variables on the active grid, unlimited time dimension, proper coordinates throughout.
+No download. No VRT. No pre-built reference store. Twenty-three remote netCDF files concatenated into one lazy n-D dataset in a single call — `#mode=bytes` vectorized over the URL vector, a synthetic time axis injected via `concat_dim`, all four variables on the active grid, unlimited time dimension, proper coordinates throughout.
 
 The "not a file / attempting remote connection / Connection succeeded" in the output is tidync doing its own detective work: it knows this isn't a local path, tries the remote connection, and succeeds. The `#mode=bytes` suffix — the ncdf4 workaround from Step 6, quietly rediscovered after a few years — turns out to be the key that unlocks the whole thing.
 
 What this gives you is the R equivalent of the xarray VirtualiZarr open: the same structure, the same laziness, the same multi-file concatenation. The recipe here is the code rather than a Parquet store — but it's remarkably clean code, and the `tidync` object it produces is fully navigable with `hyper_filter()` and `hyper_array()` without touching the data.
 
-The serialisable recipe (the Parquet store, the multidim VRT) is still the goal for sharing and interoperability. But as a working representation for analysis, this is already there.
+The serializable recipe (the Parquet store, the multidim VRT) is still the goal for sharing and interoperability. But as a working representation for analysis, this is already there.
 
 ### The xarray counterpart — for comparison
 

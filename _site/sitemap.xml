@@ -6,7 +6,7 @@
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2026-03-24_check-out-gdalraster/index.html</loc>
-    <lastmod>2026-03-24T00:51:39.540Z</lastmod>
+    <lastmod>2026-03-24T01:06:20.513Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2026-02-20_map-extent-projection/index.html</loc>
@@ -37,60 +37,64 @@
     <lastmod>2026-02-10T11:14:10.812Z</lastmod>
   </url>
   <url>
-    <loc>https://hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/index.html</loc>
-    <lastmod>2026-03-24T00:47:23.491Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/posts/2026-03-24_check-out-reproj/index.html</loc>
-    <lastmod>2026-03-24T00:33:29.754Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
-    <lastmod>2026-02-10T11:14:10.832Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
+    <loc>https://hypertidy.org/posts/2017-09-01_gdal-in-r/index.html</loc>
     <lastmod>2026-02-10T11:14:10.828Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/vaster-blog-draft.html</loc>
-    <lastmod>2025-12-21T08:14:49.750Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/index.html</loc>
-    <lastmod>2026-02-10T22:13:58.428Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/about.html</loc>
-    <lastmod>2026-02-10T21:41:45.509Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/projects.html</loc>
-    <lastmod>2026-02-10T21:46:13.293Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/drafts/2025-06-30-degenerate-zarr/different_polar_netcdfs.html</loc>
-    <lastmod>2025-09-03T05:11:56.148Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/packages.html</loc>
-    <lastmod>2026-02-10T20:50:21.197Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
-    <lastmod>2026-02-10T11:14:10.824Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/posts/2024-12-11_conservative_gdal/index.html</loc>
-    <lastmod>2026-02-10T11:14:10.816Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2025-12-21_vaster-grid-logic/vaster-grid-logic.html</loc>
     <lastmod>2026-02-10T11:14:10.808Z</lastmod>
   </url>
   <url>
-    <loc>https://hypertidy.org/posts/2017-09-01_gdal-in-r/index.html</loc>
+    <loc>https://hypertidy.org/posts/2024-12-11_conservative_gdal/index.html</loc>
+    <lastmod>2026-02-10T11:14:10.816Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>
+    <lastmod>2026-02-10T11:14:10.824Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/packages.html</loc>
+    <lastmod>2026-02-10T20:50:21.197Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/drafts/2025-06-30-degenerate-zarr/different_polar_netcdfs.html</loc>
+    <lastmod>2025-09-03T05:11:56.148Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/projects.html</loc>
+    <lastmod>2026-02-10T21:46:13.293Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/about.html</loc>
+    <lastmod>2026-02-10T21:41:45.509Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/index.html</loc>
+    <lastmod>2026-02-10T22:13:58.428Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/vaster-blog-draft.html</loc>
+    <lastmod>2025-12-21T08:14:49.750Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2017-07-25_erddap-in-sf-and-ggplot2/index.html</loc>
     <lastmod>2026-02-10T11:14:10.828Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2015-12-28_gis3d/index.html</loc>
+    <lastmod>2026-02-10T11:14:10.832Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2026-03-24_check-out-reproj/index.html</loc>
+    <lastmod>2026-03-24T01:05:49.185Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/index.html</loc>
+    <lastmod>2026-03-24T01:22:26.650Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2026-05-27_raster-stack-zarr-virtualization/index.html</loc>
+    <lastmod>2026-05-27T02:37:07.241Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/index.html</loc>
@@ -98,7 +102,7 @@
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2026-03-24_check-out-wk/index.html</loc>
-    <lastmod>2026-03-24T00:56:51.076Z</lastmod>
+    <lastmod>2026-03-24T01:21:15.962Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2025-09-04_broken-netcdf/index.html</loc>
@@ -110,7 +114,7 @@
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2026-03-24_check-out-geos/index.html</loc>
-    <lastmod>2026-03-24T00:54:21.016Z</lastmod>
+    <lastmod>2026-03-24T01:06:11.241Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2026-03-17_geodata-package-data/index.html</loc>

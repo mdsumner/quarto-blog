@@ -6,3 +6,6 @@
 .httr-oauth
 .DS_Store
 data-raw/
+.positai
+
+**/*.quarto_ipynb
