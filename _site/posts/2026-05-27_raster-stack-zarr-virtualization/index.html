@@ -390,6 +390,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
+<p><em>The virtual-Zarr format that lets xarray describe 16,000 files in a tiny store doesn’t exist in R yet - but the pieces are in place, this post tries to show where they fit together</em> .</p>
 <p>A common scenario in geospatial data workflows is multiple raster files. Let’s consider 23 snapshots of OISST sea surface temperature spread across 2025. One NetCDF file per date, each raster is the same grid, four variables each. Let’s see what R does with that. Here we assume <code>files</code> is a vector of paths to the NetCDF files.</p>
 <p>(Fully <a href="#appendix-setup">reproducible setup</a>, downloading directly from NCEI is in the appendix.)</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(<span class="fu">basename</span>(files))</span>
