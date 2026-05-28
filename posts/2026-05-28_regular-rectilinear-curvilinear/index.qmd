@@ -4,6 +4,7 @@ author: "Michael Sumner"
 date: "2026-05-28"
 categories: [gdal, raster, netcdf, projections, theory]
 description: "A grid taxonomy rooted in coordinate storage, not CRS. A companion to *Detecting hidden grids in curvilinear coordinates*."
+draft: true
 ---
 
 ## The problem with "curvilinear"
