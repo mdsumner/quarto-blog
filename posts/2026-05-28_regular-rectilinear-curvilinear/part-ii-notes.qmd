@@ -1,0 +1,93 @@
+---
+title: "Notes for Part II — the manifold, DGGS, and the L3bin connector"
+date: "2026-05-28"
+description: "Extended material and theoretical asides parked from the main post. Seeds for a follow-up."
+draft: true
+---
+
+## The ladder is manifold-agnostic — and that is the point
+
+The regular → rectilinear → curvilinear ladder characterises grids by their index structure and coordinate storage alone. The manifold — sphere, plane, torus, ellipsoid — is not part of the definition. You can have a regular grid on a sphere (HEALPix patches, cubed-sphere faces) or a regular grid on a plane; regularity is a property of the indexing, not the embedding. This is not a limitation of the ladder; it is the source of its generality and simplicity.
+
+The longlat case is a clean illustration of what happens when you *ignore* the manifold. A global regular longlat grid is perfectly regular by the ladder's definition: uniform spacing, Cartesian product index, four numbers and a CRS to specify it completely. And that's fine — until your application needs to know that the top row is a pole and the left and right edges are the same meridian. At that point the ladder gives you no help. The wrapping logic, the polar singularity, the fact that cells covering Fiji and cells covering its antipode are not indexed as neighbours — none of that is encoded in the grid structure. It is external knowledge that the application must supply.
+
+The ladder doesn't fail at that boundary. It never claimed to address it.
+
+---
+
+## What "wrapping logic" reveals
+
+A regular longlat grid at 1° resolution has 360 × 180 = 64,800 cells. The top row contains 360 cells, all of which map to the South Pole — a single point. One cell (or at most three, for a T-shaped pole cap) would do the same geometric work. The other 357 are redundant, and the grid structure has no way to say so. Similarly, cell $(0, j)$ and cell $(359, j)$ are geographic neighbours — they share an edge at the antimeridian — but in index space they are as far apart as two cells can be. The Cartesian product index is silent about this.
+
+This is not a pathology. It is simply what you get when you discretise a sphere with a tool designed for a flat rectangle. The grid is doing its job correctly by the ladder's definition. The mismatch is between the ladder's scope and the application's needs.
+
+When the manifold *does* matter to an application — global topology, correct adjacency, equal-area cells, no polar redundancy — you are outside the ladder's scope. That is precisely the problem that DGGS are designed to solve.
+
+---
+
+## DGGS: discretising the manifold directly
+
+Discrete global grid systems (H3, S2, HEALPix, ISEA) approach the problem from the other direction. The manifold comes first; the discretisation is designed for the sphere, so adjacency, area, and topology are correct by construction. H3 hexagons near Fiji are indexed as neighbours of other hexagons near Fiji. There is no polar row of redundant cells because the addressing scheme is built around the sphere's actual geometry.
+
+The price is the Cartesian product index structure. DGGS cells don't factor into rows and columns in any natural global sense (HEALPix has local patches with regular structure; H3 has a hierarchical addressing scheme with local regularity; but neither is globally Cartesian-product-indexable). This is why DGGS feel like unstructured grids to tools that expect $(i, j)$ — and in the ladder's terms, they are. The structured/unstructured distinction still applies internally to a DGGS, but the global topology is not rectangular.
+
+So DGGS sit outside the ladder not because they are more complex than unstructured grids, but because the ladder's premise — index structure independent of the manifold — is exactly what DGGS reject. They are a different answer to a different question.
+
+The ladder is the right tool when the manifold can be treated as external context. DGGS are the right tool when the manifold must be built into the addressing scheme. These are complementary, not competing.
+
+---
+
+## Workarounds that live on the ladder
+
+Most real-world geospatial work stays on the ladder but handles the manifold through external convention rather than anything the grid structure provides. This is worth naming:
+
+- **Tripolar ocean grids** (NEMO ORCA, MOM6 tripolar): curvilinear grids that move the numerical pole singularity over land. The grid is still logically rectangular — still on the ladder — but the topology (two northern poles, one southern pole) is encoded in the coordinate arrays and the model's halo-exchange logic, not in the index structure.
+- **NSIDC polar grids**: regular projected grids (EPSG:3412, EPSG:3413) that implicitly wrap in the azimuthal sense. The grid structure doesn't know this; applications that care about the antimeridian handle it separately.
+- **`vaster` and `vapour`**: deliberately silent about topology. They operate on the ladder — grid arithmetic, coordinate lookup, raster I/O — and leave manifold questions to the caller. This is the right scope decision; encoding sphere topology into a raster grid library would be the wrong level of abstraction.
+
+The "subtle relationships and workflows and workarounds" in curvilinear ocean models are mostly the accumulated cost of living on the ladder with a spherical manifold. The ladder is the floor, not the ceiling.
+
+---
+
+## The SeaWiFS L3bin: the connector
+
+The sinusoidal L3 grid and the L3bin addressing scheme together make the ladder boundary more concrete than any abstract example.
+
+The **sinusoidal regular grid** is the rectangular-index version of global equal-area ocean colour compositing. It is a regular grid in sinusoidal projection: uniform spacing in projected coordinates, four numbers and a CRS, perfectly on the ladder. But sinusoidal projection preserves area by compressing x-extent toward the poles: high-latitude rows are physically narrow. When you impose a uniform $n_x$ column count across all rows, most high-latitude cells fall outside the Earth's disk and are fill. The grid is valid; it is just mostly empty at the poles, and the emptiness is structural, baked in by the choice to force a sphere into a rectangle.
+
+The **SeaWiFS/MODIS/VIIRS L3bin** resolves this directly. Each latitude row contains exactly as many bins as needed to tile that latitude band — no more, no fewer. Row widths vary. The result is a ragged array: not a matrix, not a Cartesian product, not on the ladder. By the ladder's definition it is unstructured — each bin has an explicit address (the bin number) rather than a $(i, j)$ index pair.
+
+But it is the *simplest possible* unstructured case. The bins are still organised by latitude band. The addressing scheme (bin number → row → column-within-row) is well-defined and compact. The geometry is explicit but not complicated. It is unstructured by necessity, not by complexity — the minimum departure from the ladder required to take the sphere seriously.
+
+The contrast is the hook:
+
+- The sinusoidal regular grid: *technically* on the ladder, equal-area, but with a wasteful rectangular fiction imposed on a spherical reality. The manifold is ignored; fill cells paper over the mismatch.
+- The L3bin: off the ladder, but honest. The ragged structure *is* the sphere's geometry expressed directly in the data structure. You traded the Cartesian product index for an accurate account of what you actually have.
+
+This is the L3bin's value as a connector. It is not an exotic case — it is used in virtually every ocean colour dataset from SeaWiFS through PACE. And it sits exactly at the boundary the ladder defines, making the boundary legible.
+
+A post that works through the L3bin addressing scheme in R — reading bin numbers, recovering lat/lon, comparing to the sinusoidal regular grid counterpart — would make the abstract ladder concrete in a way that the regular/rectilinear/curvilinear examples cannot. That is post #2 (or #3, after the curvilinear detection post).
+
+---
+
+## The affine/homogeneous coordinates aside
+
+*(Parked from a detour in the main post draft — too interesting to discard, too long to include.)*
+
+The GDAL geotransform is a 2×3 affine matrix (equivalently, a 3×3 homogeneous matrix with the bottom row fixed at [0, 0, 1]): the full projective/affine machinery for mapping pixel index → Cartesian position in a flat 2D plane. This is a genuinely 2D spatial problem, so the homogeneous coordinates are natural.
+
+The rectilinear case exposes how much of that is a 1.5D trick. A rectilinear grid is two independent 1D problems — "where is column $i$ on the x-axis" and "where is row $j$ on the y-axis" — combined. There is no cross-term, no rotation, no shear. The "transform" collapses to two separate monotone sequences. Nobody would think to write a 3×3 homogeneous matrix for a 1D lookup table, because a lookup table is obviously just a lookup table.
+
+The geotransform works for the regular case because regular grids are the degenerate rectilinear case — the lookup tables happen to be arithmetic sequences, so they compress back to origin + step, which is what the six geotransform numbers encode. The homogeneous machinery is present, but with most of its degrees of freedom set to zero.
+
+The shadow quality: the geotransform is the full 2D affine apparatus applied to what is, in the regular case, a product of two 1D arithmetic sequences. When you move to rectilinear coordinates — genuinely variable spacing, two lookup tables — no one reaches for a matrix from a higher-dimensional space. The 1D lookup table is self-evidently sufficient. The geotransform convention makes the regular case look more 2D than it is.
+
+---
+
+## A note on rotated/sheared regular grids
+
+*(Footnote material for the main post.)*
+
+A regular grid need not be axis-aligned. An affine transform — with rotation, shear, and independent dx/dy — still specifies every cell position implicitly from its index. GDAL's geotransform is exactly this: six numbers covering origin, scale, and the two off-diagonal (rotation/shear) components. The index structure, the storage economy, and the "regular" classification are unchanged.
+
+Rotated or sheared regular grids are uncommon in practice but not exotic; some satellite products and numerical model outputs use them. They do not change any of the arguments in the main text. The off-diagonal case is ignored there not because it doesn't exist, but because it adds notation without changing the argument.

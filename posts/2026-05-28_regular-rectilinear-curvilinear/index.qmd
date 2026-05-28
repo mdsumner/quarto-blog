@@ -1,0 +1,283 @@
+---
+title: "Grids: regular, rectilinear, curvilinear"
+author: "Michael Sumner"
+date: "2026-05-28"
+categories: [gdal, raster, netcdf, projections, theory]
+description: "A grid taxonomy rooted in coordinate storage, not CRS. A companion to *Detecting hidden grids in curvilinear coordinates*."
+---
+
+## The problem with "curvilinear"
+
+The word *curvilinear* has a problem in geospatial and earth observation. It gets used interchangeably with "has two-dimensional lon/lat coordinate arrays" or even "is in geographic coordinates".  Neither of these is a helpful meaning, and conflating them causes real problems - both in how we think about data and in how we write code to handle it.
+
+This post attempts to explain the terminology, with a particular stance and this hierarchy:
+
+> **regular -> rectilinear -> curvilinear -> unstructured**
+
+Each step relaxes a geometric constraint, and our starting point is that the first 3 types are a *structured grid*. The distinguishing criterion between each step is not the coordinate reference system. It is the *minimum amount of information needed to specify the position of every cell* - which is exactly the amount of information that has to be stored.
+
+This post is a companion to [Detecting hidden grids in curvilinear coordinates](https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear), which develops the practical detection problem. Here we make a stance and explain why it matters with real world examples. 
+
+---
+
+## Structured grids
+
+"Structured" just means that every element in every dimension has the *same number of other-dimension counterparts*. It's rectangular: in 1D that's a set of intervals, in 2D a mosaic of axis-aligned rectangular cells, in 3D a mosaic of axis-aligned rectangular cuboids, and upwards. We can replace intervals, rectangles, cuboids, tesseracts, ... with another kind of element: a point. In 1D it's just a sequence of points, in 2D and above it's the Cartesian product of sequences of indices. When we talk about structured vs unstructured we are not talking about the spacing of coordinates in any sense - always just index positions. The index structure is, in more formal terms, a cubical complex or regular CW complex; the Earth system modelling community calls this "logically rectangular," a term we return to in §X below.
+
+## The ladder, defined by storage
+
+The cleanest single organizing principle comes from scientific visualization (the VTK data model, the KTH/Weinkauf taxonomy): grid types differ in how *implicitly* or *explicitly* positions must be stated.
+
+### Regular (uniform)
+
+Positions are *fully implicit*. The grid is completely specified by:
+
+- an origin $(x_0, y_0)$
+- a resolution $(\Delta x, \Delta y)$
+- dimensions $(n_x, n_y)$
+
+
+(todo footnote)
+
+^[A regular grid need not be axis-aligned: an affine transform — with rotation, shear, and independent dx/dy — still specifies every cell position implicitly from its index. GDAL's geotransform is exactly this: six numbers covering origin, scale, and the two off-diagonal (rotation/shear) components. The index structure, the storage economy, and the "regular" classification are unchanged. Rotated or sheared regular grids are uncommon in practice but not exotic; some satellite products use them. We ignore the off-diagonal case in the main text because it adds notation without changing the argument.]
+
+Every cell centre follows from index arithmetic alone. No coordinate arrays are stored - or if they are, they are redundant.
+
+```{r}
+#| label: fig-regular
+#| fig-cap: "A regular grid: uniform spacing, axis-aligned. Fully specified by four numbers and a CRS."
+#| code-fold: true
+
+# synthetic example
+ex <- c(0, 18, -10, 5)  ## extent xmin, xmax, ymin, ymax 
+# - same information as bbox xmin,ymin,xmax,ymax
+#dimension, or shape (ncols,nrows)
+dm <- c(8, 5)
+
+library(terra)
+r <- rast(ext(ex), ncols = dm[1], nrows = dm[2])
+plot(as.polygons(r), asp = 1, lwd = 2)
+points(xyFromCell(r, 1:ncell(r)))
+
+# TODO: construct a regular grid and plot cell centres + edges
+# vaster::vas(xmin, xmax, ymin, ymax, ncols, nrows)
+# show the outer product structure: x[i] ⊗ y[j]
+```
+
+The netCDF convention for a regular grid stores 1D coordinate variables - one vector per axis - which is already more than strictly necessary. This is the **degenerate rectilinear** case: the 1D vectors happen to be uniformly spaced, so the four-number specification is sufficient. Many files store them anyway, and many readers treat the uniform case no differently from the variable-spacing case.
+
+What are the coordinates? Well they are the positions of the points above, the centres of a cell. It's trivial to observe that we only need 8 points for every x coordinate, 5 for every y coordinates. But, in turn we don't need the coordinates at all *because they were generated* from 6 numbers.  Those six are extremely general, every regular grid ever is a variation on those values: positive ncols, nrows >= 1; any numbers at all for xmin, xmax, ymin, ymax so long at xmax > xmin; ymax > ymin.  
+
+The coordinates stored in the 1D vectors are *derived* values - computed from those 6 numbers by the formula xi=xmin+(i+0.5)⋅Δxx_i = x_{min} + (i + 0.5) \cdot \Delta x
+xi=xmin+(i+0.5)⋅Δx (or the equivalent for edges). So storing them is not just redundant, it is a lossy redundancy - the stored floats have accumulated rounding error relative to the exact values the formula would produce. The 6-number specification is not only more compact, it is more precise. 
+
+*In the wild:* NSIDC sea ice concentration products, ERA5 reanalysis on a regular lat/lon grid, most remote sensing imagery.
+
+
+---
+
+### Rectilinear
+
+Positions are *semi-implicit*. The grid remains axis-aligned and orthogonal, but the spacing along each axis may vary independently. Specified by:
+
+- one 1D vector of $x$ positions (length $n_x$)
+- one 1D vector of $y$ positions (length $n_y$)
+
+Cell $(i, j)$ is at $(x_i, y_j)$ - still the outer product of two 1D sequences. Two arrays, not $n_x \times n_y$ arrays.
+
+```{r}
+#| label: fig-rectilinear
+#| fig-cap: "A rectilinear grid: axis-aligned, orthogonal, but variable spacing. Specified by two 1D vectors."
+#| code-fold: true
+
+# synthetic example
+# x <- c(0, 1, 3, 6, 10)   # non-uniform
+# y <- c(0, 2, 3, 7)
+# show grid lines: horizontal and vertical only, variable spacing
+# contrast with regular above
+```
+
+This is the grid type that netCDF calls simply "a grid with coordinate variables" - 1D variables sharing a name with a dimension. A logarithmically-spaced pressure axis is rectilinear. A global ocean product with uniform longitude spacing but Mercator-compressed latitude spacing is rectilinear (and, as the companion post shows, is *detected* as rectilinear in lon/lat with Mercator y-spacing).
+
+*In the wild:* BRAN ocean reanalysis (uniform lon, Mercator lat), pressure-level atmospheric data, many regional climate model outputs.
+
+**Note on contested usage:** Some systems (particularly in HPC/CFD) have begun using *rectilinear* to cover both regular and curvilinear cases, blurring the distinction. In this post and the hypertidy ecosystem, *rectilinear* means what it says: rectangle-forming, axis-aligned, independently varying in each dimension. The distinction from regular matters because the storage and the indexing arithmetic differ.
+
+todo footnote
+^[The contrast with regular grids is instructive: a geotransform is in essence a 2D homogeneous coordinate mapping, a natural tool for positioning pixels in a plane. For rectilinear grids that apparatus quietly disappears — you have two independent 1D sequences, and no one reaches for a matrix to describe a lookup table.]
+
+
+---
+
+### Curvilinear
+
+Positions are *fully explicit*. The grid retains the combinatorial structure of a regular grid - cells are still indexed $(i, j)$, each cell still has four neighbours - but the physical positions of cells cannot be expressed as the outer product of two 1D sequences. You need:
+
+- a 2D array of $x$ (or longitude) values, shape $(n_y, n_x)$
+- a 2D array of $y$ (or latitude) values, shape $(n_y, n_x)$
+
+Total storage: $2 \times n_x n_y$ values instead of $n_x + n_y$.
+
+```{r}
+#| label: fig-curvilinear
+#| fig-cap: "A curvilinear grid: structured (indexable as i,j), but cells are quadrilaterals rather than rectangles. Grid lines curve."
+#| code-fold: true
+
+# synthetic example: apply a smooth warp to a regular grid
+# e.g. rotate + shear, or a polar stereographic → lonlat forward projection
+# show that rows are no longer horizontal, columns no longer vertical
+# this is the ESMF example: a grid warped to put the pole over land
+```
+
+The canonical geoscience examples are ocean model grids warped to move the numerical pole away from the geographic North Pole (tripolar grids, ORCA family), and polar stereographic or Lambert conformal grids *stored* in geographic coordinates. The cells are quadrilaterals. Grid lines curve. But the connectivity is the same as a regular grid - you can still walk from $(i, j)$ to $(i+1, j)$.
+
+In CF conventions, curvilinear grids are identified by *auxiliary coordinate variables*: `lat(y, x)` and `lon(y, x)` are 2D variables listed in the `coordinates` attribute, not 1D dimension coordinates. This is the code-level signal.
+
+```{r}
+#| label: lst-cf-detection
+#| code-fold: false
+
+# detecting curvilinear in vapour
+# TODO: show vapour::gdal_raster_data on a curvilinear source
+# show that coordinate arrays have dim > 1 in both axes
+
+# library(vapour)
+# src <- "some_ocean_model.nc"
+# ...
+```
+
+*In the wild:* NEMO/ORCA ocean models, MOM6, ROMS, HYCOM - all use bipolar or tripolar grids. Many Antarctic sea ice model outputs. MODIS/VIIRS L2 swath products (genuinely curvilinear - scan geometry, not a reprojected regular grid).
+
+---
+
+### Unstructured
+
+No implicit connectivity. Each cell's position and its neighbours must be stated explicitly. The index $(i, j)$ no longer applies - cells are numbered arbitrarily. This covers:
+
+- triangulations (FEM ocean models: FVCOM, SCHISM, ADCIRC)
+- Voronoi/MPAS hexagonal grids
+- point clouds
+
+```{r}
+#| label: fig-unstructured
+#| fig-cap: "An unstructured triangulation: no regular index structure, explicit connectivity table."
+#| code-fold: true
+
+# synthetic Delaunay triangulation over a region
+# contrast with the i,j indexing of curvilinear above
+```
+
+*In the wild:* MPAS-Ocean, FVCOM coastal ocean models, coastline data, terrain TINs.
+
+---
+
+## The spectrum as a table
+
+| Type | Connectivity | Coordinate storage | CF signal |
+|---|---|---|---|
+| Regular | implicit $(i,j)$ | origin + step (4 numbers) | 1D coord vars, uniform spacing |
+| Rectilinear | implicit $(i,j)$ | two 1D vectors | 1D coord vars, variable spacing |
+| Curvilinear | implicit $(i,j)$ | two 2D arrays | 2D auxiliary coord vars |
+| Unstructured | explicit table | $n_{cells}$ position pairs + connectivity | UGRID convention |
+
+The progression is strict containment: every regular grid is rectilinear; every rectilinear grid *could* be stored as curvilinear (wastefully); a curvilinear grid is a structured grid (logically rectangular in the sense of Balaji 2006).
+
+---
+
+## "Logically rectangular" and the Earth system model vocabulary
+
+The Earth system modelling community (ESMF, GFDL, NEMO) uses a slightly different framing that is worth knowing. Balaji (2006) defines a grid as *logically rectangular* if its coordinate space maps one-to-one to an integer index space - i.e., cells can be addressed as $(i, j)$. This covers regular, rectilinear, *and* curvilinear in our ladder above. Unstructured grids are not logically rectangular.
+
+ESMF then distinguishes *uniform*, *rectilinear*, and *curvilinear* as subtypes of logically rectangular - exactly the ladder above minus unstructured. This is consistent usage.
+
+The key sentence from Balaji: *"The coordinate space may continue to be physically curvilinear; yet, in index space, grid cells will be rectilinear boxes."* Index space is always regular. Physical space may be warped. Curvilinear is a statement about physical space, not index space.
+
+---
+
+## "Curvilinear" is not a CRS
+
+Here is the specific conflation this post exists to name.
+
+A regular polar stereographic grid - say, the NSIDC 25 km Southern Ocean grid on EPSG:3412 - is **regular**. It has uniform spacing in projected coordinates. It can be fully specified by four numbers and a CRS string.
+
+When that grid's cell centres are forward-projected to geographic coordinates and stored as `lat(y, x)` / `lon(y, x)` two-dimensional arrays in a NetCDF file, the *storage format* looks curvilinear. The CF signal is present: 2D auxiliary coordinate variables. But the underlying geometry is not curvilinear - it is regular, with two arrays of floating-point noise standing in for four exact integers.
+
+This is the entropy problem described in the companion post. The confusion arises because:
+
+1. CF conventions use the shape of coordinate arrays as the proxy for grid type, and a reprojected regular grid has 2D arrays.
+2. Many tools that read CF files label anything with 2D coordinate variables as "curvilinear" without checking whether those arrays have rectilinear or regular structure.
+3. "Geographic coordinates" and "curvilinear coordinates" have been conflated in enough documentation that people assume any lon/lat grid is curvilinear.
+
+The correct test is geometric, not syntactic: *can the positions be expressed as the outer product of two 1D sequences (rectilinear), or as origin + step (regular)?* If yes, the grid is not curvilinear regardless of how its coordinates are stored.
+
+The detection methods in [the companion post](https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear) are the practical implementation of this test.
+
+---
+
+## Genuinely curvilinear examples
+
+To make the distinction concrete: these are cases where the 2D coordinate arrays are *not* hiding a regular grid.
+
+**ORCA bipolar ocean grid.** The NEMO ocean model uses a grid that is regular in the Southern Ocean and tropics but deforms near the North Pole to place the numerical singularity over land (Greenland and Siberia). The resulting `nav_lon` / `nav_lat` arrays cannot be factored into 1D sequences by any projection. This is genuinely curvilinear.
+
+```{r}
+#| label: fig-orca
+#| fig-cap: "ORCA tripolar grid near the North Pole: grid lines converge on two land-based poles."
+#| code-fold: true
+# TODO: plot nav_lon/nav_lat from an ORCA file, zoom to Arctic
+# show the non-rectangular cells near the bipolar region
+```
+
+**MODIS/VIIRS L2 swath.** Sensor scan geometry produces curved swaths. Adjacent scan lines are not parallel, and the scan angle distortion means cells grow toward swath edges. No single projected CRS straightens this.
+
+```{r}
+#| label: fig-swath
+#| fig-cap: "VIIRS L2 swath: scan geometry produces genuinely irregular cell positions. Not a reprojected regular grid."
+#| code-fold: true
+# TODO: plot boundary polygon coloured by scan-line index
+# show the bow-tie artifact at scan edges
+```
+
+**WRF/rotated-pole regional climate model.** The model domain is regular in a rotated coordinate system (pole relocated to the equator of a rotated sphere), which becomes curvilinear in standard geographic coordinates. Detecting this is the Mercator analogue for rotated-pole: project to the rotated CRS, check for regularity there.
+
+---
+
+## The degenerate rectilinear case
+
+One last terminological note. NetCDF files frequently store 1D coordinate vectors for regular grids - a `lon` vector of length $n_x$ and a `lat` vector of length $n_y$, both uniformly spaced. Strictly speaking this is *rectilinear* storage (the format allows variable spacing), but the data is *regular* (the spacing happens to be uniform).
+
+This is the **degenerate rectilinear** case: a rectilinear format carrying regular content. It matters because:
+
+- Tools that test only for uniform spacing on 1D arrays correctly identify the grid as regular.
+- Tools that check only "does it have 1D coordinate variables?" treat it as rectilinear (variable spacing allowed) and may not exploit the regularity.
+- The four-number specification is recoverable from the 1D vectors trivially.
+
+For the netCDF case it is mostly a storage efficiency question. The interesting case is when the 1D vectors are *non-uniformly spaced* - genuinely rectilinear - which occurs in pressure-level data, stretched ocean grids (e.g. MOM with enhanced tropical resolution), and Mercator-latitude ocean products.
+
+---
+
+## References and further reading
+
+- Balaji, V. (2006). *A standard description of grids used in earth system models.* GFDL/NOAA. The foundational taxonomy for the Earth system modelling community; introduces the logically rectangular / mosaic framework. [GFDL grid standards](https://extranet.gfdl.noaa.gov/~vb/gridstd/)
+
+- ESMF Reference Manual §12.1 - the most consistently used set of definitions in practice for geoscience regridding tools. Distinguishes uniform / rectilinear / curvilinear as subtypes of logically rectangular. [earthsystemmodeling.org](https://earthsystemmodeling.org)
+
+- CF Conventions §5 - the syntactic signal: 1D dimension coordinates vs 2D auxiliary coordinates. Does not define grid type geometrically but the encoding conventions follow the taxonomy here. [cfconventions.org](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.11/cf-conventions.html#coordinate-types)
+
+- Weinkauf, T. (KTH, 2015). *Grids and Interpolation* - the clearest single slide deck on the implicit/semi-implicit/explicit storage framing. Not geoscience-specific; comes from scientific visualisation.
+
+- Wikipedia: [Regular grid](https://en.wikipedia.org/wiki/Regular_grid) - covers the structured grid sub-hierarchy with reasonable precision.
+
+- *Detecting hidden grids in curvilinear coordinates* (this site, 2026-02-07) - the practical companion: how to test whether a 2D lon/lat array is actually a regular projected grid with lost metadata.
+
+- *Coordinates broken in NetCDF* (this site, 2025-09-04) - an earlier treatment of the related problem of CF files with missing or misleading coordinate metadata.
+
+TODO
+
+stars vignette
+
+something something xarray
+
+---
+
+*The gproj package, which implements regularity detection, is at [github.com/mdsumner/gproj](https://github.com/mdsumner/gproj). The vaster package provides the regular grid arithmetic used throughout the hypertidy ecosystem.*
