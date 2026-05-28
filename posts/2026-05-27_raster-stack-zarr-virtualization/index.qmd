@@ -303,29 +303,39 @@ This is a pivot point.
 `gdal mdim mosaic` is the missing piece. It takes a collection of files and produces a multidim VRT that describes them as a unified n-D array — dimension coordinates and all:
 
 ```bash
-gdal mdim mosaic \
-  $(printf 'NETCDF:%s:sst ' $(cat filelist.txt)) \
-  -o /tmp/sst_mdim.vrt
+# writeLines(sprintf("/vsicurl/%s", urls), "filelist.txt")
+gdal mdim mosaic --input @filelist.txt -o /tmp/sst_mdim.vrt
 ```
 
 Or from R via `vrtstack` or a direct `system()` call. Now hand that VRT to `read_mdim()`:
 
 ```r
-stars::read_mdim("/tmp/sst_mdim.vrt")
-# stars object with 3 dimensions and 1 attribute
-# attribute(s):
-#           Min.  1st Qu. Median    Mean 3rd Qu.  Max.    NAs
-# sst [°C] -1.80    -1.80  -1.55  -1.198   -1.03  29.0 357256
-# dimension(s):
-#      from   to                        offset  delta          refsys x/y
-# lon     1 1440                             0   0.25  WGS 84 (CRS84) [x]
-# lat     1  720                           -90   0.25  WGS 84 (CRS84) [y]
-# time    1   23  2025-01-01T00:00:00+00:00  16 days         POSIXct
+stars::read_mdim("/tmp/sst_mdim.vrt", proxy = TRUE)
+stars_proxy object with 4 attributes in 4 file(s):
+$sst
+[1] "[...]/sst_mdim.vrt"
+
+$anom
+[1] "[...]/sst_mdim.vrt"
+
+$err
+[1] "[...]/sst_mdim.vrt"
+
+$ice
+[1] "[...]/sst_mdim.vrt"
+
+dimension(s):
+     from   to offset delta x/y
+lon     1 1440      0  0.25 [x]
+lat     1  720    -90  0.25 [y]
+zlev    1    1      0    NA
+time    1   23  17167    16
+
 ```
 
-23 timesteps. Named attribute. Real time coordinates as POSIXct with a 16-day delta. Proper spatial reference. And `/tmp/sst_mdim.vrt` is a file — a few kilobytes of XML — that fully describes this dataset spanning the year. Hand it to a colleague and they get the same thing. Put it in a repository. Point `tidync` or `vapour` at it. Open it in Python via GDAL. It's the recipe.
+23 time steps in `/tmp/sst_mdim.vrt` which is a tiny file of XML. 
 
-This is what `gdal mdim mosaic` unlocks: `read_mdim()` was always the right model. It just needed the VRT to make the multi-file case work.
+This is what `gdal mdim mosaic` unlocks: `read_mdim()` and friends need VRT to make the multi-file case work.
 
 ### Step 6 — skip the download: URL access, who can and can't
 
@@ -583,7 +593,7 @@ stars::read_mdim(
 # time  16 [days since 1978-01-01T12:00:00]        udunits
 ```
 
-Oh, and turns out `terra::rast()` *does* support multidim: 
+Oh, and turns out `terra::rast()` *does* support multidim (not our VRT file sadly): 
 
 
 ```R

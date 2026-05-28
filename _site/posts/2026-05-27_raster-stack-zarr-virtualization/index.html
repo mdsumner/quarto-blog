@@ -610,22 +610,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour" class="level3">
 <h3 class="anchored" data-anchor-id="step-5-gdal-mdim-mosaic-read_mdim-the-full-tour">Step 5 — <code>gdal mdim mosaic</code> + <code>read_mdim()</code>, the full tour</h3>
 <p><code>gdal mdim mosaic</code> is the missing piece. It takes a collection of files and produces a multidim VRT that describes them as a unified n-D array — dimension coordinates and all:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim mosaic <span class="dt">\</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">$(</span><span class="bu">printf</span> <span class="st">'NETCDF:%s:sst '</span> <span class="va">$(</span><span class="fu">cat</span> filelist.txt<span class="va">))</span> <span class="dt">\</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /tmp/sst_mdim.vrt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># writeLines(sprintf("/vsicurl/%s", urls), "filelist.txt")</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim mosaic <span class="at">--input</span> @filelist.txt <span class="at">-o</span> /tmp/sst_mdim.vrt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Or from R via <code>vrtstack</code> or a direct <code>system()</code> call. Now hand that VRT to <code>read_mdim()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="st">"/tmp/sst_mdim.vrt"</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># stars object with 3 dimensions and 1 attribute</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># attribute(s):</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Min.  1st Qu. Median    Mean 3rd Qu.  Max.    NAs</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co"># sst [°C] -1.80    -1.80  -1.55  -1.198   -1.03  29.0 357256</span></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co">#      from   to                        offset  delta          refsys x/y</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co"># lon     1 1440                             0   0.25  WGS 84 (CRS84) [x]</span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co"># lat     1  720                           -90   0.25  WGS 84 (CRS84) [y]</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co"># time    1   23  2025-01-01T00:00:00+00:00  16 days         POSIXct</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>23 timesteps. Named attribute. Real time coordinates as POSIXct with a 16-day delta. Proper spatial reference. And <code>/tmp/sst_mdim.vrt</code> is a file — a few kilobytes of XML — that fully describes this dataset spanning the year. Hand it to a colleague and they get the same thing. Put it in a repository. Point <code>tidync</code> or <code>vapour</code> at it. Open it in Python via GDAL. It’s the recipe.</p>
-<p>This is what <code>gdal mdim mosaic</code> unlocks: <code>read_mdim()</code> was always the right model. It just needed the VRT to make the multi-file case work.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="st">"/tmp/sst_mdim.vrt"</span>, <span class="at">proxy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>stars_proxy object with <span class="dv">4</span> attributes <span class="cf">in</span> <span class="dv">4</span> <span class="fu">file</span>(s)<span class="sc">:</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="er">$</span>sst</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>[<span class="dv">1</span>] <span class="st">"[...]/sst_mdim.vrt"</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="sc">$</span>anom</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>[<span class="dv">1</span>] <span class="st">"[...]/sst_mdim.vrt"</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="sc">$</span>err</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>[<span class="dv">1</span>] <span class="st">"[...]/sst_mdim.vrt"</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="sc">$</span>ice</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>[<span class="dv">1</span>] <span class="st">"[...]/sst_mdim.vrt"</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">dimension</span>(s)<span class="sc">:</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>     from   to offset delta x<span class="sc">/</span>y</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>lon     <span class="dv">1</span> <span class="dv">1440</span>      <span class="dv">0</span>  <span class="fl">0.25</span> [x]</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>lat     <span class="dv">1</span>  <span class="dv">720</span>    <span class="sc">-</span><span class="dv">90</span>  <span class="fl">0.25</span> [y]</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>zlev    <span class="dv">1</span>    <span class="dv">1</span>      <span class="dv">0</span>    <span class="cn">NA</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>time    <span class="dv">1</span>   <span class="dv">23</span>  <span class="dv">17167</span>    <span class="dv">16</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>23 time steps in <code>/tmp/sst_mdim.vrt</code> which is a tiny file of XML.</p>
+<p>This is what <code>gdal mdim mosaic</code> unlocks: <code>read_mdim()</code> and friends need VRT to make the multi-file case work.</p>
 </section>
 <section id="step-6-skip-the-download-url-access-who-can-and-cant" class="level3">
 <h3 class="anchored" data-anchor-id="step-6-skip-the-download-url-access-who-can-and-cant">Step 6 — skip the download: URL access, who can and can’t</h3>
@@ -825,7 +834,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="co"># lat                                 0.25 WGS 84 (CRS84) [y]</span></span>
 <span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co"># zlev                                  NA        udunits</span></span>
 <span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a><span class="co"># time  16 [days since 1978-01-01T12:00:00]        udunits</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Oh, and turns out <code>terra::rast()</code> <em>does</em> support multidim:</p>
+<p>Oh, and turns out <code>terra::rast()</code> <em>does</em> support multidim (not our VRT file sadly):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">rast</span>(  <span class="st">"ZARR:</span><span class="sc">\"</span><span class="st">/vsicurl/https://raw.githubusercontent.com/mdsumner/quarto-blog/refs/heads/main/data/sst_virtual.zarr</span><span class="sc">\"</span><span class="st">"</span>, <span class="at">md  =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>class       <span class="sc">:</span> SpatRaster</span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>size        <span class="sc">:</span> <span class="dv">720</span>, <span class="dv">1440</span>, <span class="dv">92</span>  (nrow, ncol, nlyr)</span>
