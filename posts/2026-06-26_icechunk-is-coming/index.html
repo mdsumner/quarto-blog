@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+<meta name="dcterms.date" content="2026-06-26">
+
+<title>Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-f418161beb48e0141c760e455f12af2c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-1bdbf719ce75d8b2c440356c301fd0ed.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-87ed32f918cae435b75b64fa1e26cc68.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-1bdbf719ce75d8b2c440356c301fd0ed.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy">
+<meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
+<meta property="og:site_name" content="hypertidy">
+<meta name="twitter:title" content="Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy">
+<meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-fixed fullcontent quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">hypertidy</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../packages.html"> 
+<span class="menu-text">Packages</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../projects.html"> 
+<span class="menu-text">Projects</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Icechunk is coming - versioned cloud-native Zarr, and R spatial</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">code</div>
+                <div class="quarto-category">news</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">June 26, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+
+<p><a href="https://icechunk.io">Icechunk</a> is a transactional storage engine for Zarr and provides git-style versioning for large scientific datasets. This post is about where things stand and what’s coming.</p>
+<section id="what-is-icechunk" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-icechunk">What is Icechunk?</h2>
+<p>Zarr is a chunked array format designed for cloud object storage. Icechunk is a Rust library that sits on top of Zarr and adds git-like snapshots combined with <a href="https://icechunk.io/en/stable/understanding/concepts/#why-transactions-matter">ACID transactions</a> - (which means reliable and guaranteed read and write).</p>
+<p>(From their docs) this provides:</p>
+<ul>
+<li>Safety: Recover from corrupted or accidentally deleted data using version history</li>
+<li>Consistency: Ensure readers always see complete, valid snapshots - never partial writes</li>
+<li>Reproducibility: Reference any version of your data permanently via commits or tags</li>
+</ul>
+<p>Typical usage involves the Python packages <a href="https://pypi.org/project/xarray/">xarray</a> and <a href="https://pypi.org/project/icechunk/">icechunk</a>, but <a href="https://crates.io/crates/icechunk">Rust Icechunk</a> can be used directly, in combination with <a href="https://crates.io/crates/zarrs_icechunk">zarrs_icechunk</a>, and now in an <a href="https://github.com/OSGeo/gdal/milestone/72">upcoming GDAL release 3.14</a> via the read-only <a href="https://gdal.org/en/latest/drivers/raster/icechunk.html">Icechunk driver</a>.</p>
+<p>Please be aware that Icechunk in GDAL is very new, and not yet in an officially supported release but if you are interested to get involved it can be used today. (GDAL 3.14 is milestoned for sometime in November 2026).</p>
+</section>
+<section id="what-works-in-gdal-and-r-today" class="level2">
+<h2 class="anchored" data-anchor-id="what-works-in-gdal-and-r-today">What works in GDAL and R today</h2>
+<p>GDAL 3.14 ships a <code>/vsiicechunk/</code> virtual filesystem and Icechunk driver, and will be available in gdalcubes, gdalraster, sf, terra, and vapour in various forms once that support lands in R packages.</p>
+<p>The following examples can be run in this Linux docker container, for example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> pull ghcr.io/hypertidy/gdal-r-full:dev</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--rm</span> <span class="at">-ti</span>  ghcr.io/hypertidy/gdal-r-full:dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>(If that doesn’t work, or you want help with docker/GDAL/R just contact me directly)</p>
+<p>Here is a single cli call that gives a GDAL multidimensional summary of an Icechunk store.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim info <span class="dt">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk <span class="dt">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<details>
+<summary>
+Click here for the full mdim info output
+</summary>
+<pre><code>Driver: Icechunk
+
+Dimensions:
+  Name (path)  Size      Type      Direction
+  -----------  ----  ------------  ---------
+  /init_time   3264
+  /latitude     721  HORIZONTAL_Y
+  /lead_time     61
+  /longitude   1440  HORIZONTAL_X
+
+Coordinates (indexing variables):
+  Name (path)   Dimension    Type              Unit
+  -----------  -----------  -------  ------------------------
+  /init_time   (init_time)  Int64    seconds since 1970-01-01
+  /latitude    (latitude)   Float64  degree_north
+  /lead_time   (lead_time)  Float64  seconds
+  /longitude   (longitude)  Float64  degree_east
+
+Data variables:
+                  Name (path)                   Type              Unit                    Shape             Chunk size
+  -------------------------------------------  -------  ------------------------  ---------------------  -----------------
+
+ (/init_time):
+  /expected_forecast_length                    Float64  seconds                   [3264]                 [23360]
+  /ingested_forecast_length                    Float64  seconds                   [3264]                 [23360]
+
+ (/init_time, /lead_time):
+  /valid_time                                  Int64    seconds since 1970-01-01  [3264, 61]             [23360, 61]
+
+ (/init_time, /lead_time, /latitude, /longitude):
+  /dew_point_temperature_2m                    Float32  degree_Celsius            [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /downward_long_wave_radiation_flux_surface   Float32  W m-2                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /downward_short_wave_radiation_flux_surface  Float32  W m-2                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /geopotential_height_500hpa                  Float32  m                         [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /geopotential_height_850hpa                  Float32  m                         [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /geopotential_height_925hpa                  Float32  m                         [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /precipitation_surface                       Float32  kg m-2 s-1                [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /pressure_reduced_to_mean_sea_level          Float32  Pa                        [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /pressure_surface                            Float32  Pa                        [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /temperature_2m                              Float32  degree_Celsius            [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /temperature_850hpa                          Float32  degree_Celsius            [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /temperature_925hpa                          Float32  degree_Celsius            [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /total_cloud_cover_atmosphere                Float32  percent                   [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /wind_u_100m                                 Float32  m s-1                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /wind_u_10m                                  Float32  m s-1                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /wind_v_100m                                 Float32  m s-1                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+  /wind_v_10m                                  Float32  m s-1                     [3264, 61, 721, 1440]  [1, 61, 241, 240]
+
+Scalar arrays:
+  Name (path)   Type   Unit
+  ------------  -----  ----
+  /spatial_ref  Int64
+
+Attributes:
+         Name           Type                                      Value
+  -------------------  ------  ----------------------------------------------------------------------------
+  attribution          String  "ECMWF AIFS Single forecast data processed by dynamical.org from ECMWF Open
+                               Data."
+  dataset_id           String  "ecmwf-aifs-single-forecast"
+  dataset_version      String  "0.1.0"
+  description          String  "Weather forecasts from the ECMWF Artificial Intelligence Forecasting System
+                               (AIFS) Single model."
+  forecast_domain      String  "Forecast lead time 0-360 hours (0-15 days) ahead"
+  forecast_resolution  String  "6 hourly"
+  license              String  "CC-BY-4.0"
+  name                 String  "ECMWF AIFS Single forecast"
+  spatial_domain       String  "Global"
+  spatial_resolution   String  "0.25 degrees (~20km)"
+  time_domain          String  "Forecasts initialized 2024-04-01 00:00:00 UTC to Present"
+  time_resolution      String  "Forecasts initialized every 6 hours"
+
+Arrays:
+
+  - /init_time:
+      Dimensions:    (/init_time)
+      Shape:         [3264]
+      Chunk size:    [23360]
+      Type:          Int64
+      Unit:          seconds since 1970-01-01
+      Nodata value:  0
+
+      Attributes:
+                 Name            Type                       Value
+        ----------------------  ------  ---------------------------------------------
+        calendar                String  "proleptic_gregorian"
+        long_name               String  "Forecast initialization time"
+        standard_name           String  "forecast_reference_time"
+        statistics_approximate  String  {"min":"2024-04-01T00:00:00","max":"Present"}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /latitude:
+      Dimensions:    (/latitude)
+      Shape:         [721]
+      Chunk size:    [721]
+      Type:          Float64
+      Unit:          degree_north
+      Nodata value:  "NaN"
+
+      Attributes:
+                 Name            Type          Value
+        ----------------------  ------  --------------------
+        _FillValue              String  "AAAAAAAA+H8="
+        axis                    String  "Y"
+        long_name               String  "Latitude"
+        statistics_approximate  String  {"min":-90,"max":90}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /lead_time:
+      Dimensions:    (/lead_time)
+      Shape:         [61]
+      Chunk size:    [61]
+      Type:          Float64
+      Unit:          seconds
+      Nodata value:  "NaN"
+
+      Attributes:
+                 Name            Type                         Value
+        ----------------------  ------  --------------------------------------------------
+        _FillValue              String  "AAAAAAAA+H8="
+        dtype                   String  "timedelta64[us]"
+        long_name               String  "Forecast lead time"
+        standard_name           String  "forecast_period"
+        statistics_approximate  String  {"min":"0 days 00:00:00","max":"15 days 00:00:00"}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /longitude:
+      Dimensions:    (/longitude)
+      Shape:         [1440]
+      Chunk size:    [1440]
+      Type:          Float64
+      Unit:          degree_east
+      Nodata value:  "NaN"
+
+      Attributes:
+                 Name            Type             Value
+        ----------------------  ------  -------------------------
+        _FillValue              String  "AAAAAAAA+H8="
+        axis                    String  "X"
+        long_name               String  "Longitude"
+        statistics_approximate  String  {"min":-180,"max":179.75}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /dew_point_temperature_2m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          degree_Celsius
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "2 metre dewpoint temperature"
+        short_name     String  "2d"
+        standard_name  String  "dew_point_temperature"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /downward_long_wave_radiation_flux_surface:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          W m-2
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Surface downward long-wave radiation flux"
+        short_name     String  "sdlwrf"
+        standard_name  String  "surface_downwelling_longwave_flux_in_air"
+        step_type      String  "avg"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /downward_short_wave_radiation_flux_surface:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          W m-2
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Surface downward short-wave radiation flux"
+        short_name     String  "sdswrf"
+        standard_name  String  "surface_downwelling_shortwave_flux_in_air"
+        step_type      String  "avg"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /expected_forecast_length:
+      Dimensions:    (/init_time)
+      Shape:         [3264]
+      Chunk size:    [23360]
+      Type:          Float64
+      Unit:          seconds
+      Nodata value:  "NaN"
+
+      Attributes:
+                 Name            Type                         Value
+        ----------------------  ------  --------------------------------------------------
+        _FillValue              String  "AAAAAAAA+H8="
+        dtype                   String  "timedelta64[us]"
+        long_name               String  "Expected forecast length"
+        statistics_approximate  String  {"min":"0 days 00:00:00","max":"15 days 00:00:00"}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /geopotential_height_500hpa:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Geopotential height"
+        short_name     String  "gh"
+        standard_name  String  "geopotential_height"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /geopotential_height_850hpa:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Geopotential height"
+        short_name     String  "gh"
+        standard_name  String  "geopotential_height"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /geopotential_height_925hpa:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Geopotential height"
+        short_name     String  "gh"
+        standard_name  String  "geopotential_height"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /ingested_forecast_length:
+      Dimensions:    (/init_time)
+      Shape:         [3264]
+      Chunk size:    [23360]
+      Type:          Float64
+      Unit:          seconds
+      Nodata value:  "NaN"
+
+      Attributes:
+                 Name            Type                         Value
+        ----------------------  ------  --------------------------------------------------
+        _FillValue              String  "AAAAAAAA+H8="
+        dtype                   String  "timedelta64[us]"
+        long_name               String  "Ingested forecast length"
+        statistics_approximate  String  {"min":"0 days 00:00:00","max":"15 days 00:00:00"}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /precipitation_surface:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          kg m-2 s-1
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                       Value
+        -------------  ------  ------------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        comment        String  "Average precipitation rate since the previous forecast step. Units equivalent
+                               to mm/s."
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Precipitation rate"
+        short_name     String  "prate"
+        standard_name  String  "precipitation_flux"
+        step_type      String  "avg"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /pressure_reduced_to_mean_sea_level:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          Pa
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Pressure reduced to MSL"
+        short_name     String  "prmsl"
+        standard_name  String  "air_pressure_at_mean_sea_level"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /pressure_surface:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          Pa
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Surface pressure"
+        short_name     String  "sp"
+        standard_name  String  "surface_air_pressure"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /spatial_ref:
+      Dimensions:    ()
+      Shape:         []
+      Type:          Int64
+      Nodata value:  0
+
+      Attributes:
+                   Name               Type                                        Value
+        ---------------------------  -------  -----------------------------------------------------------------------------
+        comment                      String   "This coordinate reference system matches the source data which follows WMO
+                                              conventions of assuming the earth is a perfect sphere with a radius of 6,371,
+                                              229m. It is similar to EPSG:4326, but EPSG:4326 uses a more accurate
+                                              representation of the earth's shape."
+        crs_wkt                      String   "GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",6371229,0]],
+                                              PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",
+                                              0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Longitude\",EAST],
+                                              AXIS[\"Latitude\",NORTH]]"
+        geographic_crs_name          String   "unknown"
+        grid_mapping_name            String   "latitude_longitude"
+        horizontal_datum_name        String   "unknown"
+        inverse_flattening           Float64  0
+        longitude_of_prime_meridian  Float64  0
+        prime_meridian_name          String   "Greenwich"
+        reference_ellipsoid_name     String   "unknown"
+        semi_major_axis              Float64  6371229
+        semi_minor_axis              Float64  6371229
+        spatial_ref                  String   "GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",6371229,0]],
+                                              PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",
+                                              0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Longitude\",EAST],
+                                              AXIS[\"Latitude\",NORTH]]"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "zstd", "configuration": { "level": 0, "checksum": false } }
+
+  - /temperature_2m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          degree_Celsius
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "2 metre temperature"
+        short_name     String  "2t"
+        standard_name  String  "air_temperature"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /temperature_850hpa:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          degree_Celsius
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Temperature"
+        short_name     String  "t"
+        standard_name  String  "air_temperature"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /temperature_925hpa:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          degree_Celsius
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Temperature"
+        short_name     String  "t"
+        standard_name  String  "air_temperature"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /total_cloud_cover_atmosphere:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          percent
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "Total cloud cover"
+        short_name     String  "tcc"
+        standard_name  String  "cloud_area_fraction"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /valid_time:
+      Dimensions:    (/init_time, /lead_time)
+      Shape:         [3264, 61]
+      Chunk size:    [23360, 61]
+      Type:          Int64
+      Unit:          seconds since 1970-01-01
+      Nodata value:  0
+
+      Attributes:
+                 Name            Type                       Value
+        ----------------------  ------  ---------------------------------------------
+        calendar                String  "proleptic_gregorian"
+        long_name               String  "Valid time"
+        standard_name           String  "time"
+        statistics_approximate  String  {"min":"2024-04-01T00:00:00","max":"Present"}
+
+      Structural metadata:
+        COMPRESSOR  { "name": "blosc", "configuration": { "typesize": 8, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } }
+
+  - /wind_u_100m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m s-1
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "100 metre U wind component"
+        short_name     String  "100u"
+        standard_name  String  "eastward_wind"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /wind_u_10m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m s-1
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "10 metre U wind component"
+        short_name     String  "10u"
+        standard_name  String  "eastward_wind"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /wind_v_100m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m s-1
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "100 metre V wind component"
+        short_name     String  "100v"
+        standard_name  String  "northward_wind"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }
+
+  - /wind_v_10m:
+      Dimensions:    (/init_time, /lead_time, /latitude, /longitude)
+      Shape:         [3264, 61, 721, 1440]
+      Chunk size:    [1, 61, 241, 240]
+      Type:          Float32
+      Unit:          m s-1
+      Nodata value:  "NaN"
+
+      Attributes:
+            Name        Type                                     Value
+        -------------  ------  --------------------------------------------------------------------------
+        _FillValue     String  "AAAAAAAA+H8="
+        coordinates    String  "expected_forecast_length ingested_forecast_length spatial_ref valid_time"
+        long_name      String  "10 metre V wind component"
+        short_name     String  "10v"
+        standard_name  String  "northward_wind"
+        step_type      String  "instant"
+
+      Structural metadata:
+        COMPRESSOR  { "name": "sharding_indexed", "configuration": { "chunk_shape": [ 1, 61, 241, 240 ], "codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "blosc", "configuration": { "typesize": 4, "cname": "zstd", "clevel": 3, "shuffle": "shuffle", "blocksize": 0 } } ], "index_codecs": [ { "name": "bytes", "configuration": { "endian": "little" } }, { "name": "crc32c" } ], "index_location": "end" } }</code></pre>
+</details>
+<p>It’s a lot of output! For comparison let’s see what xarray will show as equivalent summary.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>xarray.Dataset<span class="op">&gt;</span> Size: <span class="ex">14TB</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">Dimensions:</span>                                     <span class="er">(</span><span class="ex">init_time:</span> 3264,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>                                                 <span class="ex">latitude:</span> 721, lead_time: 61,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                                                 <span class="ex">longitude:</span> 1440<span class="kw">)</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="ex">Coordinates:</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="ex">*</span> init_time                                   <span class="er">(</span><span class="ex">init_time</span><span class="kw">)</span> <span class="va">datetime64</span><span class="op">[</span>ns<span class="op">]</span> <span class="ex">26kB</span> ...</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="ex">*</span> latitude                                    <span class="er">(</span><span class="ex">latitude</span><span class="kw">)</span> <span class="ex">float64</span> 6kB 90.0 ....</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="ex">*</span> lead_time                                   <span class="er">(</span><span class="ex">lead_time</span><span class="kw">)</span> <span class="ex">float64</span> 488B 0.0 ...</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="ex">*</span> longitude                                   <span class="er">(</span><span class="ex">longitude</span><span class="kw">)</span> <span class="ex">float64</span> 12kB <span class="at">-180...</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="ex">Data</span> variables: <span class="er">(</span><span class="ex">12/21</span><span class="kw">)</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="ex">dew_point_temperature_2m</span>                    <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="ex">downward_long_wave_radiation_flux_surface</span>   <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="ex">downward_short_wave_radiation_flux_surface</span>  <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="ex">expected_forecast_length</span>                    <span class="er">(</span><span class="ex">init_time</span><span class="kw">)</span> <span class="ex">float64</span> 26kB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span><span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="ex">geopotential_height_500hpa</span>                  <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="ex">geopotential_height_850hpa</span>                  <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="ex">...</span>                                          ...</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="ex">total_cloud_cover_atmosphere</span>                <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="ex">valid_time</span>                                  <span class="er">(</span><span class="ex">init_time,</span> lead_time<span class="kw">)</span> <span class="ex">float32</span> 796kB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="ex">wind_u_100m</span>                                 <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="ex">wind_u_10m</span>                                  <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="ex">wind_v_100m</span>                                 <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="ex">wind_v_10m</span>                                  <span class="er">(</span><span class="ex">init_time,</span> lead_time, latitude, longitude<span class="kw">)</span> <span class="ex">float32</span> 827GB dask.array<span class="op">&lt;</span>chunksize=<span class="er">(</span><span class="ex">3264,</span> 61, 721, 1440<span class="kw">)</span><span class="ex">,</span> meta=np.ndarray<span class="op">&gt;</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="ex">Attributes:</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="ex">attribution:</span>          ECMWF AIFS Single forecast data processed by dynami...</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="ex">dataset_id:</span>           ecmwf-aifs-single-forecast</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="ex">dataset_version:</span>      0.1.0</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>    <span class="ex">description:</span>          Weather forecasts from the ECMWF Artificial Intelli...</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    <span class="ex">forecast_domain:</span>      Forecast lead time 0-360 hours <span class="er">(</span><span class="ex">0-15</span> days<span class="kw">)</span> <span class="ex">ahead</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="ex">forecast_resolution:</span>  6 hourly</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    <span class="ex">license:</span>              CC-BY-4.0</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="ex">name:</span>                 ECMWF AIFS Single forecast</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="ex">spatial_domain:</span>       Global</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="ex">spatial_resolution:</span>   0.25 degrees <span class="er">(</span><span class="ex">~20km</span><span class="kw">)</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    <span class="ex">time_domain:</span>          Forecasts initialized 2024-04-01 00:00:00 UTC to Pr...</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    <span class="ex">time_resolution:</span>      Forecasts initialized every 6 hours</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That’s a lot denser, but the important thing is that GDAL has access to the same rich underlying Zarr data and note that xarray has clipped the full list of variables in the summary.</p>
+<p>There are a few things to unpack in this cli call.</p>
+<section id="gdal-multidimensional" class="level3">
+<h3 class="anchored" data-anchor-id="gdal-multidimensional">GDAL multidimensional</h3>
+<p><code>gdal mdim</code> provides a <a href="https://gdal.org/en/stable/programs/index.html#multidimensional-raster-commands">family of apps</a> for the <a href="https://gdal.org/en/stable/user/multidim_raster_data_model.html">GDAL multidimensional raster model</a> - this means that array data is presented in its native form with potentially multiple dimensions, and multiple variables like the NetCDF4 or HDF5 file type, whereas the classic 2D raster model (a 2D grid with one or more bands) can only present one variable and must unroll higher dimension out as bands.</p>
+<p>The xarray output and the gdal mdim info output above is <em>human readable</em>, for a programmatic summary we can call</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> mdim info <span class="at">--format</span> json <span class="dt">\</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>and in R we can do</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">set_config_option</span>(<span class="st">"AWS_NO_SIGN_REQUEST"</span>, <span class="st">"YES"</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>gdalraster<span class="sc">::</span><span class="fu">set_config_option</span>(<span class="st">"AWS_REGION"</span>, <span class="st">"us-west-2"</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>json <span class="ot">&lt;-</span> gdalraster<span class="sc">::</span><span class="fu">mdim_info</span>(<span class="st">"/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>, <span class="at">cout =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">substr</span>(json, <span class="dv">1</span>, <span class="dv">1000</span>))</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co"># {</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   "type": "group",</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   "driver": "Icechunk",</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   "name": "/",</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#   "attributes": {</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">#     "attribution": "ECMWF AIFS Single forecast data processed by dynamical.org from ECMWF Open Data.",</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co">#     "dataset_id": "ecmwf-aifs-single-forecast",</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="co">#     "dataset_version": "0.1.0",</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co">#     "description": "Weather forecasts from the ECMWF Artificial Intelligence Forecasting System (AIFS) Single model.",</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co">#     "forecast_domain": "Forecast lead time 0-360 hours (0-15 days) ahead",</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="co">#     "forecast_resolution": "6 hourly",</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co">#     "license": "CC-BY-4.0",</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="co">#     "name": "ECMWF AIFS Single forecast",</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="co">#     "spatial_domain": "Global",</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co">#     "spatial_resolution": "0.25 degrees (~20km)",</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="co">#     "time_domain": "Forecasts initialized 2024-04-01 00:00:00 UTC to Present",</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a><span class="co">#     "time_resolution": "Forecasts initialized every 6 hours"</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a><span class="co">#   },</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="co">#   "dimensions": [</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="co">#     {</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a><span class="co">#       "name": "init_time",</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a><span class="co">#       "full_name": "/init_time",</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="co">#       "size": 3264,</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="co">#       "indexing_variable": "/init_time"</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a><span class="co">#     },</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a><span class="co">#     {</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a><span class="co">#       "name": "latitude",</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a><span class="co">#       "full_name": "/latit...  </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>or with terra (in-dev, only on github atm)</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">setGDALconfig</span>(<span class="st">"AWS_NO_SIGN_REQUEST"</span>, <span class="st">"YES"</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">setGDALconfig</span>(<span class="st">"AWS_REGION"</span>, <span class="st">"us-west-2"</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">rast</span>(<span class="st">"/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># class       : SpatRaster</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># size        : 721, 1440, 3384768  (nrow, ncol, nlyr)</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co"># resolution  : 0.25, 0.25  (x, y)</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># extent      : -180.125, 179.875, -90.125, 90.125  (xmin, xmax, ymin, ymax)</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># coord. ref. : lon/lat WGS 84 (CRS84) (OGC:CRS84)</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># sources     : v0.1.0.icechunk</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># varnames    : dew_point_temperature_2m (2 metre dewpoint temperature)</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co">#               downward_long_wave_radiation_flux_surface (Surface downward long-wave radiation flux)</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="co">#               downward_short_wave_radiation_flux_surface (Surface downward short-wave radiation flux)</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co">#               geopotential_height_500hpa (Geopotential height)</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co">#               geopotential_height_850hpa (Geopotential height)</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="co">#               ...</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="co"># names       :    dew_p~600_1,    dew_p~600_2,    dew_p~600_3,    dew_p~600_4,    dew_p~600_5,    dew_p~600_6, ...</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="co"># unit        : degree_Celsius, degree_Celsius, degree_Celsius, degree_Celsius, degree_Celsius, degree_Celsius, ...</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="co"># depth       : 1.71193e+09 to 1.78241e+09 (: 3264 steps)</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="co"># time        : 0</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Warning message:</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="co"># [rast] skipped array (different geometry): /valid_time</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>or sf/stars</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_NO_SIGN_REQUEST"</span> <span class="ot">=</span> <span class="st">"YES"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_REGION"</span> <span class="ot">=</span> <span class="st">"us-west-2"</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">gdal_read_mdim</span>(<span class="st">"/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>, <span class="at">proxy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(s)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>List of <span class="dv">4</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a> <span class="sc">$</span> array_list<span class="sc">:</span>List of <span class="dv">17</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  ..<span class="sc">$</span> dew_point_temperature_2m                  <span class="sc">:</span> <span class="cn">NULL</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  ..<span class="sc">$</span> downward_long_wave_radiation_flux_surface <span class="sc">:</span> <span class="cn">NULL</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  ..<span class="sc">$</span> downward_short_wave_radiation_flux_surface<span class="sc">:</span> <span class="cn">NULL</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<details>
+<summary>
+Click here for the full sf structure info output
+</summary>
+<pre><code>List of 4
+ $ array_list:List of 17
+  ..$ dew_point_temperature_2m                  : NULL
+  ..$ downward_long_wave_radiation_flux_surface : NULL
+  ..$ downward_short_wave_radiation_flux_surface: NULL
+  ..$ geopotential_height_500hpa                : NULL
+  ..$ geopotential_height_850hpa                : NULL
+  ..$ geopotential_height_925hpa                : NULL
+  ..$ precipitation_surface                     : NULL
+  ..$ pressure_reduced_to_mean_sea_level        : NULL
+  ..$ pressure_surface                          : NULL
+  ..$ temperature_2m                            : NULL
+  ..$ temperature_850hpa                        : NULL
+  ..$ temperature_925hpa                        : NULL
+  ..$ total_cloud_cover_atmosphere              : NULL
+  ..$ wind_u_100m                               : NULL
+  ..$ wind_u_10m                                : NULL
+  ..$ wind_v_100m                               : NULL
+  ..$ wind_v_10m                                : NULL
+ $ dimensions:List of 4
+  ..$ init_time:List of 5
+  .. ..$ from     : int 1
+  .. ..$ to       : int 3264
+  .. ..$ values   :List of 1
+  .. .. ..$ : num [1:3264(1d)] 1.71e+09 1.71e+09 1.71e+09 1.71e+09 1.71e+09 ...
+  .. .. .. ..- attr(*, "units")= chr "seconds since 1970-01-01"
+  .. .. .. ..- attr(*, "d_names")= chr "init_time"
+  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "proleptic_gregorian" "Forecast initialization time" "forecast_reference_time" "{ \"min\": \"2024-04-01T00:00:00\", \"max\": \"Present\" }"
+  .. .. .. .. ..- attr(*, "names")= chr [1:4] "calendar" "long_name" "standard_name" "statistics_approximate"
+  .. ..$ type     : chr ""
+  .. ..$ direction: chr ""
+  ..$ lead_time:List of 5
+  .. ..$ from     : int 1
+  .. ..$ to       : int 61
+  .. ..$ values   :List of 1
+  .. .. ..$ : num [1:61(1d)] 0 21600 43200 64800 86400 ...
+  .. .. .. ..- attr(*, "units")= chr "seconds"
+  .. .. .. ..- attr(*, "d_names")= chr "lead_time"
+  .. .. .. ..- attr(*, "attributes")= Named chr [1:5] "AAAAAAAA+H8=" "timedelta64[us]" "Forecast lead time" "forecast_period" ...
+  .. .. .. .. ..- attr(*, "names")= chr [1:5] "_FillValue" "dtype" "long_name" "standard_name" ...
+  .. ..$ type     : chr ""
+  .. ..$ direction: chr ""
+  ..$ latitude :List of 5
+  .. ..$ from     : int 1
+  .. ..$ to       : int 721
+  .. ..$ values   :List of 1
+  .. .. ..$ : num [1:721(1d)] 90 89.8 89.5 89.2 89 ...
+  .. .. .. ..- attr(*, "units")= chr "degree_north"
+  .. .. .. ..- attr(*, "d_names")= chr "latitude"
+  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "AAAAAAAA+H8=" "Y" "Latitude" "{ \"min\": -90.0, \"max\": 90.0 }"
+  .. .. .. .. ..- attr(*, "names")= chr [1:4] "_FillValue" "axis" "long_name" "statistics_approximate"
+  .. ..$ type     : chr "HORIZONTAL_Y"
+  .. ..$ direction: chr ""
+  ..$ longitude:List of 5
+  .. ..$ from     : int 1
+  .. ..$ to       : int 1440
+  .. ..$ values   :List of 1
+  .. .. ..$ : num [1:1440(1d)] -180 -180 -180 -179 -179 ...
+  .. .. .. ..- attr(*, "units")= chr "degree_east"
+  .. .. .. ..- attr(*, "d_names")= chr "longitude"
+  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "AAAAAAAA+H8=" "X" "Longitude" "{ \"min\": -180.0, \"max\": 179.75 }"
+  .. .. .. .. ..- attr(*, "names")= chr [1:4] "_FillValue" "axis" "long_name" "statistics_approximate"
+  .. ..$ type     : chr "HORIZONTAL_X"
+  .. ..$ direction: chr ""
+ $ srs       : chr NA
+ $ geometry  : list()</code></pre>
+</details>
+<p>That is leveraged by stars to give</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_NO_SIGN_REQUEST"</span> <span class="ot">=</span> <span class="st">"YES"</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="st">"AWS_REGION"</span> <span class="ot">=</span> <span class="st">"us-west-2"</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>stars<span class="sc">::</span><span class="fu">read_mdim</span>(<span class="st">"/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>, <span class="at">proxy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># stars_proxy object with 17 attributes in 17 file(s):</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co"># $dew_point_temperature_2m</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co"># $downward_long_wave_radiation_flux_surface</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="co"># ...</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co"># $temperature_925hpa</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co"># $total_cloud_cover_atmosphere</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co"># $wind_u_100m</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="co"># $wind_u_10m</span></span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="co"># $wind_v_100m</span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a><span class="co"># $wind_v_10m</span></span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] "[...]/v0.1.0.icechunk"</span></span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a><span class="co"># dimension(s):</span></span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a><span class="co">#           from   to         offset     delta  refsys x/y</span></span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a><span class="co"># longitude    1 1440         -180.1      0.25      NA [x]</span></span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a><span class="co"># latitude     1  721          90.12     -0.25      NA [y]</span></span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a><span class="co"># lead_time    1   61          0 [s] 21600 [s] udunits    </span></span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a><span class="co"># init_time    1 3264 2024-04-01 UTC   6 hours POSIXct    </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Please note that this store contains pretty simple regular array data, and so the relationship of data arrays to their coordinates is simple, the map in longitude/latitude is a regular grid and so slices of that can correspond to the normal <em>raster</em> model where a bounding box (or corner coordinates + resolution) is sufficient to georeference the data. Multidimensional data can be more general and more complex than that.</p>
+<p>This post won’t explore any more detail of the various ways R packages support mdim.</p>
+</section>
+</section>
+<section id="multidimensional" class="level2">
+<h2 class="anchored" data-anchor-id="multidimensional">Multidimensional?</h2>
+<p>We can treat this store as raster data in the normal 2D way, but note that there are caveats and real performance implications depending on the way data is laid out in a given store.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdalinfo</span> /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">Driver:</span> Icechunk/Icechunk</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Files:</span> /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="ex">Size</span> is 512, 512</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="ex">Subdatasets:</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_1_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/dew_point_temperature_2m</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_1_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/dew_point_temperature_2m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_2_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/downward_long_wave_radiation_flux_surface</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_2_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/downward_long_wave_radiation_flux_surface</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_3_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/downward_short_wave_radiation_flux_surface</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_3_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/downward_short_wave_radiation_flux_surface</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_4_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/geopotential_height_500hpa</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_4_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/geopotential_height_500hpa</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_5_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/geopotential_height_850hpa</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_5_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/geopotential_height_850hpa</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_6_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/geopotential_height_925hpa</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_6_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/geopotential_height_925hpa</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_7_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/precipitation_surface</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_7_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/precipitation_surface</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_8_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/pressure_reduced_to_mean_sea_level</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_8_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/pressure_reduced_to_mean_sea_level</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_9_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/pressure_surface</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_9_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/pressure_surface</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_10_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/temperature_2m</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_10_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/temperature_2m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_11_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/temperature_850hpa</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_11_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/temperature_850hpa</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_12_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/temperature_925hpa</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_12_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/temperature_925hpa</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_13_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/total_cloud_cover_atmosphere</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_13_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/total_cloud_cover_atmosphere</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_14_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/valid_time</span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_14_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61</span><span class="pp">]</span> <span class="ex">/valid_time</span> <span class="er">(</span><span class="ex">Int64</span><span class="kw">)</span></span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_15_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/wind_u_100m</span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_15_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/wind_u_100m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_16_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/wind_u_10m</span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_16_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/wind_u_10m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_17_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/wind_v_100m</span>
+<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_17_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/wind_v_100m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_18_NAME</span><span class="op">=</span>ZARR:<span class="st">"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}"</span>:/wind_v_10m</span>
+<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a>  <span class="va">SUBDATASET_18_DESC</span><span class="op">=</span><span class="pp">[</span><span class="ss">3264x61x721x1440</span><span class="pp">]</span> <span class="ex">/wind_v_10m</span> <span class="er">(</span><span class="ex">Float32</span><span class="kw">)</span></span>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a><span class="ex">Corner</span> Coordinates:</span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a><span class="ex">Upper</span> Left  <span class="er">(</span>    <span class="ex">0.0,</span>    0.0<span class="kw">)</span></span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a><span class="ex">Lower</span> Left  <span class="er">(</span>    <span class="ex">0.0,</span>  512.0<span class="kw">)</span></span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a><span class="ex">Upper</span> Right <span class="er">(</span>  <span class="ex">512.0,</span>    0.0<span class="kw">)</span></span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a><span class="ex">Lower</span> Right <span class="er">(</span>  <span class="ex">512.0,</span>  512.0<span class="kw">)</span></span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a><span class="ex">Center</span>      <span class="er">(</span>  <span class="ex">256.0,</span>  256.0<span class="kw">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Those strings like <code>"ZARR:\"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}\":/dew_point_temperature_2m"</code> (note the embedded escaped quotes) can be used by the more tradition GDAL classic raster model.</p>
+<p>We’ll come back to the <code>/vsiicechunk</code> and <code>{/vsis3}</code> parts of this string a bit later.</p>
+</section>
+<section id="setting-config-options-and-environment-variables-for-gdal" class="level2">
+<h2 class="anchored" data-anchor-id="setting-config-options-and-environment-variables-for-gdal">Setting config options and environment variables for GDAL</h2>
+<p>GDAL config options can be set through a package wrapper - <code>gdalraster::set_config_option("AWS_NO_SIGN_REQUEST", "YES")</code> or <code>terra::setGDALconfig("AWS_NO_SIGN_REQUEST", "YES")</code> - or as process environment variables (<code>Sys.setenv(AWS_NO_SIGN_REQUEST = "YES")</code>, or <code>KEY=value</code> in the shell). Both routes are <em>global and sticky</em>: once set they can affect every other step, spooky-action-at-a-distance that we want to avoid.</p>
+<p>That’s why setting config <em>inline</em> - <code>--config KEY=VALUE</code> on the <code>gdal mdim info</code> call is a clean option: it lives and dies in one line, a bit like <code>with</code> in Python or <code>with()</code> in R. The R equivalent for env vars and options is <code>withr::with_envvar()</code> / <code>withr::with_options()</code>, true scoped context managers.</p>
+<p>With online storage it can be bewildering what exact configuration you need and what you have, but it does come down to a fairly comprehensible set of ideas. This post is not a guide to online storage access configuration, or a guide to <a href="https://gdal.org/en/stable/user/configoptions.html">GDAL configuration options</a> but there’s a finite set of concepts in this jungle so don’t be put off by the complexity.</p>
+<p><strong>Auth - keyed vs anonymous.</strong> If a dataset is not public, you will need something like <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>. If it is public, you will need something like <code>AWS_NO_SIGN_REQUEST=YES</code> (or <code>--no-sign-request</code>).</p>
+<p><strong>Addressing.</strong> Everything is a <em>key</em> inside a <em>bucket</em>. You reference an object as <code>s3://bucket/key</code> (Amazon), <code>gs://bucket/key</code> (Google Storage), <code>abfss://…</code> (Azure storage) - and that’s the whole model. (Azure bends it slightly: a storage <em>account</em> holds <em>containers</em> holding <em>blobs</em>, and the scheme carries the account, <code>abfss://container@account.dfs.core.windows.net/key</code>.)</p>
+<p><strong>Endpoint, region, hosting-style.</strong> That object is hosted on an <em>endpoint</em> - <code>s3://</code> is shorthand for <code>s3.&lt;region&gt;.amazonaws.com</code>, <code>gs://</code> for <code>storage.googleapis.com</code>. A <em>custom</em> endpoint means pointing at your own host - <code>AWS_S3_ENDPOINT=your.endpoint.net</code> - so that <code>s3</code> in <code>s3://bucket/key</code> resolves to your host and not Amazon’s. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, <code>AWS_VIRTUAL_HOSTING=NO</code>, since most of them don’t do virtual-host style. <code>AWS_REGION</code> is sometimes demanded even when it oughtn’t matter - set it to ““.</p>
+<section id="gdal-and-the-virtual-filesystem" class="level3">
+<h3 class="anchored" data-anchor-id="gdal-and-the-virtual-filesystem">GDAL and the virtual filesystem</h3>
+<p>Everything above is generic - true of any R tool talking to object storage - and GDAL addresses remote objects through its own <em>virtual filesystem</em> (VSI) rather than the <code>s3://</code>-style schemes. Again, bucket, key but with a different prefix:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>cloud-native</th>
+<th>GDAL VSI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>s3://bucket/key</code></td>
+<td><code>/vsis3/bucket/key</code></td>
+</tr>
+<tr class="even">
+<td><code>gs://bucket/key</code></td>
+<td><code>/vsigs/bucket/key</code></td>
+</tr>
+<tr class="odd">
+<td><code>abfss://container/key</code></td>
+<td><code>/vsiaz/container/key</code></td>
+</tr>
+</tbody>
+</table>
+<p>This is the most common first stumble: <code>s3://…</code> handed to <code>terra::rast()</code> or <code>vapour::gdal_raster_data()</code> won’t open; the <code>/vsis3/…</code> form will. Be aware that some packages in R and other langs will do their own heuristics to wrap different protocols: ‘https://’, ‘s3://’, ‘virtualizarr://’ etc - this can be helpful but also very confusing, and this post cannot summarize that landscape. When GDAL is in use my preference is to use GDAL protocols without wrapping. The config options from above (<code>AWS_NO_SIGN_REQUEST</code>, <code>AWS_S3_ENDPOINT</code>, and friends) all still apply unchanged - VSI only changes how you <em>name</em> the object, it doesn’t affect how or if it’s accessible.</p>
+<p>The same <code>/vsi*</code> mechanism abstracts over a whole zoo of access methods, all of which GDAL then reads as if they were ordinary local files:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>prefix</th>
+<th>what it opens</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/vsicurl/</code></td>
+<td>any file over plain HTTP/HTTPS (range-requested, not downloaded whole)</td>
+</tr>
+<tr class="even">
+<td><code>/vsizip/</code></td>
+<td>a file <em>inside</em> a ZIP archive</td>
+</tr>
+<tr class="odd">
+<td><code>/vsitar/</code>, <code>/vsigzip/</code></td>
+<td>likewise for TAR / gzip</td>
+</tr>
+<tr class="even">
+<td><code>/vsimem/</code></td>
+<td>an in-memory buffer</td>
+</tr>
+<tr class="odd">
+<td><code>/vsiswift/</code>, <code>/vsioss/</code></td>
+<td>OpenStack Swift, Alibaba OSS, …</td>
+</tr>
+<tr class="even">
+<td><code>/vsistdout/</code></td>
+<td>stream output straight to standard out</td>
+</tr>
+</tbody>
+</table>
+<p>The real payoff is that these <em>compose</em> - you chain prefixes right-to-left to stack the abstractions. To read a single GeoTIFF sitting inside a ZIP that lives in an S3 bucket, none of which you download in full:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">/vsizip//vsis3/bucket/archive.zip/inside.tif</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>GDAL signs the S3 request, range-reads the ZIP’s central directory, pulls just the bytes for <code>inside.tif</code>, and hands you a raster. That’s the whole world the VSI layer opens up: object storage, archives, compression, and HTTP are all just prefixes over the same “name a thing, read its bytes” idea.</p>
+</section>
+<section id="naming-a-thing-inside-a-thing" class="level3">
+<h3 class="anchored" data-anchor-id="naming-a-thing-inside-a-thing">Naming a thing inside a thing</h3>
+<p>That earlier chain glued its prefixes by plain concatenation — <code>/vsizip/</code> meets <code>/vsis3/</code>, and since both carry a leading slash you get the doubled <code>//</code>. GDAL finds the archive boundary inside that run by heuristic: it spots the <code>.zip</code>. The brace form, <code>/vsizip/{…}</code>, makes the boundary <em>explicit</em> rather than guessed — and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.</p>
+<p>GEBCO 2026 ships its global grid as a single zip behind a download URL ending <code>…gebco_2026_geotiff.zip?download=1</code>. To reach into it without pulling the whole archive, chain <code>/vsizip/</code> over <code>/vsicurl/</code>, braces around the inner path because of that <code>?download=1</code> which masks the fact that it’s a zip file:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">/vsizip/{/vsicurl/https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/geotiff/gebco_2026_geotiff.zip?download=1}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If we point GDAL at that archive it can’t return a single raster, so it tells you what’s in there instead:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ERROR</span> 4: ... not recognized as being in a supported file format.</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="ex">The</span> archive contains several files:</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">…}/gebco_2026_n0.0_s-90.0_w0.0_e90.0_geotiff.tif</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">…}/gebco_2026_n0.0_s-90.0_w-180.0_e-90.0_geotiff.tif</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="ex">…</span>   <span class="er">(</span><span class="ex">six</span> more files<span class="kw">)</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="ex">…}/GEBCO_Grid_documentation.pdf</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="ex">…}/GEBCO_Grid_terms_of_use.pdf</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That listing is a <em>logical</em> filesystem — real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you’ve named a single item; GDAL opens it.</p>
+<p>Compare that to the subdataset syntax, multiple subdatasets of classic 2D raster we saw in the Icechunk store above:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ZARR:</span><span class="st">"/vsiicechunk/{/vsis3/.../v0.1.0.icechunk}"</span><span class="ex">:/dew_point_temperature_2m</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Again we have bracing of an internal <code>/vsi*</code> item but the thing named after it, <code>/dew_point_temperature_2m</code>, isn’t a file but a variable in a <em>logical</em> hierarchy, a node in the Zarr data model. <code>/vsizip/</code> descends into the <em>structural</em> contents of an archive, <code>ZARR:</code> over <code>/vsiicechunk/</code> into the <em>logical</em> contents of a data model - that’s why we see different forms of addressing in stores.</p>
+<p>GDAL can list things, here we use <code>gdal vsi list</code> to see the structural contents:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> vsi list   /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk <span class="dt">\</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="ex">repo</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="ex">chunks</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="ex">manifests</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="ex">overwritten</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="ex">snapshots</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="ex">transactions</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>ok we think, those look like directories so let’s go deeper (eek!):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> vsi list   /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk/chunks <span class="dt">\</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a> <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="ex">0003DSF0M0N9B5MP3R9G</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="ex">0010VXY96ABV0RP45T30</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="ex">0015TP2QVGT990JE9PM0</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="ex">...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>yes it’s valid content but not something we can understand - we are seeing the internal structure of a complex sophisticated cloud format. We know it’s Icechunk so lets wield the Icechunk virtualization tool</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gdal</span> vsi list /vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk} <span class="dt">\</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a> <span class="at">--config</span> AWS_NO_SIGN_REQUEST YES <span class="at">--config</span> AWS_REGION us-west-2</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="ex">zarr.json</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="ex">dew_point_temperature_2m</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="ex">downward_long_wave_radiation_flux_surface</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="ex">downward_short_wave_radiation_flux_surface</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="ex">expected_forecast_length</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="ex">geopotential_height_500hpa</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="ex">geopotential_height_850hpa</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="ex">geopotential_height_925hpa</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="ex">ingested_forecast_length</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="ex">init_time</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="ex">latitude</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="ex">lead_time</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="ex">longitude</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="ex">precipitation_surface</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="ex">pressure_reduced_to_mean_sea_level</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="ex">pressure_surface</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="ex">spatial_ref</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a><span class="ex">temperature_2m</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a><span class="ex">temperature_850hpa</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a><span class="ex">temperature_925hpa</span></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a><span class="ex">total_cloud_cover_atmosphere</span></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a><span class="ex">valid_time</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a><span class="ex">wind_u_100m</span></span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a><span class="ex">wind_u_10m</span></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a><span class="ex">wind_v_100m</span></span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a><span class="ex">wind_v_10m</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>and now we are back in <em>logical</em> ground, this is the interpretation that <code>gdal mdim info</code> gave us above, not raw listing of the structural contents.</p>
+<p>That shows some of the depth of GDAL abstraction. “Name a thing, read its bytes” it’s not just bytes on a disk. A thing can be an object in a bucket, a member of an archive, a variable in a chunked store, etc - and the path is the recipe for access.</p>
+<p>The distinction between <em>material</em> structure (thousands of small manifest files on S3) and <em>logical/virtual</em> structure (the clean array hierarchy you see via <code>/vsiicechunk/</code>) is a key icechunk concept. GDAL’s <code>/vsi*</code> filesystem stack handles this transparently - the same way <code>/vsicurl/</code>, <code>/vsis3/</code>, <code>/vsigs/</code> abstract over HTTP and object stores.</p>
+</section>
+</section>
+<section id="other-r-zarr-readers" class="level2">
+<h2 class="anchored" data-anchor-id="other-r-zarr-readers">Other R Zarr readers</h2>
+<p>Beyond GDAL, there is growing native R support for Zarr:</p>
+<ul>
+<li><strong>pizzarr</strong> (CRAN) - pure R Zarr V2 reader; r-universe builds include an optional high-performance Rust backend via the zarrs crate</li>
+<li><strong>zarr</strong> (CRAN) - a native implementation in R with support for all required features of Zarr version 3.</li>
+<li><strong>zaro</strong> (r-universe) - Low-level Zarr interface (V2 and V3) built on Arrow filesystem and codec infrastructure</li>
+</ul>
+<p>Work is ongoing on multidim API coverage in the R ecosystem, I particularly want tight api bindings to the GDAL API with gdalraster but that will be a while still in the making.</p>
+<p>The GDAL multidim API (used by <code>/vsiicechunk/</code>) is distinct from the classic 2D raster driver - terra now auto-detects which to use for the multidim drivers which are VRT/HDF5/NetCDF/Zarr/GRIB. If terra gives unexpected results, check whether it’s related to recent changes in mdim support.</p>
+<p>For some time stars via sf has support for accessing Zarr via the classic or multidimensional raster model of GDAL.</p>
+<p>For Icechunk specifically see <a href="https://icechunk.io">icechunk.io</a> and see the GDAL icechunk driver docs at <a href="https://gdal.org/en/latest/drivers/raster/icechunk.html">gdal.org icechunk</a> and ZARR driver at <a href="https://gdal.org/en/latest/drivers/raster/zarr.html">gdal.org zarr</a>.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hypertidy\.org");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

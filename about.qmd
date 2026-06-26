@@ -22,6 +22,8 @@ Hypertidy is a collaborative effort. [Mark Padgham](https://github.com/mpadge) w
 
 This blog is where I write about GDAL, raster logic, NetCDF, coordinate systems, and the R packages that tie them together.
 
+Here's an older blog that I don't want to forget about: [mdsumner.github.io/blog/ and Fair Tirade](https://mdsumner.github.io/blog/). 
+
 ## The hypertidy philosophy
 
 Hypertidy is built on a few core ideas:

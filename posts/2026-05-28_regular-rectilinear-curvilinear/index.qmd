@@ -11,13 +11,13 @@ draft: true
 
 The word *curvilinear* has a problem in geospatial and earth observation. It gets used interchangeably with "has two-dimensional lon/lat coordinate arrays" or even "is in geographic coordinates".  Neither of these is a helpful meaning, and conflating them causes real problems - both in how we think about data and in how we write code to handle it.
 
-This post attempts to explain the terminology, with a particular stance and this hierarchy:
+This post attempts to explain the terminology from a particular stance.  Start with this hierarchy:
 
 > **regular -> rectilinear -> curvilinear -> unstructured**
 
 Each step relaxes a geometric constraint, and our starting point is that the first 3 types are a *structured grid*. The distinguishing criterion between each step is not the coordinate reference system. It is the *minimum amount of information needed to specify the position of every cell* - which is exactly the amount of information that has to be stored.
 
-This post is a companion to [Detecting hidden grids in curvilinear coordinates](https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear), which develops the practical detection problem. Here we make a stance and explain why it matters with real world examples. 
+This post is a companion to [Detecting hidden grids in curvilinear coordinates](https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear), which develops the practical detection problem. Here we make a stance about a confusing feature of terminology and explain why it matters with real world examples. 
 
 ---
 
@@ -37,10 +37,9 @@ Positions are *fully implicit*. The grid is completely specified by:
 - a resolution $(\Delta x, \Delta y)$
 - dimensions $(n_x, n_y)$
 
+(Here if you need please pause for a pedantic [^geotransform] footnote).
 
-(todo footnote)
-
-^[A regular grid need not be axis-aligned: an affine transform — with rotation, shear, and independent dx/dy — still specifies every cell position implicitly from its index. GDAL's geotransform is exactly this: six numbers covering origin, scale, and the two off-diagonal (rotation/shear) components. The index structure, the storage economy, and the "regular" classification are unchanged. Rotated or sheared regular grids are uncommon in practice but not exotic; some satellite products use them. We ignore the off-diagonal case in the main text because it adds notation without changing the argument.]
+[^geotransform]: A regular grid need not be axis-aligned: an affine transform — with rotation, shear, and independent dx/dy — still specifies every cell position implicitly from its index. GDAL's geotransform is exactly this: six numbers covering origin, scale, and the two off-diagonal (rotation/shear) components. The index structure, the storage economy, and the "regular" classification are unchanged. Rotated or sheared regular grids are uncommon in practice but not exotic; some satellite products use them. We ignore the off-diagonal case in the main text because it adds notation without changing the argument.
 
 Every cell centre follows from index arithmetic alone. No coordinate arrays are stored - or if they are, they are redundant.
 
@@ -60,14 +59,12 @@ r <- rast(ext(ex), ncols = dm[1], nrows = dm[2])
 plot(as.polygons(r), asp = 1, lwd = 2)
 points(xyFromCell(r, 1:ncell(r)))
 
-# TODO: construct a regular grid and plot cell centres + edges
-# vaster::vas(xmin, xmax, ymin, ymax, ncols, nrows)
-# show the outer product structure: x[i] ⊗ y[j]
 ```
 
-The netCDF convention for a regular grid stores 1D coordinate variables - one vector per axis - which is already more than strictly necessary. This is the **degenerate rectilinear** case: the 1D vectors happen to be uniformly spaced, so the four-number specification is sufficient. Many files store them anyway, and many readers treat the uniform case no differently from the variable-spacing case.
+There are two clear ways to think about a regular grid, little area rectangles or a set of centre points - each contains exactly the same information, and each is completely definable by six numbers - ncols, nrows, xmin, ymin, xmax, ymax. Those numbers might be rearrange in order or expressed as `offset` `scale` (a transform), but that doesn't change anything materially.  
+The netCDF convention for a regular grid stores 1D coordinate variables, a value for every step in the dimension. This is the **degenerate rectilinear** case: the 1D vectors happen to be uniformly spaced, so the six-number specification is sufficient. Many files store them anyway, and many readers treat the uniform case no differently from the variable-spacing case.
 
-What are the coordinates? Well they are the positions of the points above, the centres of a cell. It's trivial to observe that we only need 8 points for every x coordinate, 5 for every y coordinates. But, in turn we don't need the coordinates at all *because they were generated* from 6 numbers.  Those six are extremely general, every regular grid ever is a variation on those values: positive ncols, nrows >= 1; any numbers at all for xmin, xmax, ymin, ymax so long at xmax > xmin; ymax > ymin.  
+What are the coordinates? Well they are the positions of the points above, the centres of a cell. It's trivial to observe that we only need 8 points for every x coordinate, 5 for every y coordinate. But, in turn we don't need the coordinates at all *because they were generated* from 6 numbers.  Those six are extremely general, every regular grid ever is a variation on those values: positive ncols, nrows >= 1; any numbers at all for xmin, xmax, ymin, ymax so long at xmax > xmin; ymax > ymin.  
 
 The coordinates stored in the 1D vectors are *derived* values - computed from those 6 numbers by the formula xi=xmin+(i+0.5)⋅Δxx_i = x_{min} + (i + 0.5) \cdot \Delta x
 xi=xmin+(i+0.5)⋅Δx (or the equivalent for edges). So storing them is not just redundant, it is a lossy redundancy - the stored floats have accumulated rounding error relative to the exact values the formula would produce. The 6-number specification is not only more compact, it is more precise. 
@@ -102,7 +99,7 @@ This is the grid type that netCDF calls simply "a grid with coordinate variables
 
 *In the wild:* BRAN ocean reanalysis (uniform lon, Mercator lat), pressure-level atmospheric data, many regional climate model outputs.
 
-**Note on contested usage:** Some systems (particularly in HPC/CFD) have begun using *rectilinear* to cover both regular and curvilinear cases, blurring the distinction. In this post and the hypertidy ecosystem, *rectilinear* means what it says: rectangle-forming, axis-aligned, independently varying in each dimension. The distinction from regular matters because the storage and the indexing arithmetic differ.
+**Note on contested usage:** Some systems (particularly in HPC/CFD) have begun using *rectilinear* to cover both regular and curvilinear cases, blurring the distinction. In this post, *rectilinear* means what it says: rectangle-forming, axis-aligned, independently varying in each dimension. The distinction from regular matters because the storage and the indexing arithmetic differ.
 
 todo footnote
 ^[The contrast with regular grids is instructive: a geotransform is in essence a 2D homogeneous coordinate mapping, a natural tool for positioning pixels in a plane. For rectilinear grids that apparatus quietly disappears — you have two independent 1D sequences, and no one reaches for a matrix to describe a lookup table.]
@@ -199,9 +196,9 @@ The key sentence from Balaji: *"The coordinate space may continue to be physical
 
 Here is the specific conflation this post exists to name.
 
-A regular polar stereographic grid - say, the NSIDC 25 km Southern Ocean grid on EPSG:3412 - is **regular**. It has uniform spacing in projected coordinates. It can be fully specified by four numbers and a CRS string.
+A regular Polar Stereographic  grid - say, the NSIDC 25 km Southern Ocean grid on EPSG:3412 - is **regular**. It has uniform spacing in projected coordinates. It can be fully specified by four numbers and a CRS string.  We are not saying anything at all about the *area* or *distance* on the Earth represented by those cells. This is true in Stereographic (it varies), it's true in Mercator, in longitude/latitude, in Lambert Azimuthal Equal Area, in Equidistant Conic:   it doesn't matter - the real-world "correctness" of area, distance, or angle is irrelevant to the regularity of the grid in its native CRS. 
 
-When that grid's cell centres are forward-projected to geographic coordinates and stored as `lat(y, x)` / `lon(y, x)` two-dimensional arrays in a NetCDF file, the *storage format* looks curvilinear. The CF signal is present: 2D auxiliary coordinate variables. But the underlying geometry is not curvilinear - it is regular, with two arrays of floating-point noise standing in for four exact integers.
+When a Polar Stereographic grid's cell centres are forward-projected to geographic coordinates and stored as `lat(y, x)` / `lon(y, x)` two-dimensional arrays in a NetCDF file, the *storage format* looks curvilinear.  The CF signal is present: 2D auxiliary coordinate variables. But the underlying geometry is not curvilinear - it is regular, with two arrays of floating-point noise standing in for four exact integers.
 
 This is the entropy problem described in the companion post. The confusion arises because:
 

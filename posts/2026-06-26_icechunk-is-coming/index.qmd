@@ -12,8 +12,8 @@ for large scientific datasets. This post is about where things stand and what's 
 
 ## What is Icechunk?
 
-Zarr is a chunked array format designed for cloud object storage. Icechunk is a Rust library
-sits on top of Zarr and adds git-like snapshots combined with (reliable and guaranteed) [ACID transactions](https://icechunk.io/en/stable/understanding/concepts/#why-transactions-matter). 
+Zarr is a chunked array format designed for cloud object storage. Icechunk is a Rust library that
+sits on top of Zarr and adds git-like snapshots combined with  [ACID transactions](https://icechunk.io/en/stable/understanding/concepts/#why-transactions-matter) - (which means reliable and guaranteed read and write). 
 
 (From their docs) this provides: 
 
@@ -104,7 +104,7 @@ There are a few things to unpack in this cli call.
 
 ### GDAL multidimensional 
 
-`gdal mdim` provides a family of cli support for the [GDAL multidimensional raster model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) - this means that array data
+`gdal mdim` provides a [family of apps](https://gdal.org/en/stable/programs/index.html#multidimensional-raster-commands) for the [GDAL multidimensional raster model](https://gdal.org/en/stable/user/multidim_raster_data_model.html) - this means that array data
 is presented in its native form with potentially multiple dimensions, and multiple variables like the NetCDF4 or HDF5 file type, whereas the classic 2D raster model (a 2D grid with one or more bands) 
 can only present one variable and must unroll higher dimension out as bands. 
 
@@ -246,6 +246,9 @@ stars::read_mdim("/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/
 Please note that this store contains pretty simple regular array data, and so the relationship of data arrays to their coordinates is simple, the map in longitude/latitude is a regular grid and
 so slices of that can correspond to the normal *raster* model where a bounding box (or corner coordinates + resolution) is sufficient to georeference the data. Multidimensional data can be more general and more complex than that. 
 
+This post won't explore any more detail of the various ways R packages support mdim. 
+
+
 ## Multidimensional? 
 
 We can treat this store as raster data in the normal 2D way, but note that there are caveats and real performance implications depending on the way data is laid out in a given store. 
@@ -303,17 +306,15 @@ Center      (  256.0,  256.0)
 Those strings like `"ZARR:\"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk}\":/dew_point_temperature_2m"` (note the embedded escaped quotes) can 
 be used by the more tradition GDAL classic raster model. 
 
-This post won't explore any more detail of the various ways R packages support mdim. 
-
 We'll come back to the `/vsiicechunk` and `{/vsis3}` parts of this string a bit later. 
 
 ## Setting config options and environment variables for GDAL
 
-GDAL config options can be set through a package wrapper - `gdalraster::set_config_option("AWS_NO_SIGN_REQUEST", "YES")` or `terra::setGDALconfig("AWS_NO_SIGN_REQUEST", "YES")` - or as process environment variables (`Sys.setenv(AWS_NO_SIGN_REQUEST = "YES")`, or `KEY=value` in the shell). Both routes are *global and sticky*: once set they colour every later GDAL call in the session, which is the spooky-action-at-a-distance worth avoiding.
+GDAL config options can be set through a package wrapper - `gdalraster::set_config_option("AWS_NO_SIGN_REQUEST", "YES")` or `terra::setGDALconfig("AWS_NO_SIGN_REQUEST", "YES")` - or as process environment variables (`Sys.setenv(AWS_NO_SIGN_REQUEST = "YES")`, or `KEY=value` in the shell). Both routes are *global and sticky*: once set they can affect every other step, spooky-action-at-a-distance that we want to avoid. 
 
-That's why setting config *inline* - `--config KEY=VALUE` on the `gdal mdim info` call above - is the clean option: it lives and dies with that one invocation, a bit like `with` in Python or `with()` in R. The R-side equivalent for env vars and options is `withr::with_envvar()` / `withr::with_options()`, which are true scoped context managers.
+That's why setting config *inline* - `--config KEY=VALUE` on the `gdal mdim info` call is a clean option: it lives and dies in one line, a bit like `with` in Python or `with()` in R. The R equivalent for env vars and options is `withr::with_envvar()` / `withr::with_options()`, true scoped context managers.
 
-With online storage it can be bewildering what exact configuration you need and what you have, but it does come down to a fairly comprehensible set of ideas. This post is not a guide to online storage access configuration, but please be assured that there's a finite set of concepts behind the configuration jungle.
+With online storage it can be bewildering what exact configuration you need and what you have, but it does come down to a fairly comprehensible set of ideas. This post is not a guide to online storage access configuration, or a guide to [GDAL configuration options](https://gdal.org/en/stable/user/configoptions.html) but there's a finite set of concepts in this jungle so don't be put off by the complexity. 
 
 **Auth - keyed vs anonymous.** If a dataset is not public, you will need something like `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. If it is public, you will need something like `AWS_NO_SIGN_REQUEST=YES` (or `--no-sign-request`).
 
@@ -321,7 +322,7 @@ With online storage it can be bewildering what exact configuration you need and 
 
 **Endpoint, region, hosting-style.** That object is hosted on an *endpoint* - `s3://` is shorthand for `s3.<region>.amazonaws.com`, `gs://` for `storage.googleapis.com`. A *custom* endpoint means pointing at your own host - `AWS_S3_ENDPOINT=your.endpoint.net` - so that `s3` in `s3://bucket/key` resolves to your host and not Amazon's. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, `AWS_VIRTUAL_HOSTING=NO`, since most of them don't do virtual-host style. `AWS_REGION` is sometimes demanded even when it oughtn't matter - set it to "".
 
-### GDAL-specific wrinkle: the virtual filesystem
+### GDAL and the virtual filesystem
 
 Everything above is generic - true of any R tool talking to object storage - and GDAL addresses remote objects through its own *virtual filesystem* (VSI) rather than the `s3://`-style schemes. Again, bucket, key but with a different prefix:
 
@@ -331,7 +332,7 @@ Everything above is generic - true of any R tool talking to object storage - and
 | `gs://bucket/key` | `/vsigs/bucket/key` |
 | `abfss://container/key` | `/vsiaz/container/key` |
 
-This is the most common first stumble: `s3://…` handed to `terra::rast()` or `vapour::gdal_raster_data()` won't open; the `/vsis3/…` form will. The config options from above (`AWS_NO_SIGN_REQUEST`, `AWS_S3_ENDPOINT`, and friends) all still apply unchanged - VSI only changes how you *name* the object, not how you authenticate to it.
+This is the most common first stumble: `s3://…` handed to `terra::rast()` or `vapour::gdal_raster_data()` won't open; the `/vsis3/…` form will. Be aware that some packages in R and other langs will do their own heuristics to wrap different protocols: 'https://', 's3://', 'virtualizarr://' etc - this can be helpful but also very confusing, and this post cannot summarize that landscape. When GDAL is in use my preference is to use GDAL protocols without wrapping.  The config options from above (`AWS_NO_SIGN_REQUEST`, `AWS_S3_ENDPOINT`, and friends) all still apply unchanged - VSI only changes how you *name* the object, it doesn't affect how or if it's accessible. 
 
 The same `/vsi*` mechanism abstracts over a whole zoo of access methods, all of which GDAL then reads as if they were ordinary local files:
 
@@ -369,22 +370,22 @@ ERROR 4: ... not recognized as being in a supported file format.
 The archive contains several files:
   …}/gebco_2026_n0.0_s-90.0_w0.0_e90.0_geotiff.tif
   …}/gebco_2026_n0.0_s-90.0_w-180.0_e-90.0_geotiff.tif
-  …   (six more tiles)
+  …   (six more files)
   …}/GEBCO_Grid_documentation.pdf
   …}/GEBCO_Grid_terms_of_use.pdf
 ```
 
-That listing is a *structural* filesystem — real files physically inside the zip, enumerated out of a remote archive you never downloaded. Append one of them after the closing brace and you've named a single item; GDAL opens it.
+That listing is a *logical* filesystem — real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you've named a single item; GDAL opens it.
 
-Compare that to the subdataset syntax, multiple subdatasets we saw in the Icechunk store above:
+Compare that to the subdataset syntax, multiple subdatasets of classic 2D raster we saw in the Icechunk store above:
 
 ```bash
 ZARR:"/vsiicechunk/{/vsis3/.../v0.1.0.icechunk}":/dew_point_temperature_2m
 ```
 
-Again we have bracing of an internal `/vsi*` item but the thing named after it, `/dew_point_temperature_2m`, isn't a file but a variable in a *logical* hierarchy, a node in the Zarr data model, not something to unzip or find at a real url. `/vsizip/` descends into the *structural* contents of an archive, `ZARR:` over `/vsiicechunk/` into the *logical* contents of a data model - and you reach the thing needed. 
+Again we have bracing of an internal `/vsi*` item but the thing named after it, `/dew_point_temperature_2m`, isn't a file but a variable in a *logical* hierarchy, a node in the Zarr data model. `/vsizip/` descends into the *structural* contents of an archive, `ZARR:` over `/vsiicechunk/` into the *logical* contents of a data model - that's why we see different forms of addressing in stores. 
 
-GDAL can list the structural contents: 
+GDAL can list things, here we use `gdal vsi list` to see the structural contents: 
 
 ```bash
 gdal vsi list   /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk \
@@ -397,7 +398,7 @@ snapshots
 transactions
 ```
 
-ok we think, so let's go deeper (eek!): 
+ok we think, those look like directories so let's go deeper (eek!): 
 
 ```bash
 gdal vsi list   /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk/chunks \
@@ -408,7 +409,7 @@ gdal vsi list   /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0
 ...
 ```
 
-yes it's valid content but not something we can understand - we are seeing the internal structure of a complex sophisticated cloud format. We know it's Icechunk so wield the virtualization tool
+yes it's valid content but not something we can understand - we are seeing the internal structure of a complex sophisticated cloud format. We know it's Icechunk so lets wield the Icechunk virtualization tool
 
 ```bash
 gdal vsi list /vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk} \
@@ -439,7 +440,6 @@ wind_u_100m
 wind_u_10m
 wind_v_100m
 wind_v_10m
-
 ```
 and now we are back in *logical* ground, this is the interpretation that `gdal mdim info` gave us above, not  raw listing of the structural contents. 
 
