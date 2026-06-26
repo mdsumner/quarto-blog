@@ -598,8 +598,11 @@ Beyond GDAL, there is growing native R support for Zarr:
 
 - **pizzarr** (CRAN) - pure R Zarr V2 reader; r-universe builds include an
   optional high-performance Rust backend via the zarrs crate
+- **Rarr** (Bioconducator) - A simple native R reader for Zarr Arrays, Rarr is actively developed and has good support for a growing number of codecs
 - **zarr** (CRAN) - a native implementation in R with support for all required features of Zarr version 3.
+- **CopernicusMarine** - Subset and download marine data from EU Copernicus Marine Service Information, has an in-built Zarr engine designed around the service
 - **zaro** (r-universe) - Low-level Zarr interface (V2 and V3) built on Arrow filesystem and codec infrastructure
+- **RNetCDF**, **ncdf4** - with the right build set up NetCDF has Zarr support, and this for example has been proved for using with **tidync**
 
 Work is ongoing on multidim API coverage in the R ecosystem, I particularly want tight api bindings to the GDAL API with gdalraster but that will be a while still in the making. 
 

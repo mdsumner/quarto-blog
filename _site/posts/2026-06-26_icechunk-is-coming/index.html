@@ -1554,8 +1554,11 @@ Click here for the full sf structure info output
 <p>Beyond GDAL, there is growing native R support for Zarr:</p>
 <ul>
 <li><strong>pizzarr</strong> (CRAN) - pure R Zarr V2 reader; r-universe builds include an optional high-performance Rust backend via the zarrs crate</li>
+<li><strong>Rarr</strong> (Bioconducator) - A simple native R reader for Zarr Arrays, Rarr is actively developed and has good support for a growing number of codecs</li>
 <li><strong>zarr</strong> (CRAN) - a native implementation in R with support for all required features of Zarr version 3.</li>
+<li><strong>CopernicusMarine</strong> - Subset and download marine data from EU Copernicus Marine Service Information, has an in-built Zarr engine designed around the service</li>
 <li><strong>zaro</strong> (r-universe) - Low-level Zarr interface (V2 and V3) built on Arrow filesystem and codec infrastructure</li>
+<li><strong>RNetCDF</strong>, <strong>ncdf4</strong> - with the right build set up NetCDF has Zarr support, and this for example has been proved for using with <strong>tidync</strong></li>
 </ul>
 <p>Work is ongoing on multidim API coverage in the R ecosystem, I particularly want tight api bindings to the GDAL API with gdalraster but that will be a while still in the making.</p>
 <p>The GDAL multidim API (used by <code>/vsiicechunk/</code>) is distinct from the classic 2D raster driver - terra now auto-detects which to use for the multidim drivers which are VRT/HDF5/NetCDF/Zarr/GRIB. If terra gives unexpected results, check whether it’s related to recent changes in mdim support.</p>
