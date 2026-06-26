@@ -6,8 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Michael D. Sumner">
+<meta name="dcterms.date" content="2023-04-22">
 
-<title>sf-info-structure – hypertidy</title>
+<title>GDAL and image tiles, the {ceramic} package – hypertidy</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,6 +24,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -77,10 +114,18 @@ ul.task-list li input[type="checkbox"] {
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="hypertidy">
+<meta property="og:title" content="GDAL and image tiles, the {ceramic} package – hypertidy">
+<meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
+<meta property="og:image" content="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/hobart-image-1.png">
 <meta property="og:site_name" content="hypertidy">
-<meta name="twitter:title" content="hypertidy">
-<meta name="twitter:card" content="summary">
+<meta property="og:image:height" content="960">
+<meta property="og:image:width" content="1344">
+<meta name="twitter:title" content="GDAL and image tiles, the {ceramic} package – hypertidy">
+<meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
+<meta name="twitter:image" content="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/hobart-image-1.png">
+<meta name="twitter:image-height" content="960">
+<meta name="twitter:image-width" content="1344">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-fixed fullcontent quarto-light"><script id="quarto-html-before-body" type="application/javascript">
@@ -302,7 +347,40 @@ ul.task-list li input[type="checkbox"] {
     </nav>
 </header>
 <!-- content -->
-<header id="title-block-header" class="quarto-title-block"></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">GDAL and image tiles, the {ceramic} package</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">gdal</div>
+                <div class="quarto-category">r-packages</div>
+                <div class="quarto-category">ceramic</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael D. Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">April 22, 2023</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
     
@@ -313,74 +391,220 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<pre><code>List of 4
- $ array_list:List of 17
-  ..$ dew_point_temperature_2m                  : NULL
-  ..$ downward_long_wave_radiation_flux_surface : NULL
-  ..$ downward_short_wave_radiation_flux_surface: NULL
-  ..$ geopotential_height_500hpa                : NULL
-  ..$ geopotential_height_850hpa                : NULL
-  ..$ geopotential_height_925hpa                : NULL
-  ..$ precipitation_surface                     : NULL
-  ..$ pressure_reduced_to_mean_sea_level        : NULL
-  ..$ pressure_surface                          : NULL
-  ..$ temperature_2m                            : NULL
-  ..$ temperature_850hpa                        : NULL
-  ..$ temperature_925hpa                        : NULL
-  ..$ total_cloud_cover_atmosphere              : NULL
-  ..$ wind_u_100m                               : NULL
-  ..$ wind_u_10m                                : NULL
-  ..$ wind_v_100m                               : NULL
-  ..$ wind_v_10m                                : NULL
- $ dimensions:List of 4
-  ..$ init_time:List of 5
-  .. ..$ from     : int 1
-  .. ..$ to       : int 3264
-  .. ..$ values   :List of 1
-  .. .. ..$ : num [1:3264(1d)] 1.71e+09 1.71e+09 1.71e+09 1.71e+09 1.71e+09 ...
-  .. .. .. ..- attr(*, "units")= chr "seconds since 1970-01-01"
-  .. .. .. ..- attr(*, "d_names")= chr "init_time"
-  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "proleptic_gregorian" "Forecast initialization time" "forecast_reference_time" "{ \"min\": \"2024-04-01T00:00:00\", \"max\": \"Present\" }"
-  .. .. .. .. ..- attr(*, "names")= chr [1:4] "calendar" "long_name" "standard_name" "statistics_approximate"
-  .. ..$ type     : chr ""
-  .. ..$ direction: chr ""
-  ..$ lead_time:List of 5
-  .. ..$ from     : int 1
-  .. ..$ to       : int 61
-  .. ..$ values   :List of 1
-  .. .. ..$ : num [1:61(1d)] 0 21600 43200 64800 86400 ...
-  .. .. .. ..- attr(*, "units")= chr "seconds"
-  .. .. .. ..- attr(*, "d_names")= chr "lead_time"
-  .. .. .. ..- attr(*, "attributes")= Named chr [1:5] "AAAAAAAA+H8=" "timedelta64[us]" "Forecast lead time" "forecast_period" ...
-  .. .. .. .. ..- attr(*, "names")= chr [1:5] "_FillValue" "dtype" "long_name" "standard_name" ...
-  .. ..$ type     : chr ""
-  .. ..$ direction: chr ""
-  ..$ latitude :List of 5
-  .. ..$ from     : int 1
-  .. ..$ to       : int 721
-  .. ..$ values   :List of 1
-  .. .. ..$ : num [1:721(1d)] 90 89.8 89.5 89.2 89 ...
-  .. .. .. ..- attr(*, "units")= chr "degree_north"
-  .. .. .. ..- attr(*, "d_names")= chr "latitude"
-  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "AAAAAAAA+H8=" "Y" "Latitude" "{ \"min\": -90.0, \"max\": 90.0 }"
-  .. .. .. .. ..- attr(*, "names")= chr [1:4] "_FillValue" "axis" "long_name" "statistics_approximate"
-  .. ..$ type     : chr "HORIZONTAL_Y"
-  .. ..$ direction: chr ""
-  ..$ longitude:List of 5
-  .. ..$ from     : int 1
-  .. ..$ to       : int 1440
-  .. ..$ values   :List of 1
-  .. .. ..$ : num [1:1440(1d)] -180 -180 -180 -179 -179 ...
-  .. .. .. ..- attr(*, "units")= chr "degree_east"
-  .. .. .. ..- attr(*, "d_names")= chr "longitude"
-  .. .. .. ..- attr(*, "attributes")= Named chr [1:4] "AAAAAAAA+H8=" "X" "Longitude" "{ \"min\": -180.0, \"max\": 179.75 }"
-  .. .. .. .. ..- attr(*, "names")= chr [1:4] "_FillValue" "axis" "long_name" "statistics_approximate"
-  .. ..$ type     : chr "HORIZONTAL_X"
-  .. ..$ direction: chr ""
- $ srs       : chr NA
- $ geometry  : list()</code></pre>
+
+<p>A new version of <a href="https://hypertidy.github.io/ceramic/">{ceramic}</a> is now on CRAN, version 0.8.0.</p>
+<p>The package exists for two purpose</p>
+<ol type="1">
+<li>to download tiles from image servers</li>
+<li>to load raster data from image servers</li>
+</ol>
+<p>NOTE: we need a Mapbox key for the Mapbox servers see, please see <a href="https://hypertidy.github.io/ceramic/reference/get_api_key.html">ceramic::get_api_key()</a>.</p>
+<p>The original versions of ceramic didn’t really separate these tasks but the new version does.</p>
+<section id="get-raster-data-from-online" class="level2">
+<h2 class="anchored" data-anchor-id="get-raster-data-from-online">Get raster data from online</h2>
+<p>We can read satellite imagery or elevation with a central point and a buffer (in metres).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ceramic)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: terra</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>terra 1.7.23</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fl">147.3257</span>, <span class="sc">-</span><span class="fl">42.8826</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>(im <span class="ot">&lt;-</span> <span class="fu">cc_location</span>(pt, <span class="at">buffer =</span> <span class="fu">c</span>(<span class="dv">15000</span>, <span class="dv">25000</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 960, 576, 3  (nrow, ncol, nlyr)
+resolution  : 52.08333, 52.08333  (x, y)
+extent      : 16385222, 16415222, -5319119, -5269119  (xmin, xmax, ymin, ymax)
+coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
+source(s)   : memory
+colors RGB  : 1, 2, 3 
+names       : red, green, blue 
+min values  :   0,     0,    0 
+max values  : 255,   255,  252 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>(el <span class="ot">&lt;-</span> <span class="fu">cc_elevation</span>(pt, <span class="at">buffer =</span> <span class="fu">c</span>(<span class="dv">15000</span>, <span class="dv">25000</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 960, 576, 1  (nrow, ncol, nlyr)
+resolution  : 52.08333, 52.08333  (x, y)
+extent      : 16385222, 16415222, -5319119, -5269119  (xmin, xmax, ymin, ymax)
+coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
+source(s)   : memory
+name        :  lyr.1 
+min value   :   -1.9 
+max value   : 1264.9 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>op <span class="ot">&lt;-</span> <span class="fu">par</span>(<span class="at">mfcol =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(el, <span class="at">legend =</span> F); <span class="fu">plot</span>(im, <span class="at">add =</span> <span class="cn">TRUE</span>); <span class="fu">plot</span>(el, <span class="at">legend =</span> F, </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                                                 <span class="at">col =</span> <span class="fu">hcl.colors</span>(<span class="dv">64</span>)[<span class="fu">tail</span>(<span class="fu">seq_len</span>(<span class="dv">64</span>), <span class="dv">45</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/hobart-image-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(op)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>These raster objects are in terra ‘SpatRaster’ format (older ceramic used raster package).</p>
+<p>These use the Mapbox ‘mapbox.satellite’ and ‘mapbox-terrain-rgb’ tile servers.</p>
+</section>
+<section id="get-raster-tiles-from-online" class="level2">
+<h2 class="anchored" data-anchor-id="get-raster-tiles-from-online">Get raster tiles from online</h2>
+<p>If we want the actual tiles, we can use the original <code>get_tiles()</code> function. (In older versions <code>cc_location()</code> and <code>cc_elevation()</code> would <em>invoke</em> <code>get_tiles</code>, but no longer).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fl">147.3257</span>, <span class="sc">-</span><span class="fl">42.8826</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>imtiles <span class="ot">&lt;-</span> <span class="fu">get_tiles</span>(pt, <span class="at">buffer =</span> <span class="fu">c</span>(<span class="dv">15000</span>, <span class="dv">25000</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
+https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(imtiles)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>List of 3
+ $ files : chr [1:24] "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3722/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3723/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3724/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3725/2586.jpg" ...
+ $ tiles :List of 2
+  ..$ tiles:'data.frame':   24 obs. of  2 variables:
+  .. ..$ x: int [1:24] 3722 3723 3724 3725 3722 3723 3724 3725 3722 3723 ...
+  .. ..$ y: int [1:24] 2586 2586 2586 2586 2587 2587 2587 2587 2588 2588 ...
+  .. ..- attr(*, "out.attrs")=List of 2
+  .. .. ..$ dim     : Named int [1:2] 4 6
+  .. .. .. ..- attr(*, "names")= chr [1:2] "x" "y"
+  .. .. ..$ dimnames:List of 2
+  .. .. .. ..$ x: chr [1:4] "x=3722" "x=3723" "x=3724" "x=3725"
+  .. .. .. ..$ y: chr [1:6] "y=2586" "y=2587" "y=2588" "y=2589" ...
+  ..$ zoom : int 12
+  ..- attr(*, "class")= chr "tile_grid"
+ $ extent: num [1:4] 16385222 16415222 -5319119 -5269119</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>eltiles <span class="ot">&lt;-</span> <span class="fu">get_tiles</span>(pt, <span class="at">buffer =</span> <span class="fu">c</span>(<span class="dv">15000</span>, <span class="dv">25000</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
+https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">gsub</span>(ceramic<span class="sc">::</span><span class="fu">ceramic_cache</span>(), <span class="st">""</span>,  eltiles<span class="sc">$</span>files))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "/api.mapbox.com/v4/mapbox.satellite/12/3722/2586.jpg"
+[2] "/api.mapbox.com/v4/mapbox.satellite/12/3723/2586.jpg"
+[3] "/api.mapbox.com/v4/mapbox.satellite/12/3724/2586.jpg"
+[4] "/api.mapbox.com/v4/mapbox.satellite/12/3725/2586.jpg"
+[5] "/api.mapbox.com/v4/mapbox.satellite/12/3722/2587.jpg"
+[6] "/api.mapbox.com/v4/mapbox.satellite/12/3723/2587.jpg"</code></pre>
+</div>
+</div>
+<p>And to see what tiles we have we can materialize their footprint in <a href="https://paleolimbot.github.io/wk/reference/rct.html">wk::rct()</a> form, this is way more efficient than having to use polygons.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>zoomtiles <span class="ot">&lt;-</span> ceramic<span class="sc">::</span><span class="fu">ceramic_tiles</span>(imtiles<span class="sc">$</span>tiles<span class="sc">$</span>zoom)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="do">## sub out the ones we just triggered</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>zoomtiles <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(zoomtiles, fullname <span class="sc">%in%</span> imtiles<span class="sc">$</span>files)</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>rc <span class="ot">&lt;-</span> ceramic<span class="sc">::</span><span class="fu">tiles_to_polygon</span>(zoomtiles)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rc)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">ext</span>(im), <span class="at">add =</span> <span class="cn">TRUE</span>)  <span class="do">## see the image from above is not the tiles, but the buffer around a point</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/rct-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">read_tiles</span>(pt, <span class="at">buffer =</span> <span class="fu">c</span>(<span class="dv">15000</span>, <span class="dv">25000</span>)))  <span class="do">## but we can read thos tiles exactly</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
+https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rc, <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"white"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/rct-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="diverse-query-inputs" class="level2">
+<h2 class="anchored" data-anchor-id="diverse-query-inputs">Diverse query inputs</h2>
+<p>Finally, we can use a point and buffer to get imagery, or we can use a spatial object, currently supported are objects from {geos}, {wk}, {terra}, {sf}, {sp}, {raster}, and {stars}.</p>
+<p>Here’s an example.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wkarea <span class="ot">&lt;-</span> wk<span class="sc">::</span><span class="fu">rct</span>(<span class="at">xmin =</span> <span class="fl">5e6</span>, <span class="at">ymin =</span> <span class="sc">-</span><span class="fl">2e6</span>, <span class="at">xmax =</span> <span class="fl">2e6</span>, <span class="at">ymax =</span> <span class="fl">3e6</span>, <span class="at">crs =</span> <span class="st">"+proj=laea +lon_0=25 +lat_0=31"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>im2 <span class="ot">&lt;-</span> <span class="fu">cc_location</span>(wkarea)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>el2 <span class="ot">&lt;-</span> <span class="fu">cc_elevation</span>(wkarea)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>op <span class="ot">&lt;-</span> <span class="fu">par</span>(<span class="at">mfcol =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(el2, <span class="at">legend =</span> F); <span class="fu">plot</span>(im2, <span class="at">add =</span> <span class="cn">TRUE</span>); <span class="fu">plot</span>(el2, <span class="at">col =</span> <span class="fu">grey.colors</span>(<span class="dv">128</span>), <span class="at">legend =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/wk-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(op)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>(Please note that the result is still in Mercator, the query can be in any projection but we’re not matching that here, only its extent - ceramic version 0.8.0 is merely a stepping stone to some of the things we can do better with GDAL).</p>
+<p>Previous versions of <code>cc_location()</code> and <code>cc_elevation()</code> were stuck with only ‘zoom’ and ‘max_tiles’ arguments, these make sense when you restrict exactly to the available tiles but when you just want a given area and a resolution, ‘dimension’ is more appropriate.</p>
+<p>By default, the dimension is chosen relative to the graphics device. But, we can also specify exactly what we want. (Use zero for one of the dimensions to let the system figure out an appropriate size for the query you have).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 960, 776, 3  (nrow, ncol, nlyr)
+resolution  : 7094.906, 7094.906  (x, y)
+extent      : 4203326, 9708973, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
+coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
+source(s)   : memory
+colors RGB  : 1, 2, 3 
+names       : red, green, blue 
+min values  :   0,     0,    0 
+max values  : 255,   255,  255 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea, <span class="at">dimension =</span> <span class="fu">c</span>(<span class="dv">400</span>, <span class="dv">700</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 700, 400, 3  (nrow, ncol, nlyr)
+resolution  : 13766.3, 9730.157  (x, y)
+extent      : 4203326, 9709847, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
+coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
+source(s)   : memory
+colors RGB  : 1, 2, 3 
+names       : red, green, blue 
+min values  :   0,     2,    0 
+max values  : 255,   255,  255 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cc_location</span>(wkarea, <span class="at">dimension =</span> <span class="fu">c</span>(<span class="dv">1024</span>, <span class="dv">0</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>class       : SpatRaster 
+dimensions  : 1267, 1024, 3  (nrow, ncol, nlyr)
+resolution  : 5377.463, 5377.463  (x, y)
+extent      : 4203326, 9709847, 103240.4, 6916485  (xmin, xmax, ymin, ymax)
+coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
+source(s)   : memory
+colors RGB  : 1, 2, 3 
+names       : red, green, blue 
+min values  :   0,     1,    0 
+max values  : 255,   255,  255 </code></pre>
+</div>
+</div>
+</section>
+<section id="some-other-improvements" class="level2">
+<h2 class="anchored" data-anchor-id="some-other-improvements">Some other improvements</h2>
+<ul>
+<li>it’s faster, for loading reads data from image servers directly with the GDAL warper API</li>
+<li>we have separation of tile downloading and interaction from raster loading via GDAL</li>
+<li>we don’t materialize tiles as polygons, we have the tile description, or the compact <code>rct</code> representation</li>
+<li>new functions <code>read_tiles()</code>, <code>unpack_rgb()</code>,</li>
+</ul>
+<p>See the full list of changes here: <a href="https://hypertidy.github.io/ceramic/news/index.html">https://hypertidy.github.io/ceramic/news/index.html</a>.</p>
+<p>ceramic is my final CRAN package that had direct dependencies on rgdal, rgeos, or maptools - in some ways it was the most challenging for me and had loomed as a problem for some time. But, I’ve progressed my own tool kit well in the time and I learnt a lot with this update.</p>
+<p>A future version will probably make the separation (are we tiles, or are we loading raster?) more complete, at any rate there are better ways to organize these things now. There are data sources, data readers and writers, data structures, and algorithms. This work is part of a family of tools that aims to make that orthogonality real and accessible.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

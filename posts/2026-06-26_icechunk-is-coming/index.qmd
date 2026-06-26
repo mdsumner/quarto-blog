@@ -52,7 +52,7 @@ gdal mdim info \
 <details>
 <summary>Click here for the full mdim info output</summary>
 
-{{< include ecmwf-aifs-single-info.md >}}
+{{< include _ecmwf-aifs-single-info.md >}}
 
 </details>
 
@@ -197,7 +197,7 @@ List of 4
 <details>
 <summary>Click here for the full sf structure info output</summary>
 
-{{< include sf-info-structure.md >}}
+{{< include _sf-info-structure.md >}}
 
 </details>
 
