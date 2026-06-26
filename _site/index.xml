@@ -12,7 +12,7 @@
 <generator>quarto-1.9.36</generator>
 <lastBuildDate>Fri, 26 Jun 2026 00:00:00 GMT</lastBuildDate>
 <item>
-  <title>Icechunk is coming - versioned cloud-native Zarr, and R spatial</title>
+  <title>Icechunk is coming - versioned cloud-native Zarr, GDAL, and R</title>
   <dc:creator>Michael Sumner</dc:creator>
   <link>https://hypertidy.org/posts/2026-06-26_icechunk-is-coming/</link>
   <description><![CDATA[ 
@@ -22,7 +22,7 @@
 
 
 
-<p><a href="https://icechunk.io">Icechunk</a> is a transactional storage engine for Zarr and provides git-style versioning for large scientific datasets. This post is about where things stand and what’s coming.</p>
+<p><a href="https://icechunk.io">Icechunk</a> is a transactional storage engine for Zarr and provides git-style versioning for large scientific datasets. This post is about Icechunk from a GDAL perspective and some impact that will have on the R community and its interactions with Zarr.</p>
 <section id="what-is-icechunk" class="level2">
 <h2 class="anchored" data-anchor-id="what-is-icechunk">What is Icechunk?</h2>
 <p>Zarr is a chunked array format designed for cloud object storage. Icechunk is a Rust library that sits on top of Zarr and adds git-like snapshots combined with <a href="https://icechunk.io/en/stable/understanding/concepts/#why-transactions-matter">ACID transactions</a> - (which means reliable and guaranteed read and write).</p>

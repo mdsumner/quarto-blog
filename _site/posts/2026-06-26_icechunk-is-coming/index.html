@@ -9,7 +9,7 @@
 <meta name="author" content="Michael Sumner">
 <meta name="dcterms.date" content="2026-06-26">
 
-<title>Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy</title>
+<title>Icechunk is coming - versioned cloud-native Zarr, GDAL, and R – hypertidy</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -114,10 +114,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy">
+<meta property="og:title" content="Icechunk is coming - versioned cloud-native Zarr, GDAL, and R – hypertidy">
 <meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta property="og:site_name" content="hypertidy">
-<meta name="twitter:title" content="Icechunk is coming - versioned cloud-native Zarr, and R spatial – hypertidy">
+<meta name="twitter:title" content="Icechunk is coming - versioned cloud-native Zarr, GDAL, and R – hypertidy">
 <meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta name="twitter:card" content="summary">
 </head>
@@ -344,7 +344,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Icechunk is coming - versioned cloud-native Zarr, and R spatial</h1>
+      <h1 class="title">Icechunk is coming - versioned cloud-native Zarr, GDAL, and R</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">code</div>
                 <div class="quarto-category">news</div>
@@ -385,7 +385,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<p><a href="https://icechunk.io">Icechunk</a> is a transactional storage engine for Zarr and provides git-style versioning for large scientific datasets. This post is about where things stand and what’s coming.</p>
+<p><a href="https://icechunk.io">Icechunk</a> is a transactional storage engine for Zarr and provides git-style versioning for large scientific datasets. This post is about Icechunk from a GDAL perspective and some impact that will have on the R community and its interactions with Zarr.</p>
 <section id="what-is-icechunk" class="level2">
 <h2 class="anchored" data-anchor-id="what-is-icechunk">What is Icechunk?</h2>
 <p>Zarr is a chunked array format designed for cloud object storage. Icechunk is a Rust library that sits on top of Zarr and adds git-like snapshots combined with <a href="https://icechunk.io/en/stable/understanding/concepts/#why-transactions-matter">ACID transactions</a> - (which means reliable and guaranteed read and write).</p>

@@ -1,5 +1,5 @@
 ---
-title: "Icechunk is coming - versioned cloud-native Zarr, and R spatial"
+title: "Icechunk is coming - versioned cloud-native Zarr, GDAL, and R"
 author: "Michael Sumner"
 date: "2026-06-26"
 categories:
@@ -8,7 +8,7 @@ categories:
 ---
 
 [Icechunk](https://icechunk.io) is a transactional storage engine for Zarr and provides git-style versioning
-for large scientific datasets. This post is about where things stand and what's coming.
+for large scientific datasets. This post is about Icechunk from a GDAL perspective and some impact that will have on the R community and its interactions with Zarr. 
 
 ## What is Icechunk?
 
