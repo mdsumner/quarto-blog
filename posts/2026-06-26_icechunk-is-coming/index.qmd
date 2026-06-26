@@ -320,7 +320,7 @@ With online storage it can be bewildering what exact configuration you need and 
 
 **Addressing.** Everything is a *key* inside a *bucket*. You reference an object as `s3://bucket/key` (Amazon), `gs://bucket/key` (Google Storage), `abfss://…` (Azure storage) - and that's the whole model. (Azure bends it slightly: a storage *account* holds *containers* holding *blobs*, and the scheme carries the account, `abfss://container@account.dfs.core.windows.net/key`.)
 
-**Endpoint, region, hosting-style.** That object is hosted on an *endpoint* - `s3://` is shorthand for `s3.<region>.amazonaws.com`, `gs://` for `storage.googleapis.com`. A *custom* endpoint means pointing at your own host - `AWS_S3_ENDPOINT=your.endpoint.net` - so that `s3` in `s3://bucket/key` resolves to your host and not Amazon's. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, `AWS_VIRTUAL_HOSTING=NO`, since most of them don't do virtual-host style. `AWS_REGION` is sometimes demanded even when it oughtn't matter - set it to "".
+**Endpoint, region, hosting-style.** That object is hosted on an *endpoint* - `s3://` is shorthand for `s3.<region>.amazonaws.com`, `gs://` for `storage.googleapis.com`. A *custom* endpoint means pointing at your own host - `AWS_S3_ENDPOINT=your.endpoint.net` - so that `s3` in `s3://bucket/key` resolves to your host and not Amazon's.   Virtual hosting just means the bucket goes before the endpoint in the final url `https://bucket.s3.<region>.amazonaws.com/key` vs `https://my.custom.endpoint.net/bucket/key`.  It's confusing, until you know what it does and when you might need it. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, `AWS_VIRTUAL_HOSTING=NO`, since most of them don't do virtual-host style.   `AWS_REGION` is sometimes needed but probably shouldn't matter - set it to "".
 
 ### GDAL and the virtual filesystem
 
@@ -355,7 +355,7 @@ GDAL signs the S3 request, range-reads the ZIP's central directory, pulls just t
 
 ### Naming a thing inside a thing
 
-That earlier chain glued its prefixes by plain concatenation — `/vsizip/` meets `/vsis3/`, and since both carry a leading slash you get the doubled `//`. GDAL finds the archive boundary inside that run by heuristic: it spots the `.zip`. The brace form, `/vsizip/{…}`, makes the boundary *explicit* rather than guessed — and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.
+That earlier chain glued its prefixes by plain concatenation - `/vsizip/` meets `/vsis3/`, and since both carry a leading slash you get the doubled `//`. GDAL finds the archive boundary inside that run by heuristic: it spots the `.zip`. The brace form, `/vsizip/{…}`, makes the boundary *explicit* rather than guessed - and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.
 
 GEBCO 2026 ships its global grid as a single zip behind a download URL ending `…gebco_2026_geotiff.zip?download=1`. To reach into it without pulling the whole archive, chain `/vsizip/` over `/vsicurl/`, braces around the inner path because of that `?download=1` which masks the fact that it's a zip file:
 
@@ -375,7 +375,7 @@ The archive contains several files:
   …}/GEBCO_Grid_terms_of_use.pdf
 ```
 
-That listing is a *logical* filesystem — real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you've named a single item; GDAL opens it.
+That listing is a *logical* filesystem - real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you've named a single item; GDAL opens it.
 
 Compare that to the subdataset syntax, multiple subdatasets of classic 2D raster we saw in the Icechunk store above:
 
@@ -451,7 +451,146 @@ see via `/vsiicechunk/`) is a key icechunk concept. GDAL's `/vsi*` filesystem
 stack handles this transparently - the same way `/vsicurl/`, `/vsis3/`,
 `/vsigs/` abstract over HTTP and object stores.
 
+## What about python?
 
+Above we saw how GDAL and some R packages interact with the Icechunk store, how do we do that in Python? 
+
+This time we don't have a single description of the store, we have to use infrastructure to encode the details. 
+
+```python
+import icechunk
+import xarray 
+
+storage = icechunk.s3_storage(
+    bucket="dynamical-ecmwf-aifs-single",
+    prefix="ecmwf-aifs-single-forecast/v0.1.0.icechunk",
+    region="us-west-2",
+    anonymous=True,           # the AWS_NO_SIGN_REQUEST=YES equivalent
+)
+repo = icechunk.Repository.open(storage)
+session = repo.readonly_session("main")
+ds = xarray.open_zarr(session.store, consolidated=False)
+ds
+# <xarray.Dataset> Size: 14TB
+# Dimensions:                                     (init_time: 3265,
+#                                                  lead_time: 61, latitude: 721,
+#                                                  longitude: 1440)
+# Coordinates:
+#   * init_time                                   (init_time) datetime64[ns] 26kB ...
+#     expected_forecast_length                    (init_time) timedelta64[us] 26kB dask.array<chunksize=(3265,), meta=np.ndarray>
+#     ingested_forecast_length                    (init_time) timedelta64[us] 26kB dask.array<chunksize=(3265,), meta=np.ndarray>
+#   * lead_time                                   (lead_time) timedelta64[us] 488B ...
+#     valid_time                                  (init_time, lead_time) datetime64[ns] 2MB dask.array<chunksize=(3265, 61), meta=np.ndarray>
+#   * latitude                                    (latitude) float64 6kB 90.0 ....
+#   * longitude                                   (longitude) float64 12kB -180...
+#     spatial_ref                                 int64 8B ...
+# Data variables: (12/17)
+#     dew_point_temperature_2m                    (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     downward_long_wave_radiation_flux_surface   (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     geopotential_height_500hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     geopotential_height_850hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     precipitation_surface                       (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     downward_short_wave_radiation_flux_surface  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     ...                                          ...
+#     wind_u_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     temperature_925hpa                          (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     total_cloud_cover_atmosphere                (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     wind_u_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     wind_v_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+#     wind_v_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(1, 61, 241, 240), meta=np.ndarray>
+# Attributes:
+#     dataset_id:           ecmwf-aifs-single-forecast
+#     dataset_version:      0.1.0
+#     name:                 ECMWF AIFS Single forecast
+#     description:          Weather forecasts from the ECMWF Artificial Intelli...
+#     attribution:          ECMWF AIFS Single forecast data processed by dynami...
+#     license:              CC-BY-4.0
+#     spatial_domain:       Global
+#     spatial_resolution:   0.25 degrees (~20km)
+#     time_domain:          Forecasts initialized 2024-04-01 00:00:00 UTC to Pr...
+#     time_resolution:      Forecasts initialized every 6 hours
+#     forecast_domain:      Forecast lead time 0-360 hours (0-15 days) ahead
+#     forecast_resolution:  6 hourly
+
+```
+
+We looked above at this xarray representation but up there we didn't use the same infrastructure or show the code. The one above was made with
+
+```python
+import os
+import xarray
+
+os.environ["AWS_NO_SIGN_REQUEST"] = "YES"
+os.environ["AWS_REGION"] = "us-west-2"
+
+ds = xarray.open_dataset("/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk", engine = "gdalxarray", chunks = {})
+# <xarray.Dataset> Size: 14TB
+# Dimensions:                                     (init_time: 3265,
+#                                                  latitude: 721, lead_time: 61,
+#                                                  longitude: 1440)
+# Coordinates:
+#   * init_time                                   (init_time) datetime64[ns] 26kB ...
+#     expected_forecast_length                    (init_time) float64 26kB dask.array<chunksize=(3265,), meta=np.ndarray>
+#     ingested_forecast_length                    (init_time) float64 26kB dask.array<chunksize=(3265,), meta=np.ndarray>
+#   * latitude                                    (latitude) float64 6kB 90.0 ....
+#   * lead_time                                   (lead_time) float64 488B 0.0 ...
+#     valid_time                                  (init_time, lead_time) float32 797kB dask.array<chunksize=(3265, 61), meta=np.ndarray>
+#   * longitude                                   (longitude) float64 12kB -180...
+#     spatial_ref                                 float32 4B ...
+# Data variables: (12/17)
+#     dew_point_temperature_2m                    (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     downward_long_wave_radiation_flux_surface   (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     downward_short_wave_radiation_flux_surface  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     geopotential_height_500hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     geopotential_height_850hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     geopotential_height_925hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     ...                                          ...
+#     temperature_925hpa                          (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     total_cloud_cover_atmosphere                (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     wind_u_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     wind_u_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     wind_v_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+#     wind_v_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array<chunksize=(3265, 61, 721, 1440), meta=np.ndarray>
+# Attributes:
+#     attribution:          ECMWF AIFS Single forecast data processed by dynami...
+#     dataset_id:           ecmwf-aifs-single-forecast
+#     dataset_version:      0.1.0
+#     description:          Weather forecasts from the ECMWF Artificial Intelli...
+#     forecast_domain:      Forecast lead time 0-360 hours (0-15 days) ahead
+#     forecast_resolution:  6 hourly
+#     license:              CC-BY-4.0
+#     name:                 ECMWF AIFS Single forecast
+#     spatial_domain:       Global
+#     spatial_resolution:   0.25 degrees (~20km)
+#     time_domain:          Forecasts initialized 2024-04-01 00:00:00 UTC to Pr...
+#     time_resolution:      Forecasts initialized every 6 hours
+
+```
+
+That seems very similar, and hopefully for the in-dev GDAL xarray backend [gdalxarray](https://github.com/hypertidy/gdalxarray) it's an equivalent connection (I'm not going to validate any further here in this post). 
+
+What this illustrates is while the configuration set up can be confusing, these are the very same generic store-auth settings cast different ways. Is it desirable to consolidate these? Is one necessarily better or more capable? Icechunk-Python auth and addressing through typed constructor arguments, GDAL through the VSI path plus config.
+
+### What about not python?
+
+I don't have a strong opinion on what's the right moves, I do have a strong
+opinion though that this not just a Python community. It was hard looking over
+the fence at xarray and Zarr and going 'uhoh, this looks like I can't ignore
+it'.  The landscape and GDAL's particular take on it is something I had the
+privilege to take a long deep dive on. I can't ever remember the typed
+constructor incantation above - but I also web search `EMPTY_DIR` to find
+`GDAL_DISABLE_READDIR_ON_OPEN` which I just can't recall though I reach for it
+often. This for me is about opening up to audiences that are not already in the
+tent, and maybe some who won't ever use Python.
+
+
+Should we have easier wrappers?  Write the helper that sniffs an `s3://` address
+and sets the right path-style / anonymous / region knobs? How do we make that
+cross-language?  I love everything out in the open, `protocol://path/to/data`, a
+few env vars a few function arguments, but env vars and function calls are hard
+won expertise.
+
+Is consolidating these worth doing? Is there any scope for that or prior art?
 
 ## Other R Zarr readers
 

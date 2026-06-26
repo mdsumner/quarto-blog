@@ -2188,7 +2188,7 @@ font-style: inherit;">)</span></span></code></pre></div></div>
 <p>With online storage it can be bewildering what exact configuration you need and what you have, but it does come down to a fairly comprehensible set of ideas. This post is not a guide to online storage access configuration, or a guide to <a href="https://gdal.org/en/stable/user/configoptions.html">GDAL configuration options</a> but there’s a finite set of concepts in this jungle so don’t be put off by the complexity.</p>
 <p><strong>Auth - keyed vs anonymous.</strong> If a dataset is not public, you will need something like <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>. If it is public, you will need something like <code>AWS_NO_SIGN_REQUEST=YES</code> (or <code>--no-sign-request</code>).</p>
 <p><strong>Addressing.</strong> Everything is a <em>key</em> inside a <em>bucket</em>. You reference an object as <code>s3://bucket/key</code> (Amazon), <code>gs://bucket/key</code> (Google Storage), <code>abfss://…</code> (Azure storage) - and that’s the whole model. (Azure bends it slightly: a storage <em>account</em> holds <em>containers</em> holding <em>blobs</em>, and the scheme carries the account, <code>abfss://container@account.dfs.core.windows.net/key</code>.)</p>
-<p><strong>Endpoint, region, hosting-style.</strong> That object is hosted on an <em>endpoint</em> - <code>s3://</code> is shorthand for <code>s3.&lt;region&gt;.amazonaws.com</code>, <code>gs://</code> for <code>storage.googleapis.com</code>. A <em>custom</em> endpoint means pointing at your own host - <code>AWS_S3_ENDPOINT=your.endpoint.net</code> - so that <code>s3</code> in <code>s3://bucket/key</code> resolves to your host and not Amazon’s. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, <code>AWS_VIRTUAL_HOSTING=NO</code>, since most of them don’t do virtual-host style. <code>AWS_REGION</code> is sometimes demanded even when it oughtn’t matter - set it to ““.</p>
+<p><strong>Endpoint, region, hosting-style.</strong> That object is hosted on an <em>endpoint</em> - <code>s3://</code> is shorthand for <code>s3.&lt;region&gt;.amazonaws.com</code>, <code>gs://</code> for <code>storage.googleapis.com</code>. A <em>custom</em> endpoint means pointing at your own host - <code>AWS_S3_ENDPOINT=your.endpoint.net</code> - so that <code>s3</code> in <code>s3://bucket/key</code> resolves to your host and not Amazon’s. Virtual hosting just means the bucket goes before the endpoint in the final url <code>https://bucket.s3.&lt;region&gt;.amazonaws.com/key</code> vs <code>https://my.custom.endpoint.net/bucket/key</code>. It’s confusing, until you know what it does and when you might need it. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, <code>AWS_VIRTUAL_HOSTING=NO</code>, since most of them don’t do virtual-host style. <code>AWS_REGION</code> is sometimes needed but probably shouldn’t matter - set it to ““.</p>
 <section id="gdal-and-the-virtual-filesystem" class="level3">
 <h3 class="anchored" data-anchor-id="gdal-and-the-virtual-filesystem">GDAL and the virtual filesystem</h3>
 <p>Everything above is generic - true of any R tool talking to object storage - and GDAL addresses remote objects through its own <em>virtual filesystem</em> (VSI) rather than the <code>s3://</code>-style schemes. Again, bucket, key but with a different prefix:</p>
@@ -2262,7 +2262,7 @@ font-style: inherit;">/vsizip//vsis3/bucket/archive.zip/inside.tif</span></span>
 </section>
 <section id="naming-a-thing-inside-a-thing" class="level3">
 <h3 class="anchored" data-anchor-id="naming-a-thing-inside-a-thing">Naming a thing inside a thing</h3>
-<p>That earlier chain glued its prefixes by plain concatenation — <code>/vsizip/</code> meets <code>/vsis3/</code>, and since both carry a leading slash you get the doubled <code>//</code>. GDAL finds the archive boundary inside that run by heuristic: it spots the <code>.zip</code>. The brace form, <code>/vsizip/{…}</code>, makes the boundary <em>explicit</em> rather than guessed — and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.</p>
+<p>That earlier chain glued its prefixes by plain concatenation - <code>/vsizip/</code> meets <code>/vsis3/</code>, and since both carry a leading slash you get the doubled <code>//</code>. GDAL finds the archive boundary inside that run by heuristic: it spots the <code>.zip</code>. The brace form, <code>/vsizip/{…}</code>, makes the boundary <em>explicit</em> rather than guessed - and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.</p>
 <p>GEBCO 2026 ships its global grid as a single zip behind a download URL ending <code>…gebco_2026_geotiff.zip?download=1</code>. To reach into it without pulling the whole archive, chain <code>/vsizip/</code> over <code>/vsicurl/</code>, braces around the inner path because of that <code>?download=1</code> which masks the fact that it’s a zip file:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><span class="ex" style="color: null;
 background-color: null;
@@ -2296,7 +2296,7 @@ font-style: inherit;">…}/GEBCO_Grid_documentation.pdf</span></span>
 <span id="cb14-7">  <span class="ex" style="color: null;
 background-color: null;
 font-style: inherit;">…}/GEBCO_Grid_terms_of_use.pdf</span></span></code></pre></div></div>
-<p>That listing is a <em>logical</em> filesystem — real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you’ve named a single item; GDAL opens it.</p>
+<p>That listing is a <em>logical</em> filesystem - real files physically inside the zip in an opaque form, enumerated out of a remote archive. Append one of them after the closing brace and you’ve named a single item; GDAL opens it.</p>
 <p>Compare that to the subdataset syntax, multiple subdatasets of classic 2D raster we saw in the Icechunk store above:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><span class="ex" style="color: null;
 background-color: null;
@@ -2450,6 +2450,344 @@ font-style: inherit;">wind_v_10m</span></span></code></pre></div></div>
 <p>and now we are back in <em>logical</em> ground, this is the interpretation that <code>gdal mdim info</code> gave us above, not raw listing of the structural contents.</p>
 <p>That shows some of the depth of GDAL abstraction. “Name a thing, read its bytes” it’s not just bytes on a disk. A thing can be an object in a bucket, a member of an archive, a variable in a chunked store, etc - and the path is the recipe for access.</p>
 <p>The distinction between <em>material</em> structure (thousands of small manifest files on S3) and <em>logical/virtual</em> structure (the clean array hierarchy you see via <code>/vsiicechunk/</code>) is a key icechunk concept. GDAL’s <code>/vsi*</code> filesystem stack handles this transparently - the same way <code>/vsicurl/</code>, <code>/vsis3/</code>, <code>/vsigs/</code> abstract over HTTP and object stores.</p>
+</section>
+</section>
+<section id="what-about-python" class="level2">
+<h2 class="anchored" data-anchor-id="what-about-python">What about python?</h2>
+<p>Above we saw how GDAL and some R packages interact with the Icechunk store, how do we do that in Python?</p>
+<p>This time we don’t have a single description of the store, we have to use infrastructure to encode the details.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> icechunk</span>
+<span id="cb19-2"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> xarray </span>
+<span id="cb19-3"></span>
+<span id="cb19-4">storage <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> icechunk.s3_storage(</span>
+<span id="cb19-5">    bucket<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"dynamical-ecmwf-aifs-single"</span>,</span>
+<span id="cb19-6">    prefix<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>,</span>
+<span id="cb19-7">    region<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"us-west-2"</span>,</span>
+<span id="cb19-8">    anonymous<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">True</span>,           <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># the AWS_NO_SIGN_REQUEST=YES equivalent</span></span>
+<span id="cb19-9">)</span>
+<span id="cb19-10">repo <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> icechunk.Repository.<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">open</span>(storage)</span>
+<span id="cb19-11">session <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> repo.readonly_session(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"main"</span>)</span>
+<span id="cb19-12">ds <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> xarray.open_zarr(session.store, consolidated<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">False</span>)</span>
+<span id="cb19-13">ds</span>
+<span id="cb19-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># &lt;xarray.Dataset&gt; Size: 14TB</span></span>
+<span id="cb19-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Dimensions:                                     (init_time: 3265,</span></span>
+<span id="cb19-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#                                                  lead_time: 61, latitude: 721,</span></span>
+<span id="cb19-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#                                                  longitude: 1440)</span></span>
+<span id="cb19-18"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Coordinates:</span></span>
+<span id="cb19-19"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * init_time                                   (init_time) datetime64[ns] 26kB ...</span></span>
+<span id="cb19-20"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     expected_forecast_length                    (init_time) timedelta64[us] 26kB dask.array&lt;chunksize=(3265,), meta=np.ndarray&gt;</span></span>
+<span id="cb19-21"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     ingested_forecast_length                    (init_time) timedelta64[us] 26kB dask.array&lt;chunksize=(3265,), meta=np.ndarray&gt;</span></span>
+<span id="cb19-22"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * lead_time                                   (lead_time) timedelta64[us] 488B ...</span></span>
+<span id="cb19-23"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     valid_time                                  (init_time, lead_time) datetime64[ns] 2MB dask.array&lt;chunksize=(3265, 61), meta=np.ndarray&gt;</span></span>
+<span id="cb19-24"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * latitude                                    (latitude) float64 6kB 90.0 ....</span></span>
+<span id="cb19-25"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * longitude                                   (longitude) float64 12kB -180...</span></span>
+<span id="cb19-26"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_ref                                 int64 8B ...</span></span>
+<span id="cb19-27"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Data variables: (12/17)</span></span>
+<span id="cb19-28"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dew_point_temperature_2m                    (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-29"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     downward_long_wave_radiation_flux_surface   (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-30"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     geopotential_height_500hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-31"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     geopotential_height_850hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-32"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     precipitation_surface                       (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-33"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     downward_short_wave_radiation_flux_surface  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-34"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     ...                                          ...</span></span>
+<span id="cb19-35"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_u_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-36"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     temperature_925hpa                          (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-37"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     total_cloud_cover_atmosphere                (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-38"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_u_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-39"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_v_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-40"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_v_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(1, 61, 241, 240), meta=np.ndarray&gt;</span></span>
+<span id="cb19-41"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Attributes:</span></span>
+<span id="cb19-42"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dataset_id:           ecmwf-aifs-single-forecast</span></span>
+<span id="cb19-43"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dataset_version:      0.1.0</span></span>
+<span id="cb19-44"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     name:                 ECMWF AIFS Single forecast</span></span>
+<span id="cb19-45"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     description:          Weather forecasts from the ECMWF Artificial Intelli...</span></span>
+<span id="cb19-46"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     attribution:          ECMWF AIFS Single forecast data processed by dynami...</span></span>
+<span id="cb19-47"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     license:              CC-BY-4.0</span></span>
+<span id="cb19-48"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_domain:       Global</span></span>
+<span id="cb19-49"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_resolution:   0.25 degrees (~20km)</span></span>
+<span id="cb19-50"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     time_domain:          Forecasts initialized 2024-04-01 00:00:00 UTC to Pr...</span></span>
+<span id="cb19-51"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     time_resolution:      Forecasts initialized every 6 hours</span></span>
+<span id="cb19-52"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     forecast_domain:      Forecast lead time 0-360 hours (0-15 days) ahead</span></span>
+<span id="cb19-53"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     forecast_resolution:  6 hourly</span></span></code></pre></div></div>
+<p>We looked above at this xarray representation but up there we didn’t use the same infrastructure or show the code. The one above was made with</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> os</span>
+<span id="cb20-2"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> xarray</span>
+<span id="cb20-3"></span>
+<span id="cb20-4">os.environ[<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"AWS_NO_SIGN_REQUEST"</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"YES"</span></span>
+<span id="cb20-5">os.environ[<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"AWS_REGION"</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"us-west-2"</span></span>
+<span id="cb20-6"></span>
+<span id="cb20-7">ds <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> xarray.open_dataset(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk"</span>, engine <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"gdalxarray"</span>, chunks <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> {})</span>
+<span id="cb20-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># &lt;xarray.Dataset&gt; Size: 14TB</span></span>
+<span id="cb20-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Dimensions:                                     (init_time: 3265,</span></span>
+<span id="cb20-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#                                                  latitude: 721, lead_time: 61,</span></span>
+<span id="cb20-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#                                                  longitude: 1440)</span></span>
+<span id="cb20-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Coordinates:</span></span>
+<span id="cb20-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * init_time                                   (init_time) datetime64[ns] 26kB ...</span></span>
+<span id="cb20-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     expected_forecast_length                    (init_time) float64 26kB dask.array&lt;chunksize=(3265,), meta=np.ndarray&gt;</span></span>
+<span id="cb20-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     ingested_forecast_length                    (init_time) float64 26kB dask.array&lt;chunksize=(3265,), meta=np.ndarray&gt;</span></span>
+<span id="cb20-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * latitude                                    (latitude) float64 6kB 90.0 ....</span></span>
+<span id="cb20-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * lead_time                                   (lead_time) float64 488B 0.0 ...</span></span>
+<span id="cb20-18"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     valid_time                                  (init_time, lead_time) float32 797kB dask.array&lt;chunksize=(3265, 61), meta=np.ndarray&gt;</span></span>
+<span id="cb20-19"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#   * longitude                                   (longitude) float64 12kB -180...</span></span>
+<span id="cb20-20"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_ref                                 float32 4B ...</span></span>
+<span id="cb20-21"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Data variables: (12/17)</span></span>
+<span id="cb20-22"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dew_point_temperature_2m                    (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-23"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     downward_long_wave_radiation_flux_surface   (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-24"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     downward_short_wave_radiation_flux_surface  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-25"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     geopotential_height_500hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-26"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     geopotential_height_850hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-27"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     geopotential_height_925hpa                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-28"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     ...                                          ...</span></span>
+<span id="cb20-29"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     temperature_925hpa                          (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-30"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     total_cloud_cover_atmosphere                (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-31"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_u_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-32"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_u_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-33"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_v_100m                                 (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-34"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     wind_v_10m                                  (init_time, lead_time, latitude, longitude) float32 827GB dask.array&lt;chunksize=(3265, 61, 721, 1440), meta=np.ndarray&gt;</span></span>
+<span id="cb20-35"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Attributes:</span></span>
+<span id="cb20-36"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     attribution:          ECMWF AIFS Single forecast data processed by dynami...</span></span>
+<span id="cb20-37"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dataset_id:           ecmwf-aifs-single-forecast</span></span>
+<span id="cb20-38"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     dataset_version:      0.1.0</span></span>
+<span id="cb20-39"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     description:          Weather forecasts from the ECMWF Artificial Intelli...</span></span>
+<span id="cb20-40"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     forecast_domain:      Forecast lead time 0-360 hours (0-15 days) ahead</span></span>
+<span id="cb20-41"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     forecast_resolution:  6 hourly</span></span>
+<span id="cb20-42"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     license:              CC-BY-4.0</span></span>
+<span id="cb20-43"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     name:                 ECMWF AIFS Single forecast</span></span>
+<span id="cb20-44"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_domain:       Global</span></span>
+<span id="cb20-45"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     spatial_resolution:   0.25 degrees (~20km)</span></span>
+<span id="cb20-46"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     time_domain:          Forecasts initialized 2024-04-01 00:00:00 UTC to Pr...</span></span>
+<span id="cb20-47"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#     time_resolution:      Forecasts initialized every 6 hours</span></span></code></pre></div></div>
+<p>That seems very similar, and hopefully for the in-dev GDAL xarray backend <a href="https://github.com/hypertidy/gdalxarray">gdalxarray</a> it’s an equivalent connection (I’m not going to validate any further here in this post).</p>
+<p>What this illustrates is while the configuration set up can be confusing, these are the very same generic store-auth settings cast different ways. Is it desirable to consolidate these? Is one necessarily better or more capable? Icechunk-Python auth and addressing through typed constructor arguments, GDAL through the VSI path plus config.</p>
+<section id="what-about-not-python" class="level3">
+<h3 class="anchored" data-anchor-id="what-about-not-python">What about not python?</h3>
+<p>I don’t have a strong opinion on what’s the right moves, I do have a strong opinion though that this not just a Python community. It was hard looking over the fence at xarray and Zarr and going ‘uhoh, this looks like I can’t ignore it’. The landscape and GDAL’s particular take on it is something I had the privilege to take a long deep dive on. I can’t ever remember the typed constructor incantation above - but I also web search <code>EMPTY_DIR</code> to find <code>GDAL_DISABLE_READDIR_ON_OPEN</code> which I just can’t recall though I reach for it often. This for me is about opening up to audiences that are not already in the tent, and maybe some who won’t ever use Python.</p>
+<p>Should we have easier wrappers? Write the helper that sniffs an <code>s3://</code> address and sets the right path-style / anonymous / region knobs? How do we make that cross-language? I love everything out in the open, <code>protocol://path/to/data</code>, a few env vars a few function arguments, but env vars and function calls are hard won expertise.</p>
+<p>Is consolidating these worth doing? Is there any scope for that or prior art?</p>
 </section>
 </section>
 <section id="other-r-zarr-readers" class="level2">
