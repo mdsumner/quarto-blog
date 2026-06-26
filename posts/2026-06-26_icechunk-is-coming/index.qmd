@@ -251,6 +251,8 @@ This post won't explore any more detail of the various ways R packages support m
 
 ## Multidimensional? 
 
+*Please hang in here for a few sections*, we are diverting down a GDAL and object storage rabbit hole, but it's not long and then we'll get back to Icechunk in the [naming a thing](#naming-a-thing-inside-a-thing) section. 
+
 We can treat this store as raster data in the normal 2D way, but note that there are caveats and real performance implications depending on the way data is laid out in a given store. 
 
 ```bash
@@ -320,7 +322,7 @@ With online storage it can be bewildering what exact configuration you need and 
 
 **Addressing.** Everything is a *key* inside a *bucket*. You reference an object as `s3://bucket/key` (Amazon), `gs://bucket/key` (Google Storage), `abfss://…` (Azure storage) - and that's the whole model. (Azure bends it slightly: a storage *account* holds *containers* holding *blobs*, and the scheme carries the account, `abfss://container@account.dfs.core.windows.net/key`.)
 
-**Endpoint, region, hosting-style.** That object is hosted on an *endpoint* - `s3://` is shorthand for `s3.<region>.amazonaws.com`, `gs://` for `storage.googleapis.com`. A *custom* endpoint means pointing at your own host - `AWS_S3_ENDPOINT=your.endpoint.net` - so that `s3` in `s3://bucket/key` resolves to your host and not Amazon's.   Virtual hosting just means the bucket goes before the endpoint in the final url `https://bucket.s3.<region>.amazonaws.com/key` vs `https://my.custom.endpoint.net/bucket/key`.  It's confusing, until you know what it does and when you might need it. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, `AWS_VIRTUAL_HOSTING=NO`, since most of them don't do virtual-host style.   `AWS_REGION` is sometimes needed but probably shouldn't matter - set it to "".
+**Endpoint, region, hosting-style.** That object is hosted on an *endpoint* - `s3://` is shorthand for `s3.<region>.amazonaws.com`, `gs://` for `storage.googleapis.com`. A *custom* endpoint means pointing at your own host - `AWS_S3_ENDPOINT=your.endpoint.net` - so that `s3` in `s3://bucket/key` resolves to your host and not Amazon's.   Virtual hosting just means the bucket goes before the endpoint in the final url `https://bucket.s3.<region>.amazonaws.com/key` vs `https://my.custom.endpoint.net/bucket/key`.  It's confusing, until you know what it does and when you might need it. For non-AWS S3 implementations (MinIO, Ceph) this usually goes together with path-style addressing, `AWS_VIRTUAL_HOSTING=NO`, since most of them don't do virtual-host style.   Again on a custom S3 `AWS_REGION` is sometimes needed but probably shouldn't matter - set it to "".
 
 ### GDAL and the virtual filesystem
 
@@ -353,7 +355,7 @@ The real payoff is that these *compose* - you chain prefixes right-to-left to st
 
 GDAL signs the S3 request, range-reads the ZIP's central directory, pulls just the bytes for `inside.tif`, and hands you a raster. That's the whole world the VSI layer opens up: object storage, archives, compression, and HTTP are all just prefixes over the same "name a thing, read its bytes" idea.
 
-### Naming a thing inside a thing
+### Naming a thing inside a thing {#sec-naming}
 
 That earlier chain glued its prefixes by plain concatenation - `/vsizip/` meets `/vsis3/`, and since both carry a leading slash you get the doubled `//`. GDAL finds the archive boundary inside that run by heuristic: it spots the `.zip`. The brace form, `/vsizip/{…}`, makes the boundary *explicit* rather than guessed - and once the inner path carries its own punctuation (a URL with a query string, say) explicit is the only thing that works.
 
