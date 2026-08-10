@@ -46,7 +46,54 @@ plot(s2::s2_cell_to_lnglat(s2::as_s2_cell(res$cell)))
 This post is a guide I wanted. It's aimed at people who use
 s2 directly. If you want the sf-flavoured
 story, the canonical reference is the
-[sf spherical geometry article](https://r-spatial.github.io/sf/articles/sf7.html).
+[sf spherical geometry article](https://r-spatial.github.io/sf/articles/sf7.html), and other r-spatial
+posts [In r-spatial, the Earth is no longer flat](https://r-spatial.org/r/2020/06/17/s2.html), and 
+[Introducing: the POLYGON FULL](https://r-spatial.org/r/2024/10/11/polygonfull.html).
+
+## Prior art: Dewey's posts
+
+Most of what follows was worked out first, and better, by Dewey Dunnington
+across a series of posts that double as the s2 package's missing narrative
+documentation. If this guide is the map, these are the survey expeditions:
+
+* [wk version 0.6.0](https://dewey.dunnington.ca/post/2021/wk-version-0.6.0/)
+  (Dec 2021) is where the geodesic attribute enters WKT/WKB -- added
+  specifically so that wk could serve as an interchange format for s2, where
+  vertices are joined by great circles rather than planar segments. If you
+  have ever wondered why `plot(wk::as_wkb(some_s2_thing))` refuses to
+  cooperate, the reasoning starts here.
+
+* [Profiling point-in-polygon joins in R](https://dewey.dunnington.ca/post/2022/profiling-point-in-polygon-joins-in-r/)
+  (Mar 2022) benchmarks geos against s2 for a 9-million-point join, is
+  honest about where s2's point handling was slow at the time, and
+  foreshadows exposing the cell machinery: approximate a polygon with a
+  covering of cells and test membership as cell arithmetic. That idea is
+  the core of the polygon recipe below.
+
+* [s2 version 1.1.0](https://dewey.dunnington.ca/post/2022/s2-version-1.1.0/)
+  (Jul 2022) is the densest single source: `tessellate_tol_m` for importing
+  planar-edged data honestly (adding vertices so GIS-rule edges survive the
+  trip to the sphere), the cell polygon export problem (geodesic by
+  definition, planar by expectation), the `s2_union_agg()` speedup, and the
+  refactor of the internals into a standalone s2geography library -- the
+  lineage that later surfaces in DuckDB and Sedona.
+
+* [Partitioning strategies for bigger-than-memory spatial data](https://dewey.dunnington.ca/post/2024/partitioning-strategies-for-bigger-than-memory-spatial-data/)
+  and [Wrangling and joining 130M points with DuckDB + the open source spatial stack](https://dewey.dunnington.ca/post/2024/wrangling-and-joining-130m-points-with-duckdb--the-open-source-spatial-stack/)
+  (both Dec 2024) take the cell idea to its logical end: s2 cells as
+  partition keys and join keys for larger-than-memory data, via the DuckDB
+  Geography extension. This is the "cells are just a column" worldview that
+  motivates keeping cell IDs in parquet in the first place.
+
+* The [GeoPython 2025 slides](https://dewey.dunnington.ca/slides/geopython2025)
+  on DuckDB Geography give the compact cross-language overview of the
+  Geography and S2 Cell/Center/Union types.
+
+The through-line in all of these: s2's cell types are not an implementation
+detail, they are the product -- a spatial index you can store, ship, and
+group by. This post is about using them directly from R without the
+database in between.
+
 
 ## The three type families
 
@@ -317,13 +364,13 @@ Three candidate engines for the great-circle interpolation itself:
    (think: densifying a lattice of cell polygons without duplicating every
    shared boundary).
 
-The wkpool angle is real, not decorative: a cell-union boundary is a mesh of
+A cell-union boundary is a mesh of
 shared arcs, and densifying per-polygon quadruples the work and the vertex
 count. Pool first, densify unique edges once, reconstruct. That's the
 silicate instinct applied to the sphere, and it would make "draw 10k cell
 polygons in any projection, correctly" cheap.
 
-Where this lands, I think: `flatten_geodesic()` (or `wk_geodesic_densify()`)
+I think: `flatten_geodesic()` (or `wk_geodesic_densify()`)
 belongs API-wise with wk-adjacent tooling, implementation-wise in bigcurve's
 C++ core, with wkpool underneath for shared-edge economy. And its existence
 retroactively makes wk's plot refusal feel fair -- the refusal is an
@@ -331,7 +378,7 @@ unfilled socket, and this is the plug.
 
 ## Appendix: the four verbs
 
-If after all this you still want wrappers, the honest core is tiny:
+A core of wrappers is tiny:
 
 ```r
 ## cell column (character/integer64/cell) -> lonlat centres
@@ -353,6 +400,4 @@ sphere_xyz <- function(x) {
 }
 ```
 
-I'm not sure these need a package so much as a place to be seen. This post
-is that place for now; if they prove sticky they can graduate to hypertidy
-with the geodesic densifier as the piece that actually earns compiled code.
+I'm not sure these need a package so much as a place to be seen. 

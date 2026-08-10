@@ -6,8 +6,8 @@
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="../../site_libs/quarto-html/light-border.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
-  <meta name="generator" content="quarto-1.9.36">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
+  <meta name="generator" content="quarto-1.10.18">
 
   <meta name="author" content="Michael Sumner">
   <meta name="dcterms.date" content="2024-12-05">
@@ -21,10 +21,13 @@
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
     */
-    code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     ul.task-list{list-style: none;}
     ul.task-list li input[type="checkbox"] {
@@ -206,7 +209,7 @@
 <div class="quarto-title-authors">
 <div class="quarto-title-author">
 <div class="quarto-title-author-name">
-Michael Sumner 
+Michael Sumner
 </div>
 </div>
 </div>
@@ -326,9 +329,9 @@ Michael Sumner
 <section id="python-support" class="slide level2 smaller">
 <h2>Python support</h2>
 <p>Address entire <em>data cubes</em>, with one line of code e.g.&nbsp;daily data 1993 to November 2024</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a></a><span class="im">import</span> xarray<span class="op">;</span> <span class="op">&lt;</span>some settings<span class="op">&gt;</span></span>
-<span id="cb1-2"><a></a></span>
-<span id="cb1-3"><a></a>ds <span class="op">=</span> xarray.open_dataset(<span class="st">'s3://vzarr/SEALEVEL_GLO_PHY_L4.parquet'</span>, <span class="op">&lt;</span>more settings<span class="op">&gt;</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a aria-label="1"></a><span class="im">import</span> xarray<span class="op">;</span> <span class="op">&lt;</span>some settings<span class="op">&gt;</span></span>
+<span id="cb1-2"><a aria-label="2"></a></span>
+<span id="cb1-3"><a aria-label="3"></a>ds <span class="op">=</span> xarray.open_dataset(<span class="st">'s3://vzarr/SEALEVEL_GLO_PHY_L4.parquet'</span>, <span class="op">&lt;</span>more settings<span class="op">&gt;</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>&lt;xarray.Dataset&gt; Size: 574GB
 Dimensions:    (time: 11538, latitude: 720, longitude: 1440)
 Coordinates:
