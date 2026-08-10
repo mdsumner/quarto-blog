@@ -1,0 +1,358 @@
+---
+title: "s2 guide"
+description: |
+  A field guide to the s2 R package:
+  what the three type families are, how to move between them, how to get
+  raster and vector data into cell groupings, how to plot on a real sphere
+  with rgl, and where geodesic edge densification fits.
+author: "Michael Sumner"
+date: "2026-08-10"
+categories: [s2, wk, spatial, rgl]
+format:
+  html:
+    toc: true
+draft: true
+---
+
+The s2 package is excellent and I find it genuinely hard to use. Not because
+the functions are bad, but because the package contains three parallel type
+families that perhaps aren't obvious, and the `s2_` prefix only weakly
+signals which family a function belongs to. This is a real transcript of me
+trying to get from a column of cell IDs in a parquet file to a plot of
+longitude/latitude centre points:
+
+```r
+res <- arrow::read_parquet(f[1])
+
+s2::s2_lnglat(res$cell[1])
+s2::s2_x(res$cell[1])
+s2::s2_point(res$cell[1])
+s2::s2_cell(res$cell[1])
+s2::as_s2_geography(s2::s2_cell(res$cell[1]))
+s2::s2_x(s2::s2_cell(res$cell[1]))
+s2::s2_cell_center(s2::s2_cell(res$cell[1]))
+cc <- s2::s2_cell_center(s2::s2_cell(res$cell))
+s2::s2_cell_to_lnglat(cc)
+plot(wk::as_wkb(cc))                            ## FAIL (geodesic!)
+plot(wk::wk_set_geodesic(wk::as_wkb(cc), FALSE))
+```
+
+Eleven calls, one error, and the answer was one function cell:
+
+```r
+plot(s2::s2_cell_to_lnglat(s2::as_s2_cell(res$cell)))
+```
+
+This post is a guide I wanted. It's aimed at people who use
+s2 directly. If you want the sf-flavoured
+story, the canonical reference is the
+[sf spherical geometry article](https://r-spatial.github.io/sf/articles/sf7.html).
+
+## The three type families
+
+Everything in s2 is one of these:
+
+1. **`s2_cell`** -- a vctrs vector of doubles whose bits are reinterpreted as
+   uint64 S2 cell IDs. This is the discrete global grid side of s2: a
+   hierarchical quadtree on the six faces of a cube projected to the sphere,
+   levels 0 (face) to 30 (leaf, roughly centimetre scale). Every function
+   named `s2_cell_*` operates here. Cells are cheap: they sort, hash, group,
+   and round-trip through `character` and `bit64::integer64` losslessly.
+   This is the type you get from BigQuery, from parquet exports, from anything
+   that indexes points spatially.
+
+2. **`s2_geography`** -- external pointers to C++ S2 geography objects
+   (points, polylines, polygons on the sphere). Every function with a bare
+   `s2_` prefix (`s2_intersects()`, `s2_buffer_cells()`, `s2_x()`, ...)
+   operates here, or coerces its input here via `as_s2_geography()`. The
+   coercion is why half-wrong calls half-work: `s2_x("POINT (147 -42)")`
+   succeeds because character is assumed to be WKT.
+
+3. **wk vctrs** -- plain coordinate vectors from the wk package, carrying a
+   crs attribute. `s2_lnglat(lng, lat)` is just `wk::xy()` with a longlat
+   crs; `s2_point(x, y, z)` is `wk::xyz()` with a special "unit sphere"
+   crs. These are the plottable, data-frame-able, "normal" things. They are
+   the exits from s2 back into everything else.
+
+The mnemonic: **`s2_cell_*` functions take cells, `as_*` functions change
+family, everything else takes geography.**
+
+Worth internalizing: `s2_lnglat()` and `s2_point()` are
+*constructors from coordinates*, not converters. `s2_lnglat(res$cell[1])`
+doesn't error helpfully, it just constructs nonsense (a point at longitude
+whatever-your-cell-double-is). The converters are all spelled `as_`:
+`as_s2_cell()`, `as_s2_lnglat()`, `as_s2_point()`, `as_s2_geography()`,
+`as_s2_cell_union()`.
+
+## The conversion table
+
+From \\ To | s2_cell | s2_geography | lnglat (wk_xy) | point (wk_xyz)
+-----------|---------|--------------|----------------|---------------
+character token | `as_s2_cell()` | -- | -- | --
+integer64 | `as_s2_cell()` | -- | -- | --
+s2_cell | `s2_cell_parent()`, `s2_cell_child()` | `s2_cell_center()`, `s2_cell_polygon()`, `s2_cell_boundary()` | `s2_cell_to_lnglat()` | via lnglat
+s2_geography (points) | `as_s2_cell()` | -- | `s2_x()` + `s2_y()`, or wk (see below) | via lnglat
+lnglat / lon,lat vectors | `as_s2_cell()` | `as_s2_geography()` | `s2_lnglat(lng, lat)` | `as_s2_point()`
+point (unit sphere xyz) | via lnglat | -- | `as_s2_lnglat()` | --
+polygon-ish anything | `s2_covering_cell_ids()` | `as_s2_geography()` | -- | --
+
+Notes on the sharp edges:
+
+* `as_s2_cell()` on coordinates or point geographies gives the **level-30
+  leaf cell**; use `s2_cell_parent(cell, level)` to coarsen. Parent of a
+  parent is fine; you can't go below your current level except via
+  `s2_cell_child()`.
+* `as_s2_cell()` on `integer64` reinterprets bits directly -- so a cell-ID
+  column read from parquet as integer64 converts with no string round-trip.
+  If arrow hands you character tokens, `as_s2_cell()` handles that too.
+* `s2_cell_to_lnglat()` **is** the centre point in one hop. You do not need
+  `s2_cell_center()` (which makes geography pointers) unless you want to feed
+  the result into geography predicates.
+
+## The geodesic flag, or: why did my plot fail
+
+`wk::as_wkb()` on an s2 geography tags the result `geodesic = TRUE`, because
+that's the truth: S2 edges are great-circle arcs, not straight lines in
+longitude/latitude space. wk then refuses to plot it, because plotting
+geodesic edges as straight segments would be a lie and wk won't densify them
+for you.
+
+For **points** the edge interpretation is vacuous, so the refusal is
+technically principled and practically infuriating. The escape hatch:
+
+```r
+plot(wk::wk_set_geodesic(wk::as_wkb(geog), FALSE))
+```
+
+For points this is always fine. For lines and polygons it is fine when your
+features are small (a level-10+ cell polygon spans a few km; nothing visible
+bends at that scale) and a lie when they are large (a level-0 face "polygon"
+drawn with straight lonlat edges is wildly wrong). The honest fix for large
+features is densification, which is section 5.
+
+## Recipe 1: raster grids, points, and polygons to s2 groupings
+
+The pattern for all of these is: get to lonlat coordinates or geography,
+snap to leaf cells, coarsen to a working level, then treat the cell column
+as an ordinary grouping variable.
+
+### Points
+
+```r
+library(s2)
+
+## from bare vectors -- one line to cells at your working level
+cells <- s2_cell_parent(as_s2_cell(s2_lnglat(lon, lat)), level = 8)
+
+## then it's just dplyr
+d |>
+  mutate(cell = s2_cell_parent(as_s2_cell(s2_lnglat(lon, lat)), 8)) |>
+  summarize(sst = mean(sst), n = n(), .by = cell) |>
+  mutate(centre = s2_cell_to_lnglat(cell))
+```
+
+Level choice: each level quarters the cell area. Rough edge lengths --
+level 4 ~ 400 km, level 8 ~ 25 km, level 12 ~ 1.5 km, level 16 ~ 100 m.
+`s2_cell_area(cell)` gives you exact areas in m^2 if you'd rather check
+than memorise.
+
+### Regular raster grids
+
+A raster is just points-with-benefits here: take the cell centres. With
+vaster (or any xy-from-cell logic):
+
+```r
+xy <- vaster::xy_from_cell(dimension, extent, cells = seq_len(prod(dimension)))
+s2cell <- s2_cell_parent(as_s2_cell(s2_lnglat(xy[, 1], xy[, 2])), level = 7)
+
+## aggregate a value vector (e.g. one time slice of SST) onto the s2 grid
+agg <- tapply(values, s2cell, mean, na.rm = TRUE)
+centres <- s2_cell_to_lnglat(as_s2_cell(names(agg)))
+```
+
+Two things worth saying out loud:
+
+* If the grid is in a **projected** crs, unproject the centres first
+  (`reproj::reproj_xy(xy, "EPSG:4326", source = crs)`); s2 lives on the
+  sphere and only speaks degrees at the door.
+* This is *point sampling* of the raster into cells, which is the right
+  cheap default. If you need area-weighted binning (cells much coarser than
+  pixels is fine; cells finer than pixels is where you'd care), that's an
+  exact-extract style problem and out of scope for a one-liner -- though
+  note that at coarse-cells-over-fine-pixels the sampling error washes out
+  with pixel count.
+
+The pleasant surprise is that this makes s2 a perfectly good equal-ish-area
+DGGS for the "bin scattered obs / reduce a global grid" workflows people
+reach for H3 for, with the advantage that the cell arithmetic is pure R
+vctrs -- no geometry objects until you ask for them.
+
+### Polygons
+
+Polygons map to *sets* of cells, so the target type is `s2_cell_union`:
+
+```r
+g <- as_s2_geography(wkt_or_wkb_or_sf_geometry)
+
+## interior/exterior covering at bounded resolution
+cov <- s2_covering_cell_ids(g, min_level = 4, max_level = 10, max_cells = 64)
+cov_int <- s2_covering_cell_ids(g, max_cells = 64, interior = TRUE)
+```
+
+`max_cells` is the budget: the covering adapts level within your bounds to
+approximate the shape with at most that many cells. `interior = TRUE` gives
+cells fully inside (a conservative mask), default gives cells that
+collectively contain the polygon (a permissive mask). There's a `buffer`
+argument (metres) for dilating before covering.
+
+Point-in-polygon at scale then becomes cell arithmetic instead of geometry:
+
+```r
+## which obs cells fall in the polygon covering? no geometry predicates,
+## just uint64 range containment
+inside <- s2_cell_union_contains(cov, as_s2_cell_union(obs_cells))
+```
+
+For an exact answer, use the permissive covering as a prefilter and run
+`s2_intersects()` on the survivors -- the classic index-then-refine join,
+except the index is a column you can keep in parquet.
+
+This is the shape of the Pacific-domain-mask problem, incidentally: express
+the domain polygon once as a covering, save the cell union as tokens, and
+membership tests against any point set are joins.
+
+## Recipe 2: s2 to rgl (plotting on the actual sphere)
+
+The bridge is `as_s2_point()`: it converts longlat wk_xy to **unit-sphere
+xyz** -- which is exactly what rgl wants, no trig required.
+
+```r
+library(rgl)
+
+## cell centres as points on the sphere
+xyz <- as.matrix(as.data.frame(as_s2_point(s2_cell_to_lnglat(cells))))
+points3d(xyz, col = palr::sst_pal(64)[scales::rescale(vals, c(1, 64)) |> round()])
+spheres3d(0, 0, 0, radius = 0.999, col = "grey20")  ## backdrop globe
+```
+
+Cells as quads is barely more work, because `s2_cell_vertex(x, k)` gives
+vertex k (0..3) as a point geography, and quads want exactly that:
+
+```r
+cell_quads3d <- function(cells, ...) {
+  v <- lapply(0:3, function(k) {
+    as.matrix(as.data.frame(as_s2_point(as_s2_lnglat(s2_cell_vertex(cells, k)))))
+  })
+  ## interleave to vertex-per-row quad order: v0 v1 v2 v3 per cell
+  m <- matrix(t(do.call(cbind, v)), ncol = 3L, byrow = TRUE)
+  quads3d(m, ...)
+}
+cell_quads3d(cells, col = "firebrick", alpha = 0.8)
+```
+
+Caveats, both about coarse cells:
+
+* A quad's edges are drawn as chords through the sphere, so coarse cells
+  (level < ~4) visibly cut the ball and their "flat" faces sit below the
+  unit sphere. The fix is subdivision: replace each coarse cell with its
+  children at a uniform deeper level (`s2_cell_child()` recursively, or
+  just build your grouping at a deeper level and aggregate the *values*
+  coarsely instead).
+* For genuinely smooth cell patches you want the quadmesh treatment --
+  densify each cell face in (face, i, j) space and push vertices to the
+  sphere -- which is an anglr/quadmesh shaped job and a natural follow-up
+  post.
+
+The general s2-geography-to-rgl path for arbitrary lines/polygons is:
+densify edges first (next section), then `wk::wk_vertices()`,
+`as_s2_point()`, and index into `segments3d()`/`polygon3d()`. Densify-first
+matters for the same chord-vs-arc reason.
+
+## Recipe 3: geodesic densification, bigcurve, and wkpool
+
+Here's the conceptual unification. wk's geodesic flag marks "these edges are
+great circles, do not interpolate them linearly in lonlat". bigcurve's whole
+job is adaptive line densification under a coordinate transformation --
+insert vertices until the straight segments approximate the true curve to
+tolerance. A geodesic edge is precisely this problem where the
+transformation is *sphere to plate carree*: the true curve is the great
+circle, the drawing space is lonlat.
+
+So the missing verb has an obvious signature:
+
+```r
+## proposed: consume geodesic-flagged wkb, emit densified planar wkb
+flatten_geodesic <- function(x, tolerance_m = 10000) {
+  stopifnot(isTRUE(wk::wk_is_geodesic(x)))
+  ## densify each edge along the great circle to tolerance, then
+  wk::wk_set_geodesic(densified, FALSE)
+}
+```
+
+with the inverse-ish operation being what bigcurve already does for
+projections (densify in the *projected* space). Composed, you get the honest
+pipeline for "draw this s2 polygon in LAEA":
+
+```
+s2_geography --[flatten_geodesic, tol]--> planar lonlat wkb
+             --[bigcurve densify under proj, tol]--> projected wkb
+```
+
+Three candidate engines for the great-circle interpolation itself:
+
+1. **s2 itself**: `s2_interpolate_normalized(line, t)` walks a polyline by
+   fraction -- correct but per-feature-scalar-ish and awkward for
+   edge-wise adaptive refinement.
+2. **geographiclib**: direct/inverse problems on the ellipsoid -- and this
+   is the point where you decide whether "geodesic" means sphere (s2's
+   world) or ellipsoid (GeographicLib's). For rendering, sphere is fine and
+   consistent with the flag's provenance; for measurement, s2 already
+   defers radius choices to you.
+3. **a small C++ slerp in bigcurve's core**: unit-vector slerp between edge
+   endpoints is ~5 lines, exactly matches S2's edge definition, and fits
+   bigcurve's adaptive bisection (recurse while the chord midpoint deviates
+   from the slerp midpoint by > tol). This is the one I'd do: the s2 edge
+   model *is* slerp, so bigcurve gains geodesic support without a
+   dependency, and wkpool provides the vertex pooling for shared edges
+   (think: densifying a lattice of cell polygons without duplicating every
+   shared boundary).
+
+The wkpool angle is real, not decorative: a cell-union boundary is a mesh of
+shared arcs, and densifying per-polygon quadruples the work and the vertex
+count. Pool first, densify unique edges once, reconstruct. That's the
+silicate instinct applied to the sphere, and it would make "draw 10k cell
+polygons in any projection, correctly" cheap.
+
+Where this lands, I think: `flatten_geodesic()` (or `wk_geodesic_densify()`)
+belongs API-wise with wk-adjacent tooling, implementation-wise in bigcurve's
+C++ core, with wkpool underneath for shared-edge economy. And its existence
+retroactively makes wk's plot refusal feel fair -- the refusal is an
+unfilled socket, and this is the plug.
+
+## Appendix: the four verbs
+
+If after all this you still want wrappers, the honest core is tiny:
+
+```r
+## cell column (character/integer64/cell) -> lonlat centres
+cell_lonlat <- function(x) s2::s2_cell_to_lnglat(s2::as_s2_cell(x))
+
+## lon, lat -> cells at level
+lonlat_cell <- function(x, y, level = 30L) {
+  s2::s2_cell_parent(s2::as_s2_cell(s2::s2_lnglat(x, y)), level)
+}
+
+## cell column -> plottable planar polygons (small-cell assumption)
+cell_poly <- function(x) {
+  wk::wk_set_geodesic(wk::as_wkb(s2::s2_cell_polygon(s2::as_s2_cell(x))), FALSE)
+}
+
+## anything s2 -> unit sphere xyz matrix for rgl
+sphere_xyz <- function(x) {
+  as.matrix(as.data.frame(s2::as_s2_point(s2::as_s2_lnglat(wk::as_xy(x)))))
+}
+```
+
+I'm not sure these need a package so much as a place to be seen. This post
+is that place for now; if they prove sticky they can graduate to hypertidy
+with the geodesic densifier as the piece that actually earns compiled code.
