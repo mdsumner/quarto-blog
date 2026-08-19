@@ -160,7 +160,7 @@ plot(tiles[idx, ], col = NA, border = NA,
      col.main = "white", col.axis = "grey60")
 ximage::ximage(ma, tile_ex, add = TRUE,
                col = c("#1a1a2e", "#e8d5b7"))
-#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))
+
 plot(rock[rock_idx], add = TRUE, border = "#e05780", lwd = 0.6)
 ```
 
@@ -345,12 +345,15 @@ match. Cost is O(points + hits), independent of grid dimension.
 #| label: extract-points
 #| eval: true
 # Some coordinates in the burn's CRS (Antarctic Polar Stereographic)
-pts <- matrix(c(-1680000, -1100000,
-                 2200000,   400000,
-                 -300000,  -700000), ncol = 2, byrow = TRUE)
 pts <- structure(c(2412867, 2426358, 2424194, 2437557, 2437175, 2441121, 
 2443539, 2443284, -911354, -909445, -915172, -913263, -913136, 
 -912245, -914281, -920645), dim = c(8L, 2L))
+
+plot(pts, asp = 1)
+ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = c(512, 512)),add = TRUE)
+points(pts, col = "green", pch = "+", cex = 2)
+plot(rock[rock_idx], add = TRUE, border = "#e05780", lwd = 1.6)
+
 e_approx <- extract_burn(ba, pts, fun = "id")
 
 e_cover <- extract_burn(be, pts, fun = "sum")
@@ -388,8 +391,7 @@ become long runs of identical bytes, and long runs are the best
 possible input to any general-purpose codec.
 
 Our controlledburn COG encodes different (but related) data at
-32 m resolution — a grid 10× denser in each dimension — and
-lands at 26 MB on disk. The sparse burn object in memory is
+32 m resolution — a grid 3x denser in each dimension for 26 MB on disk. The sparse burn object in memory is
 27 MB. These numbers are not directly comparable (different
 polygons, different resolution, different pixel semantics), but
 the *relationship* between them is the point: the information

@@ -494,7 +494,7 @@ Other layers: REMA_Mosaic_Index_v2_10m, REMA_Mosaic_Index_v2_32m</code></pre>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.308   0.043   0.351 </code></pre>
+  0.291   0.056   0.347 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ba</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -517,7 +517,7 @@ Object size: 27 MB</code></pre>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.751   0.253   5.004 </code></pre>
+  4.608   0.283   4.891 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>be</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -555,7 +555,7 @@ Object size: 27 MB</code></pre>
 <span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">col.main =</span> <span class="st">"white"</span>, <span class="at">col.axis =</span> <span class="st">"grey60"</span>)</span>
 <span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>ximage<span class="sc">::</span><span class="fu">ximage</span>(ma, tile_ex, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>               <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#1a1a2e"</span>, <span class="st">"#e8d5b7"</span>))</span>
-<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="co">#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rock[rock_idx], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"#e05780"</span>, <span class="at">lwd =</span> <span class="fl">0.6</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -691,16 +691,25 @@ Object size: 27 MB</code></pre>
 <p>Not every downstream operation needs a dense raster. <code>extract_burn()</code> queries the sparse tables directly at arbitrary point locations, with no materialisation step at all. It matches interior runs by row equality and column interval containment, and edges/lines/points by exact (row, col) match. Cost is O(points + hits), independent of grid dimension.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Some coordinates in the burn's CRS (Antarctic Polar Stereographic)</span></span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>pts <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="sc">-</span><span class="dv">1680000</span>, <span class="sc">-</span><span class="dv">1100000</span>,</span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>                 <span class="dv">2200000</span>,   <span class="dv">400000</span>,</span>
-<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>                 <span class="sc">-</span><span class="dv">300000</span>,  <span class="sc">-</span><span class="dv">700000</span>), <span class="at">ncol =</span> <span class="dv">2</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>pts <span class="ot">&lt;-</span> <span class="fu">structure</span>(<span class="fu">c</span>(<span class="dv">2412867</span>, <span class="dv">2426358</span>, <span class="dv">2424194</span>, <span class="dv">2437557</span>, <span class="dv">2437175</span>, <span class="dv">2441121</span>, </span>
-<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a><span class="dv">2443539</span>, <span class="dv">2443284</span>, <span class="sc">-</span><span class="dv">911354</span>, <span class="sc">-</span><span class="dv">909445</span>, <span class="sc">-</span><span class="dv">915172</span>, <span class="sc">-</span><span class="dv">913263</span>, <span class="sc">-</span><span class="dv">913136</span>, </span>
-<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a><span class="sc">-</span><span class="dv">912245</span>, <span class="sc">-</span><span class="dv">914281</span>, <span class="sc">-</span><span class="dv">920645</span>), <span class="at">dim =</span> <span class="fu">c</span>(<span class="dv">8</span>L, <span class="dv">2</span>L))</span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>e_approx <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(ba, pts, <span class="at">fun =</span> <span class="st">"id"</span>)</span>
-<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>e_cover <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(be, pts, <span class="at">fun =</span> <span class="st">"sum"</span>)</span>
-<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="at">approx =</span> e_approx, <span class="at">cover =</span> e_cover)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>pts <span class="ot">&lt;-</span> <span class="fu">structure</span>(<span class="fu">c</span>(<span class="dv">2412867</span>, <span class="dv">2426358</span>, <span class="dv">2424194</span>, <span class="dv">2437557</span>, <span class="dv">2437175</span>, <span class="dv">2441121</span>, </span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="dv">2443539</span>, <span class="dv">2443284</span>, <span class="sc">-</span><span class="dv">911354</span>, <span class="sc">-</span><span class="dv">909445</span>, <span class="sc">-</span><span class="dv">915172</span>, <span class="sc">-</span><span class="dv">913263</span>, <span class="sc">-</span><span class="dv">913136</span>, </span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="sc">-</span><span class="dv">912245</span>, <span class="sc">-</span><span class="dv">914281</span>, <span class="sc">-</span><span class="dv">920645</span>), <span class="at">dim =</span> <span class="fu">c</span>(<span class="dv">8</span>L, <span class="dv">2</span>L))</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(pts, <span class="at">asp =</span> <span class="dv">1</span>)</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>ximage<span class="sc">::</span><span class="fu">ximage</span>(vapour<span class="sc">::</span><span class="fu">gdal_raster_nara</span>(sds<span class="sc">::</span><span class="fu">wms_arcgis_mapserver_ESRI.WorldImagery_tms</span>(), <span class="at">target_ext =</span> tile_ex, <span class="at">target_crs =</span> raster_info<span class="sc">$</span>projection, <span class="at">target_dim =</span> <span class="fu">c</span>(<span class="dv">512</span>, <span class="dv">512</span>)),<span class="at">add =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(pts, <span class="at">col =</span> <span class="st">"green"</span>, <span class="at">pch =</span> <span class="st">"+"</span>, <span class="at">cex =</span> <span class="dv">2</span>)</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rock[rock_idx], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"#e05780"</span>, <span class="at">lwd =</span> <span class="fl">1.6</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/extract-points-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>e_approx <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(ba, pts, <span class="at">fun =</span> <span class="st">"id"</span>)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>e_cover <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(be, pts, <span class="at">fun =</span> <span class="st">"sum"</span>)</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="at">approx =</span> e_approx, <span class="at">cover =</span> e_cover)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>     approx     cover
 [1,]  19038 1.0000000
@@ -720,7 +729,7 @@ Object size: 27 MB</code></pre>
 <h2 class="anchored" data-anchor-id="packing-compression-and-sparsity">Packing, compression, and sparsity</h2>
 <p>A useful comparison: the Australian Antarctic Data Centre publishes <a href="https://doi.org/10.26179/7mnh-j215">Ice-free Antarctica</a> (Toth &amp; Terauds 2023) — a union of rock outcrop layers from imagery spanning 1960–2020, encoded as a single-band GeoTIFF at 100 m resolution (52765 × 48132 pixels). Values are 0 (ice/ocean), 1, 2, or 3 (rock, by source layer), stored at 2 bits per sample (NBITS=2) in 128 × 128 tiles. The file is 613 MB.</p>
 <p>That 2-bit packing is already a 4× saving over a byte raster — but it is a fixed per-pixel economy. Every tile is materialized: ocean, ice sheet, and rock alike each cost their full 4096 bytes. The encoding is indifferent to the fact that the vast majority of pixels say the same thing: zero. Recompressing the same tiles with DEFLATE collapses the file to about 5.6 MB — a ~100× reduction with zero information loss, because constant regions become long runs of identical bytes, and long runs are the best possible input to any general-purpose codec.</p>
-<p>Our controlledburn COG encodes different (but related) data at 32 m resolution — a grid 10× denser in each dimension — and lands at 26 MB on disk. The sparse burn object in memory is 27 MB. These numbers are not directly comparable (different polygons, different resolution, different pixel semantics), but the <em>relationship</em> between them is the point: the information content of “where is the rock?” is small relative to the grid that contains it, regardless of how you choose to encode it.</p>
+<p>Our controlledburn COG encodes different (but related) data at 32 m resolution — a grid 3x denser in each dimension for 26 MB on disk. The sparse burn object in memory is 27 MB. These numbers are not directly comparable (different polygons, different resolution, different pixel semantics), but the <em>relationship</em> between them is the point: the information content of “where is the rock?” is small relative to the grid that contains it, regardless of how you choose to encode it.</p>
 <p>The three approaches — bit-packing, codec compression, and run-length sparse representation — are related lenses on the same underlying reality. Bit-packing reduces the cost per pixel but remains grid-dense. Compression recovers structure after the fact, collapsing constant regions that the format didn’t know to avoid. Sparse rasterization exploits the same structure <em>before</em> pixels exist: polygon interiors are runs by construction, so the compact representation is produced directly rather than recovered by a codec.</p>
 <p>None of these is categorically superior. The AADC file is a finished product, designed for broad interoperability and direct random-access reads — the choice not to compress may well reflect downstream tooling constraints or the simplicity of a uniform tile stride. controlledburn’s sparse format is an intermediate: it is meant to sit between the vector source and whatever raster product or analysis comes next. The value is in seeing them as points on the same continuum — rasterization, compression, and sparse encoding are all ways of negotiating between the geometry of the data and the geometry of the grid.</p>
 

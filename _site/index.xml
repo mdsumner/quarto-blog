@@ -266,7 +266,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.308   0.043   0.351 </code></pre>
+  0.291   0.056   0.347 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -331,7 +331,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.751   0.253   5.004 </code></pre>
+  4.608   0.283   4.891 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -507,9 +507,7 @@ background-color: null;
 font-style: inherit;">"#1a1a2e"</span>, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"#e8d5b7"</span>))</span>
-<span id="cb26-13"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))</span></span>
+<span id="cb26-13"></span>
 <span id="cb26-14"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
@@ -1045,43 +1043,6 @@ font-style: inherit;"># Some coordinates in the burn's CRS (Antarctic Polar Ster
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">matrix</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1680000</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1100000</span>,</span>
-<span id="cb34-3">                 <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2200000</span>,   <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">400000</span>,</span>
-<span id="cb34-4">                 <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">300000</span>,  <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">700000</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ncol =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">byrow =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span>
-<span id="cb34-5">pts <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
 font-style: inherit;">structure</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
@@ -1097,7 +1058,7 @@ background-color: null;
 font-style: inherit;">2437175</span>, <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2441121</span>, </span>
-<span id="cb34-6"><span class="dv" style="color: #AD0000;
+<span id="cb34-3"><span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2443539</span>, <span class="dv" style="color: #AD0000;
 background-color: null;
@@ -1122,7 +1083,7 @@ background-color: null;
 font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">913136</span>, </span>
-<span id="cb34-7"><span class="sc" style="color: #5E5E5E;
+<span id="cb34-4"><span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
 background-color: null;
@@ -1143,7 +1104,83 @@ background-color: null;
 font-style: inherit;">8</span>L, <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2</span>L))</span>
-<span id="cb34-8">e_approx <span class="ot" style="color: #003B4F;
+<span id="cb34-5"></span>
+<span id="cb34-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(pts, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">asp =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb34-7">ximage<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ximage</span>(vapour<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gdal_raster_nara</span>(sds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wms_arcgis_mapserver_ESRI.WorldImagery_tms</span>(), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">target_ext =</span> tile_ex, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">target_crs =</span> raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>projection, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">target_dim =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">512</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">512</span>)),<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb34-8"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">points</span>(pts, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"green"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">pch =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"+"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">cex =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>)</span>
+<span id="cb34-9"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">border =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#e05780"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lwd =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.6</span>)</span></code></pre></div></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/index_files/figure-html/extract-points-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1">e_approx <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1152,8 +1189,8 @@ background-color: null;
 font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"id"</span>)</span>
-<span id="cb34-9"></span>
-<span id="cb34-10">e_cover <span class="ot" style="color: #003B4F;
+<span id="cb35-2"></span>
+<span id="cb35-3">e_cover <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1162,7 +1199,7 @@ background-color: null;
 font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"sum"</span>)</span>
-<span id="cb34-11"><span class="fu" style="color: #4758AB;
+<span id="cb35-4"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">cbind</span>(<span class="at" style="color: #657422;
 background-color: null;
@@ -1188,7 +1225,7 @@ font-style: inherit;">cover =</span> e_cover)</span></code></pre></div></div>
 <h2 class="anchored" data-anchor-id="packing-compression-and-sparsity">Packing, compression, and sparsity</h2>
 <p>A useful comparison: the Australian Antarctic Data Centre publishes <a href="https://doi.org/10.26179/7mnh-j215">Ice-free Antarctica</a> (Toth &amp; Terauds 2023) — a union of rock outcrop layers from imagery spanning 1960–2020, encoded as a single-band GeoTIFF at 100 m resolution (52765 × 48132 pixels). Values are 0 (ice/ocean), 1, 2, or 3 (rock, by source layer), stored at 2 bits per sample (NBITS=2) in 128 × 128 tiles. The file is 613 MB.</p>
 <p>That 2-bit packing is already a 4× saving over a byte raster — but it is a fixed per-pixel economy. Every tile is materialized: ocean, ice sheet, and rock alike each cost their full 4096 bytes. The encoding is indifferent to the fact that the vast majority of pixels say the same thing: zero. Recompressing the same tiles with DEFLATE collapses the file to about 5.6 MB — a ~100× reduction with zero information loss, because constant regions become long runs of identical bytes, and long runs are the best possible input to any general-purpose codec.</p>
-<p>Our controlledburn COG encodes different (but related) data at 32 m resolution — a grid 10× denser in each dimension — and lands at 26 MB on disk. The sparse burn object in memory is 27 MB. These numbers are not directly comparable (different polygons, different resolution, different pixel semantics), but the <em>relationship</em> between them is the point: the information content of “where is the rock?” is small relative to the grid that contains it, regardless of how you choose to encode it.</p>
+<p>Our controlledburn COG encodes different (but related) data at 32 m resolution — a grid 3x denser in each dimension for 26 MB on disk. The sparse burn object in memory is 27 MB. These numbers are not directly comparable (different polygons, different resolution, different pixel semantics), but the <em>relationship</em> between them is the point: the information content of “where is the rock?” is small relative to the grid that contains it, regardless of how you choose to encode it.</p>
 <p>The three approaches — bit-packing, codec compression, and run-length sparse representation — are related lenses on the same underlying reality. Bit-packing reduces the cost per pixel but remains grid-dense. Compression recovers structure after the fact, collapsing constant regions that the format didn’t know to avoid. Sparse rasterization exploits the same structure <em>before</em> pixels exist: polygon interiors are runs by construction, so the compact representation is produced directly rather than recovered by a codec.</p>
 <p>None of these is categorically superior. The AADC file is a finished product, designed for broad interoperability and direct random-access reads — the choice not to compress may well reflect downstream tooling constraints or the simplicity of a uniform tile stride. controlledburn’s sparse format is an intermediate: it is meant to sit between the vector source and whatever raster product or analysis comes next. The value is in seeing them as points on the same continuum — rasterization, compression, and sparse encoding are all ways of negotiating between the geometry of the data and the geometry of the grid.</p>
 
