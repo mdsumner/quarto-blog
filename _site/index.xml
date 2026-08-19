@@ -250,7 +250,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.310   0.048   0.359 </code></pre>
+  0.296   0.046   0.341 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -315,7 +315,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.639   0.290   4.929 </code></pre>
+  4.578   0.223   4.802 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -561,7 +561,7 @@ font-style: inherit;">NA</span>,</span>
 background-color: null;
 font-style: inherit;">main =</span> <span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"Cape Hallett rock outcrop — 32m, exact coverage"</span>,</span>
+font-style: inherit;">"Windmill Islands rock outcrop — 32m, exact coverage"</span>,</span>
 <span id="cb27-6">     <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">col.main =</span> <span class="st" style="color: #20794D;

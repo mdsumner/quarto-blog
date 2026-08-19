@@ -158,7 +158,7 @@ mc <- materialize_chunk(crop_burn(be, tile_ex))
 
 par(bg = "#1a1a2e", mar = c(3, 3, 2, 1))
 plot(tiles[idx, ], col = NA, border = NA,
-     main = "Cape Hallett rock outcrop — 32m, exact coverage",
+     main = "Windmill Islands rock outcrop — 32m, exact coverage",
      col.main = "white", col.axis = "grey60")
 ximage::ximage(mc, tile_ex, add = TRUE,
                col = hcl.colors(64, "Lajolla", rev = TRUE))
