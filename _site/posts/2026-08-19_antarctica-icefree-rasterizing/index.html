@@ -403,7 +403,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Antarctica’s exposed rock — the ice-free ground — has been mapped as 25,954 polygons covering nunataks, coastal outcrops, and mountain ranges across the continent. The Reference Elevation Model of Antarctica (REMA) provides a 2m DEM mosaic of the entire ice sheet, tiled at multiple resolutions.</p>
-<p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 438 MB of sparse output, then serves up any individual tile on demand.</p>
+<p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 30-150 MB of sparse output, then serves up any individual tile on demand.</p>
 <section id="setup" class="level2">
 <h2 class="anchored" data-anchor-id="setup">Setup</h2>
 <p>Three cloud-hosted datasets, read directly via GDAL virtual filesystem paths.</p>
@@ -478,7 +478,7 @@ Other layers: REMA_Mosaic_Index_v2_10m, REMA_Mosaic_Index_v2_32m</code></pre>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.309   0.054   0.363 </code></pre>
+  0.310   0.048   0.359 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ba</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -501,7 +501,7 @@ Object size: 27 MB</code></pre>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.738   0.266   5.004 </code></pre>
+  4.639   0.290   4.929 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>be</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -514,9 +514,9 @@ Object size: 27 MB</code></pre>
 </section>
 <section id="look-at-a-tile" class="level2">
 <h2 class="anchored" data-anchor-id="look-at-a-tile">Look at a tile</h2>
-<p>The sparse output covers the whole continent but we can extract any sub-window instantly with <code>crop_burn()</code>. Here: a 50 km REMA tile near Cape Hallett, northern Victoria Land.</p>
+<p>The sparse output covers the whole continent but we can extract any sub-window instantly with <code>crop_burn()</code>. Here: a 50 km REMA tile of the Windmill Islands, near Casey station.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>ll <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">lon =</span> <span class="fl">169.6539</span>, <span class="at">lat =</span> <span class="sc">-</span><span class="fl">71.50035</span>)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>ll <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">lon =</span> <span class="fl">110.3</span>, <span class="at">lat =</span> <span class="sc">-</span><span class="fl">66.3</span>)</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>xy <span class="ot">&lt;-</span> reproj<span class="sc">::</span><span class="fu">reproj_xy</span>(ll, <span class="fu">crs</span>(tiles), <span class="at">source =</span> <span class="st">"EPSG:4326"</span>)</span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>idx <span class="ot">&lt;-</span> <span class="fu">which</span>(terra<span class="sc">::</span><span class="fu">is.related</span>(tiles, <span class="fu">vect</span>(xy), <span class="st">"intersects"</span>))</span>
 <span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>tile_ex <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(<span class="fu">ext</span>(tiles[idx, ]))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -535,16 +535,17 @@ Object size: 27 MB</code></pre>
 <span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bg =</span> <span class="st">"#1a1a2e"</span>, <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
 <span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tiles[idx, ], <span class="at">col =</span> <span class="cn">NA</span>, <span class="at">border =</span> <span class="cn">NA</span>,</span>
-<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Cape Hallett rock outcrop — 32m"</span>,</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Windmill Islands rock outcrop — 32m"</span>,</span>
 <span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">col.main =</span> <span class="st">"white"</span>, <span class="at">col.axis =</span> <span class="st">"grey60"</span>)</span>
 <span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>ximage<span class="sc">::</span><span class="fu">ximage</span>(ma, tile_ex, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>               <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#1a1a2e"</span>, <span class="st">"#e8d5b7"</span>))</span>
-<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rock[rock_idx], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"#e05780"</span>, <span class="at">lwd =</span> <span class="fl">0.6</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="co">#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rock[rock_idx], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"#e05780"</span>, <span class="at">lwd =</span> <span class="fl">0.6</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="index_files/figure-html/tile-approx-1.png" class="img-fluid figure-img" width="768"></p>
-<figcaption>Rock outcrop near Cape Hallett, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries.</figcaption>
+<figcaption>Rock outcrop near Windmill Islands, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries.</figcaption>
 </figure>
 </div>
 </div>
@@ -557,7 +558,7 @@ Object size: 27 MB</code></pre>
 <span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Cape Hallett rock outcrop — 32m, exact coverage"</span>,</span>
 <span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">col.main =</span> <span class="st">"white"</span>, <span class="at">col.axis =</span> <span class="st">"grey60"</span>)</span>
 <span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>ximage<span class="sc">::</span><span class="fu">ximage</span>(mc, tile_ex, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>               <span class="at">col =</span> <span class="fu">hcl.colors</span>(<span class="dv">64</span>, <span class="st">"Lajolla"</span>))</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>               <span class="at">col =</span> <span class="fu">hcl.colors</span>(<span class="dv">64</span>, <span class="st">"Lajolla"</span>, <span class="at">rev =</span> <span class="cn">TRUE</span>))</span>
 <span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rock[rock_idx], <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">"#e05780"</span>, <span class="at">lwd =</span> <span class="fl">0.6</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -576,7 +577,7 @@ Object size: 27 MB</code></pre>
 <span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">format</span>(<span class="fu">length</span>(ma), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
 <span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    <span class="dv">100</span> <span class="sc">*</span> n_diff <span class="sc">/</span> <span class="fu">length</span>(ma)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Cells that differ: 58,153 out of 2,464,900 (2.359%)</code></pre>
+<pre><code>Cells that differ: 7,360 out of 2,464,900 (0.299%)</code></pre>
 </div>
 </div>
 </section>

@@ -30,7 +30,7 @@ tiled at multiple resolutions.
 
 What does it take to rasterize those polygons onto the REMA grid? At
 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous
-memory, but controlledburn does it in under a second, producing 438 MB of sparse
+memory, but controlledburn does it in under a second, producing 30-150 MB of sparse
 output, then serves up any individual tile on demand.
 
 ## Setup
@@ -119,12 +119,11 @@ be
 ## Look at a tile
 
 The sparse output covers the whole continent but we can extract any
-sub-window instantly with `crop_burn()`. Here: a 50 km REMA tile near
-Cape Hallett, northern Victoria Land.
+sub-window instantly with `crop_burn()`. Here: a 50 km REMA tile of the Windmill Islands, near Casey station.
 
 ```{r}
 #| label: tile-locate
-ll <- cbind(lon = 169.6539, lat = -71.50035)
+ll <- cbind(lon = 110.3, lat = -66.3)
 xy <- reproj::reproj_xy(ll, crs(tiles), source = "EPSG:4326")
 idx <- which(terra::is.related(tiles, vect(xy), "intersects"))
 tile_ex <- as.vector(ext(tiles[idx, ]))
@@ -132,7 +131,7 @@ tile_ex <- as.vector(ext(tiles[idx, ]))
 
 ```{r}
 #| label: tile-approx
-#| fig-cap: "Rock outcrop near Cape Hallett, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries."
+#| fig-cap: "Rock outcrop near Windmill Islands, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries."
 ma <- materialize_chunk(crop_burn(ba, tile_ex))
 cat(sprintf("Tile: %d × %d pixels\n", ncol(ma), nrow(ma)))
 
@@ -144,10 +143,11 @@ rock_idx <- unlist(
 
 par(bg = "#1a1a2e", mar = c(3, 3, 2, 1))
 plot(tiles[idx, ], col = NA, border = NA,
-     main = "Cape Hallett rock outcrop — 32m",
+     main = "Windmill Islands rock outcrop — 32m",
      col.main = "white", col.axis = "grey60")
 ximage::ximage(ma, tile_ex, add = TRUE,
                col = c("#1a1a2e", "#e8d5b7"))
+#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))
 plot(rock[rock_idx], add = TRUE, border = "#e05780", lwd = 0.6)
 ```
 
@@ -161,7 +161,7 @@ plot(tiles[idx, ], col = NA, border = NA,
      main = "Cape Hallett rock outcrop — 32m, exact coverage",
      col.main = "white", col.axis = "grey60")
 ximage::ximage(mc, tile_ex, add = TRUE,
-               col = hcl.colors(64, "Lajolla"))
+               col = hcl.colors(64, "Lajolla", rev = TRUE))
 plot(rock[rock_idx], add = TRUE, border = "#e05780", lwd = 0.6)
 ```
 

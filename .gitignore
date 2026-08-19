@@ -9,3 +9,4 @@ data-raw/
 .positai
 
 **/*.quarto_ipynb
+.posit/assistant

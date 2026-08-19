@@ -23,7 +23,7 @@
 
 
 <p>Antarctica’s exposed rock — the ice-free ground — has been mapped as 25,954 polygons covering nunataks, coastal outcrops, and mountain ranges across the continent. The Reference Elevation Model of Antarctica (REMA) provides a 2m DEM mosaic of the entire ice sheet, tiled at multiple resolutions.</p>
-<p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 438 MB of sparse output, then serves up any individual tile on demand.</p>
+<p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 30-150 MB of sparse output, then serves up any individual tile on demand.</p>
 <section id="setup" class="level2">
 <h2 class="anchored" data-anchor-id="setup">Setup</h2>
 <p>Three cloud-hosted datasets, read directly via GDAL virtual filesystem paths.</p>
@@ -250,7 +250,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.309   0.054   0.363 </code></pre>
+  0.310   0.048   0.359 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -315,7 +315,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.738   0.266   5.004 </code></pre>
+  4.639   0.290   4.929 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -328,7 +328,7 @@ font-style: inherit;">"coverage"</span>)</span>
 </section>
 <section id="look-at-a-tile" class="level2">
 <h2 class="anchored" data-anchor-id="look-at-a-tile">Look at a tile</h2>
-<p>The sparse output covers the whole continent but we can extract any sub-window instantly with <code>crop_burn()</code>. Here: a 50 km REMA tile near Cape Hallett, northern Victoria Land.</p>
+<p>The sparse output covers the whole continent but we can extract any sub-window instantly with <code>crop_burn()</code>. Here: a 50 km REMA tile of the Windmill Islands, near Casey station.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1">ll <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -338,13 +338,13 @@ font-style: inherit;">cbind</span>(<span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">lon =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">169.6539</span>, <span class="at" style="color: #657422;
+font-style: inherit;">110.3</span>, <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">lat =</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">71.50035</span>)</span>
+font-style: inherit;">66.3</span>)</span>
 <span id="cb23-2">xy <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> reproj<span class="sc" style="color: #5E5E5E;
@@ -463,7 +463,7 @@ font-style: inherit;">NA</span>,</span>
 background-color: null;
 font-style: inherit;">main =</span> <span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"Cape Hallett rock outcrop — 32m"</span>,</span>
+font-style: inherit;">"Windmill Islands rock outcrop — 32m"</span>,</span>
 <span id="cb26-10">     <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">col.main =</span> <span class="st" style="color: #20794D;
@@ -491,7 +491,10 @@ background-color: null;
 font-style: inherit;">"#1a1a2e"</span>, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"#e8d5b7"</span>))</span>
-<span id="cb26-13"><span class="fu" style="color: #4758AB;
+<span id="cb26-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#ximage::ximage(vapour::gdal_raster_nara(sds::wms_arcgis_mapserver_ESRI.WorldImagery_tms(), target_ext = tile_ex, target_crs = raster_info$projection, target_dim = 512))</span></span>
+<span id="cb26-14"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
 background-color: null;
@@ -510,7 +513,7 @@ font-style: inherit;">0.6</span>)</span></code></pre></div></div>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/index_files/figure-html/tile-approx-1.png" class="img-fluid figure-img" width="768"></p>
-<figcaption>Rock outcrop near Cape Hallett, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries.</figcaption>
+<figcaption>Rock outcrop near Windmill Islands, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries.</figcaption>
 </figure>
 </div>
 </div>
@@ -585,7 +588,11 @@ font-style: inherit;">hcl.colors</span>(<span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">64</span>, <span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"Lajolla"</span>))</span>
+font-style: inherit;">"Lajolla"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rev =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>))</span>
 <span id="cb27-9"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
@@ -656,7 +663,7 @@ font-style: inherit;">/</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">length</span>(ma)))</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Cells that differ: 58,153 out of 2,464,900 (2.359%)</code></pre>
+<pre><code>Cells that differ: 7,360 out of 2,464,900 (0.299%)</code></pre>
 </div>
 </div>
 </section>
