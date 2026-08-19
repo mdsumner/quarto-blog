@@ -11,7 +11,7 @@ categories: [s2, wk, spatial, rgl]
 format:
   html:
     toc: true
-draft: true
+draft: false
 ---
 
 The s2 package is excellent and I find it genuinely hard to use. Not because
