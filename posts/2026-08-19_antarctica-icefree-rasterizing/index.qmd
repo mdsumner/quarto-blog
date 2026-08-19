@@ -33,6 +33,19 @@ What does it take to rasterize those polygons onto the REMA grid? At
 memory, but controlledburn does it in under a second, producing 30-150 MB of sparse
 output, then serves up any individual tile on demand.
 
+::: {.callout-note collapse="false"}
+## A note on the surrounding tools
+
+This post reaches for `vapour`, `terra`, `gdalraster`, `grout`, and a few
+others alongside `controlledburn` itself, without much ceremony about why
+one is used here and another there. That's a fair reflection of where
+things stand: `controlledburn` is under heavy, active development, and the
+tooling around it — how you get a grid spec, read geometry, or write a
+COG — has mattered less than getting the core right. Some of this
+will likely consolidate as the package settles. Treat the package mix here
+as a snapshot of current convenience, not a considered API.
+:::
+
 ## Setup
 
 Three cloud-hosted datasets, read directly via GDAL virtual filesystem
@@ -84,7 +97,7 @@ cat(sprintf("Polygons: %s geometries\n",
     format(length(rock), big.mark = ",")))
 ```
 
-## Burn the continent
+## Rasterize the continent
 
 One call rasterizes every polygon onto the full continental grid.
 The output is a sparse table of run-length encoded interior cells —

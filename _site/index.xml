@@ -24,6 +24,22 @@
 
 <p>Antarctica’s exposed rock — the ice-free ground — has been mapped as 25,954 polygons covering nunataks, coastal outcrops, and mountain ranges across the continent. The Reference Elevation Model of Antarctica (REMA) provides a 2m DEM mosaic of the entire ice sheet, tiled at multiple resolutions.</p>
 <p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 30-150 MB of sparse output, then serves up any individual tile on demand.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="true" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>A note on the surrounding tools
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse show">
+<div class="callout-body-container callout-body">
+<p>This post reaches for <code>vapour</code>, <code>terra</code>, <code>gdalraster</code>, <code>grout</code>, and a few others alongside <code>controlledburn</code> itself, without much ceremony about why one is used here and another there. That’s a fair reflection of where things stand: <code>controlledburn</code> is under heavy, active development, and the tooling around it — how you get a grid spec, read geometry, or write a COG — has mattered less than getting the core right. Some of this will likely consolidate as the package settles. Treat the package mix here as a snapshot of current convenience, not a considered API.</p>
+</div>
+</div>
+</div>
 <section id="setup" class="level2">
 <h2 class="anchored" data-anchor-id="setup">Setup</h2>
 <p>Three cloud-hosted datasets, read directly via GDAL virtual filesystem paths.</p>
@@ -218,8 +234,8 @@ font-style: inherit;">","</span>)))</span></code></pre></div></div>
 </div>
 </div>
 </section>
-<section id="burn-the-continent" class="level2">
-<h2 class="anchored" data-anchor-id="burn-the-continent">Burn the continent</h2>
+<section id="rasterize-the-continent" class="level2">
+<h2 class="anchored" data-anchor-id="rasterize-the-continent">Rasterize the continent</h2>
 <p>One call rasterizes every polygon onto the full continental grid. The output is a sparse table of run-length encoded interior cells — no dense matrix is allocated, no pixel values are touched.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><span class="fu" style="color: #4758AB;
@@ -250,7 +266,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.302   0.044   0.347 </code></pre>
+  0.308   0.043   0.351 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -315,7 +331,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.860   0.254   5.114 </code></pre>
+  4.751   0.253   5.004 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
