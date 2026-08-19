@@ -358,6 +358,7 @@ e_approx <- extract_burn(ba, pts, fun = "id")
 
 e_cover <- extract_burn(be, pts, fun = "sum")
 cbind(approx = e_approx, cover = e_cover)
+
 ```
 
 The function returns `NA` for background cells (no geometry touched that
@@ -370,6 +371,14 @@ distance transforms — can be built on top of the same sparse tables without
 re-burning or allocating a full dense grid. The burn is computed once;
 everything else is derived.
 
+terra for example can tell us those exact same polygon identities, but it can't easily tell us what coverage that polygon has in the related pixel (that's a different question, we'd need to rasterize first ...), we have different opportunities with this alternative representation. 
+
+```{r}
+#| label: extract-points-terra
+#| eval: true
+#| 
+terra::extract(terra::vect(geos::as_geos_geometry(rock)), pts)
+```
 ## Packing, compression, and sparsity
 
 A useful comparison: the Australian Antarctic Data Centre publishes

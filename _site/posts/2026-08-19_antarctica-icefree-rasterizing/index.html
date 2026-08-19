@@ -494,7 +494,7 @@ Other layers: REMA_Mosaic_Index_v2_10m, REMA_Mosaic_Index_v2_32m</code></pre>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.291   0.056   0.347 </code></pre>
+  0.294   0.056   0.350 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ba</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -517,7 +517,7 @@ Object size: 27 MB</code></pre>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.608   0.283   4.891 </code></pre>
+  4.484   0.287   4.771 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>be</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -724,6 +724,21 @@ Object size: 27 MB</code></pre>
 </div>
 <p>The function returns <code>NA</code> for background cells (no geometry touched that pixel) and the geometry ID for cells inside a polygon. With <code>fun = "sum"</code>, coverage-mode burns return exact fractional coverage at each point.</p>
 <p>This pattern generalizes. Because the sparse representation is a reusable intermediate, other raster operations — zonal statistics, reclassification, distance transforms — can be built on top of the same sparse tables without re-burning or allocating a full dense grid. The burn is computed once; everything else is derived.</p>
+<p>terra for example can tell us those exact same polygon identities, but it can’t easily tell us what coverage that polygon has in the related pixel (that’s a different question, we’d need to rasterize first …), we have different opportunities with this alternative representation.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">extract</span>(terra<span class="sc">::</span><span class="fu">vect</span>(geos<span class="sc">::</span><span class="fu">as_geos_geometry</span>(rock)), pts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     id.y  id.x
+[1,]    1 19038
+[2,]    2 19024
+[3,]    3   NaN
+[4,]    4 19048
+[5,]    5 19048
+[6,]    6 19051
+[7,]    7 19059
+[8,]    8   NaN</code></pre>
+</div>
+</div>
 </section>
 <section id="packing-compression-and-sparsity" class="level2">
 <h2 class="anchored" data-anchor-id="packing-compression-and-sparsity">Packing, compression, and sparsity</h2>

@@ -266,7 +266,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.291   0.056   0.347 </code></pre>
+  0.294   0.056   0.350 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -331,7 +331,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.608   0.283   4.891 </code></pre>
+  4.484   0.287   4.771 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -1220,6 +1220,33 @@ font-style: inherit;">cover =</span> e_cover)</span></code></pre></div></div>
 </div>
 <p>The function returns <code>NA</code> for background cells (no geometry touched that pixel) and the geometry ID for cells inside a polygon. With <code>fun = "sum"</code>, coverage-mode burns return exact fractional coverage at each point.</p>
 <p>This pattern generalizes. Because the sparse representation is a reusable intermediate, other raster operations — zonal statistics, reclassification, distance transforms — can be built on top of the same sparse tables without re-burning or allocating a full dense grid. The burn is computed once; everything else is derived.</p>
+<p>terra for example can tell us those exact same polygon identities, but it can’t easily tell us what coverage that polygon has in the related pixel (that’s a different question, we’d need to rasterize first …), we have different opportunities with this alternative representation.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1">terra<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">extract</span>(terra<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vect</span>(geos<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_geos_geometry</span>(rock)), pts)</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     id.y  id.x
+[1,]    1 19038
+[2,]    2 19024
+[3,]    3   NaN
+[4,]    4 19048
+[5,]    5 19048
+[6,]    6 19051
+[7,]    7 19059
+[8,]    8   NaN</code></pre>
+</div>
+</div>
 </section>
 <section id="packing-compression-and-sparsity" class="level2">
 <h2 class="anchored" data-anchor-id="packing-compression-and-sparsity">Packing, compression, and sparsity</h2>
