@@ -2,6 +2,8 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-08-19_antarctica-icefree-rasterizing/index.html",
+      "/posts/2026-08-10_s2-guide/index.html",
       "/posts/2026-06-26_icechunk-is-coming/index.html",
       "/posts/2026-05-27_raster-stack-zarr-virtualization/index.html",
       "/posts/2026-03-24_check-out-reproj/index.html",

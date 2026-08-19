@@ -37,6 +37,10 @@
     <lastmod>2026-02-10T11:14:10.812Z</lastmod>
   </url>
   <url>
+    <loc>https://hypertidy.org/posts/2026-08-10_s2-guide/index.html</loc>
+    <lastmod>2026-08-19T08:02:08.857Z</lastmod>
+  </url>
+  <url>
     <loc>https://hypertidy.org/posts/2026-03-24_check-out-proj-wk-transform/index.html</loc>
     <lastmod>2026-03-24T01:22:26.650Z</lastmod>
   </url>
@@ -57,28 +61,32 @@
     <lastmod>2026-06-26T10:08:13.216Z</lastmod>
   </url>
   <url>
-    <loc>https://hypertidy.org/packages.html</loc>
-    <lastmod>2026-02-10T20:50:21.197Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/drafts/2025-06-30-degenerate-zarr/different_polar_netcdfs.html</loc>
-    <lastmod>2025-09-03T05:11:56.148Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/projects.html</loc>
-    <lastmod>2026-02-10T21:46:13.293Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hypertidy.org/about.html</loc>
-    <lastmod>2026-05-28T12:37:45.365Z</lastmod>
+    <loc>https://hypertidy.org/vaster-blog-draft.html</loc>
+    <lastmod>2025-12-21T08:14:49.750Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/index.html</loc>
     <lastmod>2026-02-10T22:13:58.428Z</lastmod>
   </url>
   <url>
-    <loc>https://hypertidy.org/vaster-blog-draft.html</loc>
-    <lastmod>2025-12-21T08:14:49.750Z</lastmod>
+    <loc>https://hypertidy.org/about.html</loc>
+    <lastmod>2026-05-28T12:37:45.365Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/projects.html</loc>
+    <lastmod>2026-02-10T21:46:13.293Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/drafts/2025-06-30-degenerate-zarr/different_polar_netcdfs.html</loc>
+    <lastmod>2025-09-03T05:11:56.148Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/packages.html</loc>
+    <lastmod>2026-02-10T20:50:21.197Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/index.html</loc>
+    <lastmod>2026-08-19T08:07:00.857Z</lastmod>
   </url>
   <url>
     <loc>https://hypertidy.org/posts/2019-05-29_recent-rgl-format-changes/index.html</loc>

@@ -10,7 +10,1857 @@
 <atom:link href="https://hypertidy.org/index.xml" rel="self" type="application/rss+xml"/>
 <description>Geospatial data, GDAL, and R — Michael Sumner</description>
 <generator>quarto-1.10.18</generator>
-<lastBuildDate>Fri, 26 Jun 2026 00:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 19 Aug 2026 00:00:00 GMT</lastBuildDate>
+<item>
+  <title>Rasterizing ice-free Antarctica</title>
+  <dc:creator>Michael Sumner</dc:creator>
+  <link>https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+
+<p>Antarctica’s exposed rock — the ice-free ground — has been mapped as 25,954 polygons covering nunataks, coastal outcrops, and mountain ranges across the continent. The Reference Elevation Model of Antarctica (REMA) provides a 2m DEM mosaic of the entire ice sheet, tiled at multiple resolutions.</p>
+<p>What does it take to rasterize those polygons onto the REMA grid? At 32m resolution, the grid is 170318 x 182568 pixels. A raster at that size would require enormous memory, but controlledburn does it in under a second, producing 438 MB of sparse output, then serves up any individual tile on demand.</p>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<p>Three cloud-hosted datasets, read directly via GDAL virtual filesystem paths.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># REMA 32m DEM mosaic — we read only the grid spec, no pixel values</span></span>
+<span id="cb1-2">dsn <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(</span>
+<span id="cb1-3">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"/vsicurl/https://raw.githubusercontent.com/mdsumner/rema-ovr/"</span>,</span>
+<span id="cb1-4">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"main/rema-vrt/32m_dem_tiles.vrt"</span>)</span>
+<span id="cb1-5"></span>
+<span id="cb1-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Antarctic rock outcrop polygons (v7.3, Burton-Johnson et al.)</span></span>
+<span id="cb1-7">shp <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(</span>
+<span id="cb1-8">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"/vsizip/{/vsicurl/https://github.com/AustralianAntarcticDivision/"</span>,</span>
+<span id="cb1-9">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"rema.proc/raw/refs/heads/master/01_rock_classification/"</span>,</span>
+<span id="cb1-10">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Medium_resolution_vector_polygons_of_Antarctic_rock_outcrop_-_"</span>,</span>
+<span id="cb1-11">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"VERSION_7.3.zip}/Medium resolution vector polygons of Antarctic "</span>,</span>
+<span id="cb1-12">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"rock outcrop - VERSION 7.3/"</span>,</span>
+<span id="cb1-13">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"add_rock_outcrop_medium_res_polygon_v7.3.gpkg"</span>)</span>
+<span id="cb1-14"></span>
+<span id="cb1-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># REMA tile index — for choosing a view window</span></span>
+<span id="cb1-16">rema_tiles <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(</span>
+<span id="cb1-17">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"/vsizip/{/vsicurl/https://data.pgc.umn.edu/elev/dem/setsm/REMA/"</span>,</span>
+<span id="cb1-18">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"indexes/REMA_Mosaic_Index_latest_shp.zip}/REMA_Mosaic_Index_v2_shp"</span>)</span></code></pre></div></div>
+</div>
+</section>
+<section id="read" class="level2">
+<h2 class="anchored" data-anchor-id="read">Read</h2>
+<p>The raster is never opened — <code>vapour_raster_info()</code> reads only the metadata (extent, dimensions, CRS). The polygons are read as raw WKB bytes.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(terra)</span></code></pre></div></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>terra 1.9.44</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">tiles <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> terra<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vect</span>(rema_tiles)</span></code></pre></div></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: [vect] Reading layer: REMA_Mosaic_Index_v2_2m
+Other layers: REMA_Mosaic_Index_v2_10m, REMA_Mosaic_Index_v2_32m</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">raster_info <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> vapour<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vapour_raster_info</span>(dsn)</span>
+<span id="cb6-2">rock_info <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> vapour<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vapour_layer_info</span>(shp)</span></code></pre></div></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unhandled projection method Polar_Stereographic (GDAL error 6)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: unable export SRS to XML</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1">rock <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wkb</span>(vapour<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vapour_read_geometry</span>(shp),</span>
+<span id="cb9-2">                 <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">crs =</span> rock_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>projection<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>Wkt)</span>
+<span id="cb9-3"></span>
+<span id="cb9-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Grid: %s × %s pixels (%.0f billion cells)</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>,</span>
+<span id="cb9-5">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">format</span>(raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">big.mark =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">","</span>),</span>
+<span id="cb9-6">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">format</span>(raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">big.mark =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">","</span>),</span>
+<span id="cb9-7">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">prod</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.numeric</span>(raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e9</span>))</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Grid: 170,318 × 182,568 pixels (31 billion cells)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Polygons: %s geometries</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>,</span>
+<span id="cb11-2">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">format</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(rock), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">big.mark =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">","</span>)))</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Polygons: 25,954 geometries</code></pre>
+</div>
+</div>
+</section>
+<section id="burn-the-continent" class="level2">
+<h2 class="anchored" data-anchor-id="burn-the-continent">Burn the continent</h2>
+<p>One call rasterizes every polygon onto the full continental grid. The output is a sparse table of run-length encoded interior cells — no dense matrix is allocated, no pixel values are touched.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(controlledburn)</span>
+<span id="cb13-2"></span>
+<span id="cb13-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system.time</span>({</span>
+<span id="cb13-4">  ba <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">burn</span>(rock, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">extent =</span> raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>extent,</span>
+<span id="cb13-5">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">dimension =</span> raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mode =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"approx"</span>)</span>
+<span id="cb13-6">})</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  0.309   0.054   0.363 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;controlledburn&gt; 170318 x 182568 grid, 25954 geometries
+  runs:   1704432 (70650819 interior cells)
+  edges:  0 polygon boundary cells
+  sparsity: 99.8% empty</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">Object size: %.0f MB</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.numeric</span>(lobstr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">obj_size</span>(ba)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e6</span>))</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Object size: 27 MB</code></pre>
+</div>
+</div>
+<p>Coverage mode computes exact boundary fractions — slower, but the total burned area equals the true polygon area to floating-point precision:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system.time</span>({</span>
+<span id="cb19-2">  be <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">burn</span>(rock, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">extent =</span> raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>extent,</span>
+<span id="cb19-3">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">dimension =</span> raster_info<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mode =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"coverage"</span>)</span>
+<span id="cb19-4">})</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  4.738   0.266   5.004 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;controlledburn&gt; 170318 x 182568 grid, 25954 geometries
+  runs:   1662668 (66525907 interior cells)
+  edges:  6548354 polygon boundary cells
+  sparsity: 99.8% empty</code></pre>
+</div>
+</div>
+</section>
+<section id="look-at-a-tile" class="level2">
+<h2 class="anchored" data-anchor-id="look-at-a-tile">Look at a tile</h2>
+<p>The sparse output covers the whole continent but we can extract any sub-window instantly with <code>crop_burn()</code>. Here: a 50 km REMA tile near Cape Hallett, northern Victoria Land.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1">ll <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cbind</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lon =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">169.6539</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lat =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">71.50035</span>)</span>
+<span id="cb23-2">xy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> reproj<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reproj_xy</span>(ll, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">crs</span>(tiles), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">source =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"EPSG:4326"</span>)</span>
+<span id="cb23-3">idx <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">which</span>(terra<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.related</span>(tiles, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vect</span>(xy), <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"intersects"</span>))</span>
+<span id="cb23-4">tile_ex <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.vector</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ext</span>(tiles[idx, ]))</span></code></pre></div></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1">ma <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">materialize_chunk</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">crop_burn</span>(ba, tile_ex))</span>
+<span id="cb24-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Tile: %d × %d pixels</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ncol</span>(ma), <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">nrow</span>(ma)))</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Tile: 1570 × 1570 pixels</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Rock polygons that overlap this tile</span></span>
+<span id="cb26-2">rock_idx <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">unlist</span>(</span>
+<span id="cb26-3">  geos<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geos_strtree_query</span>(</span>
+<span id="cb26-4">    geos<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geos_strtree</span>(geos<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_geos_geometry</span>(rock)),</span>
+<span id="cb26-5">    tiles[idx, ]))</span>
+<span id="cb26-6"></span>
+<span id="cb26-7"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">par</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">bg =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#1a1a2e"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mar =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>))</span>
+<span id="cb26-8"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(tiles[idx, ], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">border =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span>,</span>
+<span id="cb26-9">     <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">main =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Cape Hallett rock outcrop — 32m"</span>,</span>
+<span id="cb26-10">     <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col.main =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"white"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col.axis =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"grey60"</span>)</span>
+<span id="cb26-11">ximage<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ximage</span>(ma, tile_ex, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>,</span>
+<span id="cb26-12">               <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#1a1a2e"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#e8d5b7"</span>))</span>
+<span id="cb26-13"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">border =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#e05780"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lwd =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.6</span>)</span></code></pre></div></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/index_files/figure-html/tile-approx-1.png" class="img-fluid figure-img" width="768"></p>
+<figcaption>Rock outcrop near Cape Hallett, approx mode (cell-centre rule). White = exposed rock, dark = ice or ocean. Pink outlines are the source polygon boundaries.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1">mc <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">materialize_chunk</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">crop_burn</span>(be, tile_ex))</span>
+<span id="cb27-2"></span>
+<span id="cb27-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">par</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">bg =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#1a1a2e"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mar =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>))</span>
+<span id="cb27-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(tiles[idx, ], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">border =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span>,</span>
+<span id="cb27-5">     <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">main =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Cape Hallett rock outcrop — 32m, exact coverage"</span>,</span>
+<span id="cb27-6">     <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col.main =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"white"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col.axis =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"grey60"</span>)</span>
+<span id="cb27-7">ximage<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ximage</span>(mc, tile_ex, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>,</span>
+<span id="cb27-8">               <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">hcl.colors</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">64</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lajolla"</span>))</span>
+<span id="cb27-9"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(rock[rock_idx], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">border =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#e05780"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lwd =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.6</span>)</span></code></pre></div></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/index_files/figure-html/tile-coverage-1.png" class="img-fluid figure-img" width="768"></p>
+<figcaption>Same view, coverage mode. Boundary cells carry exact fractional weights — visible as soft edges where the polygon boundary crosses pixel boundaries.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>At 32m resolution the two modes are nearly identical. The difference is sub-pixel boundary treatment:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1">n_diff <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sum</span>(ma <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!=</span> mc)</span>
+<span id="cb28-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Cells that differ: %s out of %s (%.3f%%)</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>,</span>
+<span id="cb28-3">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">format</span>(n_diff, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">big.mark =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">","</span>),</span>
+<span id="cb28-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">format</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(ma), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">big.mark =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">","</span>),</span>
+<span id="cb28-5">    <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">100</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> n_diff <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(ma)))</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cells that differ: 58,153 out of 2,464,900 (2.359%)</code></pre>
+</div>
+</div>
+</section>
+<section id="summary-of-the-lazy-rasterization-process" class="level2">
+<h2 class="anchored" data-anchor-id="summary-of-the-lazy-rasterization-process">Summary of the lazy rasterization process</h2>
+<p>controlledburn burned 25,954 polygons onto a 31-billion-cell grid in under a second, producing a sparse run-length table small enough to hold in memory. Any tile can be extracted and materialised on demand. The raster was never read — only its grid specification. The polygons were never validated or reprojected — just raw WKB bytes from a cloud-hosted GeoPackage.</p>
+<p>This is rasterization as an O(perimeter) operation: the cost scales with the complexity of the polygon boundaries, not the number of pixels in the grid. The sparse output is a reusable intermediate — downstream processing (zonal statistics, masking, tiling) operates on the same table without re-burning.</p>
+</section>
+<section id="creating-a-raster-file" class="level2">
+<h2 class="anchored" data-anchor-id="creating-a-raster-file">Creating a raster file</h2>
+<p>Now we have a very dense version of our rock layer as a latent raster, we can materialise arbitrary windows of it and write them to an actual raster file. The strategy: create a SPARSE_OK Cloud-Optimised GeoTIFF (COG), iterate over spatial tiles, crop the sparse burn result to each tile, materialise the dense matrix, and write it via <code>gdalraster</code>. Tiles with no burned pixels are skipped entirely — SPARSE_OK means unwritten tiles cost nothing on disk.</p>
+<section id="why-crop_burn" class="level3">
+<h3 class="anchored" data-anchor-id="why-crop_burn">Why <code>crop_burn()</code>?</h3>
+<p><code>crop_burn()</code> is the spatial subsetting workhorse. Given a <code>controlledburn</code> object covering an arbitrarily large grid, it filters the sparse tables (runs, edges, lines, points) to a target extent and re-bases row/col indices to 1. No dense matrix is ever allocated — it is pure data-frame filtering, so the cost depends only on how many run-length entries fall inside the window, not on how many pixels the full grid contains. This is what makes it feasible to iterate over thousands of tiles without blowing up memory: each iteration crops, materialises a small dense block, writes it, and discards it.</p>
+</section>
+<section id="why-super-tiles-instead-of-native-512512-blocks" class="level3">
+<h3 class="anchored" data-anchor-id="why-super-tiles-instead-of-native-512512-blocks">Why super-tiles instead of native 512×512 blocks?</h3>
+<p>The COG internal tiling is 512×512, but writing one 512×512 block at a time means ~120,000 write calls for the full grid. GDAL’s <code>RasterIO()</code> accepts arbitrary windows — they don’t have to align with the internal block grid — but it works best when the window is a multiple of the native block size. Grouping into “super-tiles” of 2048×2048 (4×4 native blocks) brings the tile count down to ~8,000 while keeping each dense allocation under 16 MB. The dense output from <code>materialize_chunk()</code> is <em>not</em> itself tiled; it is a plain row-major matrix. The tiling structure exists only in the GeoTIFF container and is handled entirely by GDAL on write.</p>
+</section>
+<section id="the-write-loop" class="level3">
+<h3 class="anchored" data-anchor-id="the-write-loop">The write loop</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(controlledburn)</span>
+<span id="cb30-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(gdalraster)</span>
+<span id="cb30-3"></span>
+<span id="cb30-4">outfile <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">file.path</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tempdir</span>(), <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"rema_approx.tif"</span>)</span>
+<span id="cb30-5">block_size <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">512</span>L</span>
+<span id="cb30-6"></span>
+<span id="cb30-7">ext <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>extent</span>
+<span id="cb30-8">dm  <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>dimension</span>
+<span id="cb30-9">gdalraster<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">set_config_option</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"GDAL_NUM_THREADS"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ALL_CPUS"</span>)</span>
+<span id="cb30-10"></span>
+<span id="cb30-11">ds <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">create</span>(</span>
+<span id="cb30-12">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">format       =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"COG"</span>,</span>
+<span id="cb30-13">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">dst_filename =</span> outfile,</span>
+<span id="cb30-14">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xsize =</span> dm[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ysize =</span> dm[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>],</span>
+<span id="cb30-15">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nbands   =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>,</span>
+<span id="cb30-16">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">dataType =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Int32"</span>,</span>
+<span id="cb30-17">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">options  =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"BLOCKSIZE="</span>, block_size),</span>
+<span id="cb30-18">               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"SPARSE_OK=YES"</span>,</span>
+<span id="cb30-19">               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"COMPRESS=DEFLATE"</span>,</span>
+<span id="cb30-20">               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"OVERVIEW_RESAMPLING=NEAREST"</span>,</span>
+<span id="cb30-21">               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"NUM_THREADS=ALL_CPUS"</span>),</span>
+<span id="cb30-22">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">return_obj =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span></span>
+<span id="cb30-23">)</span>
+<span id="cb30-24"></span>
+<span id="cb30-25">ds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">setGeoTransform</span>(vaster<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">extent_dim_to_gt</span>(ext, dm))</span>
+<span id="cb30-26">ds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">setNoDataValue</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">band =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>)</span></code></pre></div></div>
+</div>
+<p>Build a tile index with <code>grout</code>, then pre-filter to rows that contain any burned data. This avoids even <em>visiting</em> tiles over open ocean or interior ice sheet:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1">superblock <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> block_size <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">4</span></span>
+<span id="cb31-2">gg    <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> grout<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">grout</span>(dm, ext, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">blocksize =</span> superblock)</span>
+<span id="cb31-3">tiles <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> grout<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tile_index</span>(gg)</span>
+<span id="cb31-4"></span>
+<span id="cb31-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Keep only tile-rows that intersect at least one data row</span></span>
+<span id="cb31-6">data_rows <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">unique</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>runs<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>row, ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>edges<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>row,</span>
+<span id="cb31-7">                      ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>lines<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>row, ba<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>points<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>row))</span>
+<span id="cb31-8">tiles <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> tiles[tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>tile_row <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%in%</span></span>
+<span id="cb31-9">                 <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">unique</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ceiling</span>(data_rows <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> superblock)), ]</span></code></pre></div></div>
+</div>
+<p>The loop itself is straightforward: crop → materialise → write.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1">tiles_written <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L</span>
+<span id="cb32-2"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> (i <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">seq_len</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">nrow</span>(tiles))) {</span>
+<span id="cb32-3">  sub <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">crop_burn</span>(ba, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>xmin[i], tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>xmax[i],</span>
+<span id="cb32-4">                         tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>ymin[i], tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>ymax[i]))</span>
+<span id="cb32-5"></span>
+<span id="cb32-6">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">nrow</span>(sub<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>runs) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&amp;&amp;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">nrow</span>(sub<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>edges) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>) <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">next</span></span>
+<span id="cb32-7"></span>
+<span id="cb32-8">  mat <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">materialize_chunk</span>(sub, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"id"</span>)</span>
+<span id="cb32-9">  mat[<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.na</span>(mat)] <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span></span>
+<span id="cb32-10"></span>
+<span id="cb32-11">  ds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">write</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">band =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>,</span>
+<span id="cb32-12">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xoff =</span> tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>offset_x[i], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">yoff =</span> tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>offset_y[i],</span>
+<span id="cb32-13">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xsize =</span> tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>ncol[i], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ysize =</span> tiles<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>nrow[i],</span>
+<span id="cb32-14">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rasterData =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.integer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">t</span>(mat)))</span>
+<span id="cb32-15"></span>
+<span id="cb32-16">  tiles_written <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> tiles_written <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L</span>
+<span id="cb32-17">}</span>
+<span id="cb32-18"></span>
+<span id="cb32-19">ds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">flushCache</span>()</span>
+<span id="cb32-20">ds<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">close</span>()</span></code></pre></div></div>
+</div>
+<pre><code>## ~445 seconds elapsed
+## tiles written: 3,482 of 7,511
+## file size: 26,782 KB
+## output: 170318 × 182568 Int32, nodata=0</code></pre>
+<p>The result is a valid COG — internally tiled, compressed, with overviews — that weighs in at around 26 MB on disk for a 31-billion-cell grid. Only the tiles that actually contain rock outcrop carry any data.</p>
+<p>The compressed file is informationally equivalent to the sparse burn object itself — both encode exactly the same set of non-empty cells. The burn object in memory is <code>lobstr::obj_size(ba)</code> → 27.27 MB; the COG on disk is 26 MB. The sparse representation <em>is</em> the information content of the raster; the file is just a different container for the same signal.</p>
+</section>
+</section>
+<section id="extracting-point-values" class="level2">
+<h2 class="anchored" data-anchor-id="extracting-point-values">Extracting point values</h2>
+<p>Not every downstream operation needs a dense raster. <code>extract_burn()</code> queries the sparse tables directly at arbitrary point locations, with no materialisation step at all. It matches interior runs by row equality and column interval containment, and edges/lines/points by exact (row, col) match. Cost is O(points + hits), independent of grid dimension.</p>
+<p>The following code chunk is purely for illustration, these locations probably are NA in terms of the polygons.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Some coordinates in the burn's CRS (Antarctic Polar Stereographic)</span></span>
+<span id="cb34-2">pts <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">matrix</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1680000</span>, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1100000</span>,</span>
+<span id="cb34-3">                 <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2200000</span>,   <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">400000</span>,</span>
+<span id="cb34-4">                 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">300000</span>,  <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">700000</span>), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">byrow =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb34-5"></span>
+<span id="cb34-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">extract_burn</span>(ba, pts, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"id"</span>)</span></code></pre></div></div>
+</div>
+<p>The function returns <code>NA</code> for background cells (no geometry touched that pixel) and the geometry ID for cells inside a polygon. With <code>fun = "sum"</code>, coverage-mode burns return exact fractional coverage at each point.</p>
+<p>This pattern generalises. Because the sparse representation is a reusable intermediate, other raster operations — zonal statistics, reclassification, distance transforms — can be built on top of the same sparse tables without re-burning or allocating a full dense grid. The burn is computed once; everything else is derived.</p>
+</section>
+<section id="packing-compression-and-sparsity" class="level2">
+<h2 class="anchored" data-anchor-id="packing-compression-and-sparsity">Packing, compression, and sparsity</h2>
+<p>A useful comparison: the Australian Antarctic Data Centre publishes <a href="https://doi.org/10.26179/7mnh-j215">Ice-free Antarctica</a> (Toth &amp; Terauds 2023) — a union of rock outcrop layers from imagery spanning 1960–2020, encoded as a single-band GeoTIFF at 100 m resolution (52765 × 48132 pixels). Values are 0 (ice/ocean), 1, 2, or 3 (rock, by source layer), stored at 2 bits per sample (NBITS=2) in 128 × 128 tiles. The file is 613 MB.</p>
+<p>That 2-bit packing is already a 4× saving over a byte raster — but it is a fixed per-pixel economy. Every tile is materialised: ocean, ice sheet, and rock alike each cost their full 4096 bytes. The encoding is indifferent to the fact that the vast majority of pixels say the same thing: zero. Recompressing the same tiles with DEFLATE collapses the file to about 5.6 MB — a ~100× reduction with zero information loss, because constant regions become long runs of identical bytes, and long runs are the best possible input to any general-purpose codec.</p>
+<p>Our controlledburn COG encodes different (but related) data at 32 m resolution — a grid 10× denser in each dimension — and lands at 26 MB on disk. The sparse burn object in memory is 27 MB. These numbers are not directly comparable (different polygons, different resolution, different pixel semantics), but the <em>relationship</em> between them is the point: the information content of “where is the rock?” is small relative to the grid that contains it, regardless of how you choose to encode it.</p>
+<p>The three approaches — bit-packing, codec compression, and run-length sparse representation — are related lenses on the same underlying reality. Bit-packing reduces the cost per pixel but remains grid-dense. Compression recovers structure after the fact, collapsing constant regions that the format didn’t know to avoid. Sparse rasterization exploits the same structure <em>before</em> pixels exist: polygon interiors are runs by construction, so the compact representation is produced directly rather than recovered by a codec.</p>
+<p>None of these is categorically superior. The AADC file is a finished product, designed for broad interoperability and direct random-access reads — the choice not to compress may well reflect downstream tooling constraints or the simplicity of a uniform tile stride. controlledburn’s sparse format is an intermediate: it is meant to sit between the vector source and whatever raster product or analysis comes next. The value is in seeing them as points on the same continuum — rasterization, compression, and sparse encoding are all ways of negotiating between the geometry of the data and the geometry of the grid.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>controlledburn</category>
+  <category>rasterization</category>
+  <category>Antarctica</category>
+  <category>GDAL</category>
+  <guid>https://hypertidy.org/posts/2026-08-19_antarctica-icefree-rasterizing/</guid>
+  <pubDate>Wed, 19 Aug 2026 00:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>s2 guide</title>
+  <dc:creator>Michael Sumner</dc:creator>
+  <link>https://hypertidy.org/posts/2026-08-10_s2-guide/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+
+<p>The s2 package is excellent and I find it genuinely hard to use. Not because the functions are bad, but because the package contains three parallel type families that perhaps aren’t obvious, and the <code>s2_</code> prefix only weakly signals which family a function belongs to. This is a real transcript of me trying to get from a column of cell IDs in a parquet file to a plot of longitude/latitude centre points:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1">res <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> arrow<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">read_parquet</span>(f[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-2"></span>
+<span id="cb1-3">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_lnglat</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-4">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_x</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-5">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_point</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-6">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-7">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_geography</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]))</span>
+<span id="cb1-8">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_x</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]))</span>
+<span id="cb1-9">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_center</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]))</span>
+<span id="cb1-10">cc <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_center</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell))</span>
+<span id="cb1-11">s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(cc)</span>
+<span id="cb1-12"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_wkb</span>(cc))                            <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## FAIL (geodesic!)</span></span>
+<span id="cb1-13"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wk_set_geodesic</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_wkb</span>(cc), <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>))</span></code></pre></div></div>
+<p>Eleven calls, one error, and the answer was one function cell:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>cell)))</span></code></pre></div></div>
+<p>This post is a guide I wanted. It’s aimed at people who use s2 directly. If you want the sf-flavoured story, the canonical reference is the <a href="https://r-spatial.github.io/sf/articles/sf7.html">sf spherical geometry article</a>, and other r-spatial posts <a href="https://r-spatial.org/r/2020/06/17/s2.html">In r-spatial, the Earth is no longer flat</a>, and <a href="https://r-spatial.org/r/2024/10/11/polygonfull.html">Introducing: the POLYGON FULL</a>.</p>
+<section id="prior-art-deweys-posts" class="level2">
+<h2 class="anchored" data-anchor-id="prior-art-deweys-posts">Prior art: Dewey’s posts</h2>
+<p>Most of what follows was worked out first, and better, by Dewey Dunnington across a series of posts that double as the s2 package’s missing narrative documentation. If this guide is the map, these are the survey expeditions:</p>
+<ul>
+<li><p><a href="https://dewey.dunnington.ca/post/2021/wk-version-0.6.0/">wk version 0.6.0</a> (Dec 2021) is where the geodesic attribute enters WKT/WKB – added specifically so that wk could serve as an interchange format for s2, where vertices are joined by great circles rather than planar segments. If you have ever wondered why <code>plot(wk::as_wkb(some_s2_thing))</code> refuses to cooperate, the reasoning starts here.</p></li>
+<li><p><a href="https://dewey.dunnington.ca/post/2022/profiling-point-in-polygon-joins-in-r/">Profiling point-in-polygon joins in R</a> (Mar 2022) benchmarks geos against s2 for a 9-million-point join, is honest about where s2’s point handling was slow at the time, and foreshadows exposing the cell machinery: approximate a polygon with a covering of cells and test membership as cell arithmetic. That idea is the core of the polygon recipe below.</p></li>
+<li><p><a href="https://dewey.dunnington.ca/post/2022/s2-version-1.1.0/">s2 version 1.1.0</a> (Jul 2022) is the densest single source: <code>tessellate_tol_m</code> for importing planar-edged data honestly (adding vertices so GIS-rule edges survive the trip to the sphere), the cell polygon export problem (geodesic by definition, planar by expectation), the <code>s2_union_agg()</code> speedup, and the refactor of the internals into a standalone s2geography library – the lineage that later surfaces in DuckDB and Sedona.</p></li>
+<li><p><a href="https://dewey.dunnington.ca/post/2024/partitioning-strategies-for-bigger-than-memory-spatial-data/">Partitioning strategies for bigger-than-memory spatial data</a> and <a href="https://dewey.dunnington.ca/post/2024/wrangling-and-joining-130m-points-with-duckdb--the-open-source-spatial-stack/">Wrangling and joining 130M points with DuckDB + the open source spatial stack</a> (both Dec 2024) take the cell idea to its logical end: s2 cells as partition keys and join keys for larger-than-memory data, via the DuckDB Geography extension. This is the “cells are just a column” worldview that motivates keeping cell IDs in parquet in the first place.</p></li>
+<li><p>The <a href="https://dewey.dunnington.ca/slides/geopython2025">GeoPython 2025 slides</a> on DuckDB Geography give the compact cross-language overview of the Geography and S2 Cell/Center/Union types.</p></li>
+</ul>
+<p>The through-line in all of these: s2’s cell types are not an implementation detail, they are the product – a spatial index you can store, ship, and group by. This post is about using them directly from R without the database in between.</p>
+</section>
+<section id="the-three-type-families" class="level2">
+<h2 class="anchored" data-anchor-id="the-three-type-families">The three type families</h2>
+<p>Everything in s2 is one of these:</p>
+<ol type="1">
+<li><p><strong><code>s2_cell</code></strong> – a vctrs vector of doubles whose bits are reinterpreted as uint64 S2 cell IDs. This is the discrete global grid side of s2: a hierarchical quadtree on the six faces of a cube projected to the sphere, levels 0 (face) to 30 (leaf, roughly centimetre scale). Every function named <code>s2_cell_*</code> operates here. Cells are cheap: they sort, hash, group, and round-trip through <code>character</code> and <code>bit64::integer64</code> losslessly. This is the type you get from BigQuery, from parquet exports, from anything that indexes points spatially.</p></li>
+<li><p><strong><code>s2_geography</code></strong> – external pointers to C++ S2 geography objects (points, polylines, polygons on the sphere). Every function with a bare <code>s2_</code> prefix (<code>s2_intersects()</code>, <code>s2_buffer_cells()</code>, <code>s2_x()</code>, …) operates here, or coerces its input here via <code>as_s2_geography()</code>. The coercion is why half-wrong calls half-work: <code>s2_x("POINT (147 -42)")</code> succeeds because character is assumed to be WKT.</p></li>
+<li><p><strong>wk vctrs</strong> – plain coordinate vectors from the wk package, carrying a crs attribute. <code>s2_lnglat(lng, lat)</code> is just <code>wk::xy()</code> with a longlat crs; <code>s2_point(x, y, z)</code> is <code>wk::xyz()</code> with a special “unit sphere” crs. These are the plottable, data-frame-able, “normal” things. They are the exits from s2 back into everything else.</p></li>
+</ol>
+<p>The mnemonic: <strong><code>s2_cell_*</code> functions take cells, <code>as_*</code> functions change family, everything else takes geography.</strong></p>
+<p>Worth internalizing: <code>s2_lnglat()</code> and <code>s2_point()</code> are <em>constructors from coordinates</em>, not converters. <code>s2_lnglat(res$cell[1])</code> doesn’t error helpfully, it just constructs nonsense (a point at longitude whatever-your-cell-double-is). The converters are all spelled <code>as_</code>: <code>as_s2_cell()</code>, <code>as_s2_lnglat()</code>, <code>as_s2_point()</code>, <code>as_s2_geography()</code>, <code>as_s2_cell_union()</code>.</p>
+</section>
+<section id="the-conversion-table" class="level2">
+<h2 class="anchored" data-anchor-id="the-conversion-table">The conversion table</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 13%">
+<col style="width: 21%">
+<col style="width: 24%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>From \ To</th>
+<th>s2_cell</th>
+<th>s2_geography</th>
+<th>lnglat (wk_xy)</th>
+<th>point (wk_xyz)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>character token</td>
+<td><code>as_s2_cell()</code></td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr class="even">
+<td>integer64</td>
+<td><code>as_s2_cell()</code></td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr class="odd">
+<td>s2_cell</td>
+<td><code>s2_cell_parent()</code>, <code>s2_cell_child()</code></td>
+<td><code>s2_cell_center()</code>, <code>s2_cell_polygon()</code>, <code>s2_cell_boundary()</code></td>
+<td><code>s2_cell_to_lnglat()</code></td>
+<td>via lnglat</td>
+</tr>
+<tr class="even">
+<td>s2_geography (points)</td>
+<td><code>as_s2_cell()</code></td>
+<td>–</td>
+<td><code>s2_x()</code> + <code>s2_y()</code>, or wk (see below)</td>
+<td>via lnglat</td>
+</tr>
+<tr class="odd">
+<td>lnglat / lon,lat vectors</td>
+<td><code>as_s2_cell()</code></td>
+<td><code>as_s2_geography()</code></td>
+<td><code>s2_lnglat(lng, lat)</code></td>
+<td><code>as_s2_point()</code></td>
+</tr>
+<tr class="even">
+<td>point (unit sphere xyz)</td>
+<td>via lnglat</td>
+<td>–</td>
+<td><code>as_s2_lnglat()</code></td>
+<td>–</td>
+</tr>
+<tr class="odd">
+<td>polygon-ish anything</td>
+<td><code>s2_covering_cell_ids()</code></td>
+<td><code>as_s2_geography()</code></td>
+<td>–</td>
+<td>–</td>
+</tr>
+</tbody>
+</table>
+<p>Notes on the sharp edges:</p>
+<ul>
+<li><code>as_s2_cell()</code> on coordinates or point geographies gives the <strong>level-30 leaf cell</strong>; use <code>s2_cell_parent(cell, level)</code> to coarsen. Parent of a parent is fine; you can’t go below your current level except via <code>s2_cell_child()</code>.</li>
+<li><code>as_s2_cell()</code> on <code>integer64</code> reinterprets bits directly – so a cell-ID column read from parquet as integer64 converts with no string round-trip. If arrow hands you character tokens, <code>as_s2_cell()</code> handles that too.</li>
+<li><code>s2_cell_to_lnglat()</code> <strong>is</strong> the centre point in one hop. You do not need <code>s2_cell_center()</code> (which makes geography pointers) unless you want to feed the result into geography predicates.</li>
+</ul>
+</section>
+<section id="the-geodesic-flag-or-why-did-my-plot-fail" class="level2">
+<h2 class="anchored" data-anchor-id="the-geodesic-flag-or-why-did-my-plot-fail">The geodesic flag, or: why did my plot fail</h2>
+<p><code>wk::as_wkb()</code> on an s2 geography tags the result <code>geodesic = TRUE</code>, because that’s the truth: S2 edges are great-circle arcs, not straight lines in longitude/latitude space. wk then refuses to plot it, because plotting geodesic edges as straight segments would be a lie and wk won’t densify them for you.</p>
+<p>For <strong>points</strong> the edge interpretation is vacuous, so the refusal is technically principled and practically infuriating. The escape hatch:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wk_set_geodesic</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_wkb</span>(geog), <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>))</span></code></pre></div></div>
+<p>For points this is always fine. For lines and polygons it is fine when your features are small (a level-10+ cell polygon spans a few km; nothing visible bends at that scale) and a lie when they are large (a level-0 face “polygon” drawn with straight lonlat edges is wildly wrong). The honest fix for large features is densification, which is section 5.</p>
+</section>
+<section id="recipe-1-raster-grids-points-and-polygons-to-s2-groupings" class="level2">
+<h2 class="anchored" data-anchor-id="recipe-1-raster-grids-points-and-polygons-to-s2-groupings">Recipe 1: raster grids, points, and polygons to s2 groupings</h2>
+<p>The pattern for all of these is: get to lonlat coordinates or geography, snap to leaf cells, coarsen to a working level, then treat the cell column as an ordinary grouping variable.</p>
+<section id="points" class="level3">
+<h3 class="anchored" data-anchor-id="points">Points</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(s2)</span>
+<span id="cb4-2"></span>
+<span id="cb4-3"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## from bare vectors -- one line to cells at your working level</span></span>
+<span id="cb4-4">cells <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_parent</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_lnglat</span>(lon, lat)), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">level =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8</span>)</span>
+<span id="cb4-5"></span>
+<span id="cb4-6"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## then it's just dplyr</span></span>
+<span id="cb4-7">d <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb4-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">cell =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_parent</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_lnglat</span>(lon, lat)), <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8</span>)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb4-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">summarize</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">sst =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mean</span>(sst), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">n =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">n</span>(), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.by =</span> cell) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb4-10">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">centre =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(cell))</span></code></pre></div></div>
+<p>Level choice: each level quarters the cell area. Rough edge lengths – level 4 ~ 400 km, level 8 ~ 25 km, level 12 ~ 1.5 km, level 16 ~ 100 m. <code>s2_cell_area(cell)</code> gives you exact areas in m^2 if you’d rather check than memorise.</p>
+</section>
+<section id="regular-raster-grids" class="level3">
+<h3 class="anchored" data-anchor-id="regular-raster-grids">Regular raster grids</h3>
+<p>A raster is just points-with-benefits here: take the cell centres. With vaster (or any xy-from-cell logic):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">xy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> vaster<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">xy_from_cell</span>(dimension, extent, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">cells =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">seq_len</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">prod</span>(dimension)))</span>
+<span id="cb5-2">s2cell <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_parent</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_lnglat</span>(xy[, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], xy[, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>])), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">level =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">7</span>)</span>
+<span id="cb5-3"></span>
+<span id="cb5-4"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## aggregate a value vector (e.g. one time slice of SST) onto the s2 grid</span></span>
+<span id="cb5-5">agg <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tapply</span>(values, s2cell, mean, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">na.rm =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb5-6">centres <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">names</span>(agg)))</span></code></pre></div></div>
+<p>Two things worth saying out loud:</p>
+<ul>
+<li>If the grid is in a <strong>projected</strong> crs, unproject the centres first (<code>reproj::reproj_xy(xy, "EPSG:4326", source = crs)</code>); s2 lives on the sphere and only speaks degrees at the door.</li>
+<li>This is <em>point sampling</em> of the raster into cells, which is the right cheap default. If you need area-weighted binning (cells much coarser than pixels is fine; cells finer than pixels is where you’d care), that’s an exact-extract style problem and out of scope for a one-liner – though note that at coarse-cells-over-fine-pixels the sampling error washes out with pixel count.</li>
+</ul>
+<p>The pleasant surprise is that this makes s2 a perfectly good equal-ish-area DGGS for the “bin scattered obs / reduce a global grid” workflows people reach for H3 for, with the advantage that the cell arithmetic is pure R vctrs – no geometry objects until you ask for them.</p>
+</section>
+<section id="polygons" class="level3">
+<h3 class="anchored" data-anchor-id="polygons">Polygons</h3>
+<p>Polygons map to <em>sets</em> of cells, so the target type is <code>s2_cell_union</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">g <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_geography</span>(wkt_or_wkb_or_sf_geometry)</span>
+<span id="cb6-2"></span>
+<span id="cb6-3"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## interior/exterior covering at bounded resolution</span></span>
+<span id="cb6-4">cov <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_covering_cell_ids</span>(g, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">min_level =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">4</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">max_level =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">max_cells =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">64</span>)</span>
+<span id="cb6-5">cov_int <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_covering_cell_ids</span>(g, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">max_cells =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">64</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">interior =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
+<p><code>max_cells</code> is the budget: the covering adapts level within your bounds to approximate the shape with at most that many cells. <code>interior = TRUE</code> gives cells fully inside (a conservative mask), default gives cells that collectively contain the polygon (a permissive mask). There’s a <code>buffer</code> argument (metres) for dilating before covering.</p>
+<p>Point-in-polygon at scale then becomes cell arithmetic instead of geometry:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## which obs cells fall in the polygon covering? no geometry predicates,</span></span>
+<span id="cb7-2"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## just uint64 range containment</span></span>
+<span id="cb7-3">inside <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_union_contains</span>(cov, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell_union</span>(obs_cells))</span></code></pre></div></div>
+<p>For an exact answer, use the permissive covering as a prefilter and run <code>s2_intersects()</code> on the survivors – the classic index-then-refine join, except the index is a column you can keep in parquet.</p>
+<p>This is the shape of the Pacific-domain-mask problem, incidentally: express the domain polygon once as a covering, save the cell union as tokens, and membership tests against any point set are joins.</p>
+</section>
+</section>
+<section id="recipe-2-s2-to-rgl-plotting-on-the-actual-sphere" class="level2">
+<h2 class="anchored" data-anchor-id="recipe-2-s2-to-rgl-plotting-on-the-actual-sphere">Recipe 2: s2 to rgl (plotting on the actual sphere)</h2>
+<p>The bridge is <code>as_s2_point()</code>: it converts longlat wk_xy to <strong>unit-sphere xyz</strong> – which is exactly what rgl wants, no trig required.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(rgl)</span>
+<span id="cb8-2"></span>
+<span id="cb8-3"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## cell centres as points on the sphere</span></span>
+<span id="cb8-4">xyz <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.matrix</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.data.frame</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_point</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(cells))))</span>
+<span id="cb8-5"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">points3d</span>(xyz, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> palr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sst_pal</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">64</span>)[scales<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rescale</span>(vals, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">64</span>)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">round</span>()])</span>
+<span id="cb8-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">spheres3d</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">radius =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.999</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"grey20"</span>)  <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## backdrop globe</span></span></code></pre></div></div>
+<p>Cells as quads is barely more work, because <code>s2_cell_vertex(x, k)</code> gives vertex k (0..3) as a point geography, and quads want exactly that:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1">cell_quads3d <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(cells, ...) {</span>
+<span id="cb9-2">  v <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lapply</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(k) {</span>
+<span id="cb9-3">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.matrix</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.data.frame</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_point</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_lnglat</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_vertex</span>(cells, k)))))</span>
+<span id="cb9-4">  })</span>
+<span id="cb9-5">  <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## interleave to vertex-per-row quad order: v0 v1 v2 v3 per cell</span></span>
+<span id="cb9-6">  m <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">matrix</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">t</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">do.call</span>(cbind, v)), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>L, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">byrow =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb9-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">quads3d</span>(m, ...)</span>
+<span id="cb9-8">}</span>
+<span id="cb9-9"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cell_quads3d</span>(cells, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">col =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"firebrick"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">alpha =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.8</span>)</span></code></pre></div></div>
+<p>Caveats, both about coarse cells:</p>
+<ul>
+<li>A quad’s edges are drawn as chords through the sphere, so coarse cells (level &lt; ~4) visibly cut the ball and their “flat” faces sit below the unit sphere. The fix is subdivision: replace each coarse cell with its children at a uniform deeper level (<code>s2_cell_child()</code> recursively, or just build your grouping at a deeper level and aggregate the <em>values</em> coarsely instead).</li>
+<li>For genuinely smooth cell patches you want the quadmesh treatment – densify each cell face in (face, i, j) space and push vertices to the sphere – which is an anglr/quadmesh shaped job and a natural follow-up post.</li>
+</ul>
+<p>The general s2-geography-to-rgl path for arbitrary lines/polygons is: densify edges first (next section), then <code>wk::wk_vertices()</code>, <code>as_s2_point()</code>, and index into <code>segments3d()</code>/<code>polygon3d()</code>. Densify-first matters for the same chord-vs-arc reason.</p>
+</section>
+<section id="recipe-3-geodesic-densification-bigcurve-and-wkpool" class="level2">
+<h2 class="anchored" data-anchor-id="recipe-3-geodesic-densification-bigcurve-and-wkpool">Recipe 3: geodesic densification, bigcurve, and wkpool</h2>
+<p>Here’s the conceptual unification. wk’s geodesic flag marks “these edges are great circles, do not interpolate them linearly in lonlat”. bigcurve’s whole job is adaptive line densification under a coordinate transformation – insert vertices until the straight segments approximate the true curve to tolerance. A geodesic edge is precisely this problem where the transformation is <em>sphere to plate carree</em>: the true curve is the great circle, the drawing space is lonlat.</p>
+<p>So the missing verb has an obvious signature:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## proposed: consume geodesic-flagged wkb, emit densified planar wkb</span></span>
+<span id="cb10-2">flatten_geodesic <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tolerance_m =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10000</span>) {</span>
+<span id="cb10-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">stopifnot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">isTRUE</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wk_is_geodesic</span>(x)))</span>
+<span id="cb10-4">  <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## densify each edge along the great circle to tolerance, then</span></span>
+<span id="cb10-5">  wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wk_set_geodesic</span>(densified, <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>)</span>
+<span id="cb10-6">}</span></code></pre></div></div>
+<p>with the inverse-ish operation being what bigcurve already does for projections (densify in the <em>projected</em> space). Composed, you get the honest pipeline for “draw this s2 polygon in LAEA”:</p>
+<pre><code>s2_geography --[flatten_geodesic, tol]--&gt; planar lonlat wkb
+             --[bigcurve densify under proj, tol]--&gt; projected wkb</code></pre>
+<p>Three candidate engines for the great-circle interpolation itself:</p>
+<ol type="1">
+<li><strong>s2 itself</strong>: <code>s2_interpolate_normalized(line, t)</code> walks a polyline by fraction – correct but per-feature-scalar-ish and awkward for edge-wise adaptive refinement.</li>
+<li><strong>geographiclib</strong>: direct/inverse problems on the ellipsoid – and this is the point where you decide whether “geodesic” means sphere (s2’s world) or ellipsoid (GeographicLib’s). For rendering, sphere is fine and consistent with the flag’s provenance; for measurement, s2 already defers radius choices to you.</li>
+<li><strong>a small C++ slerp in bigcurve’s core</strong>: unit-vector slerp between edge endpoints is ~5 lines, exactly matches S2’s edge definition, and fits bigcurve’s adaptive bisection (recurse while the chord midpoint deviates from the slerp midpoint by &gt; tol). This is the one I’d do: the s2 edge model <em>is</em> slerp, so bigcurve gains geodesic support without a dependency, and wkpool provides the vertex pooling for shared edges (think: densifying a lattice of cell polygons without duplicating every shared boundary).</li>
+</ol>
+<p>A cell-union boundary is a mesh of shared arcs, and densifying per-polygon quadruples the work and the vertex count. Pool first, densify unique edges once, reconstruct. That’s the silicate instinct applied to the sphere, and it would make “draw 10k cell polygons in any projection, correctly” cheap.</p>
+<p>I think: <code>flatten_geodesic()</code> (or <code>wk_geodesic_densify()</code>) belongs API-wise with wk-adjacent tooling, implementation-wise in bigcurve’s C++ core, with wkpool underneath for shared-edge economy. And its existence retroactively makes wk’s plot refusal feel fair – the refusal is an unfilled socket, and this is the plug.</p>
+</section>
+<section id="appendix-the-four-verbs" class="level2">
+<h2 class="anchored" data-anchor-id="appendix-the-four-verbs">Appendix: the four verbs</h2>
+<p>A core of wrappers is tiny:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## cell column (character/integer64/cell) -&gt; lonlat centres</span></span>
+<span id="cb12-2">cell_lonlat <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x) s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_to_lnglat</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(x))</span>
+<span id="cb12-3"></span>
+<span id="cb12-4"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## lon, lat -&gt; cells at level</span></span>
+<span id="cb12-5">lonlat_cell <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x, y, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">level =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>L) {</span>
+<span id="cb12-6">  s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_parent</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_lnglat</span>(x, y)), level)</span>
+<span id="cb12-7">}</span>
+<span id="cb12-8"></span>
+<span id="cb12-9"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## cell column -&gt; plottable planar polygons (small-cell assumption)</span></span>
+<span id="cb12-10">cell_poly <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x) {</span>
+<span id="cb12-11">  wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">wk_set_geodesic</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_wkb</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">s2_cell_polygon</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_cell</span>(x))), <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>)</span>
+<span id="cb12-12">}</span>
+<span id="cb12-13"></span>
+<span id="cb12-14"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## anything s2 -&gt; unit sphere xyz matrix for rgl</span></span>
+<span id="cb12-15">sphere_xyz <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x) {</span>
+<span id="cb12-16">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.matrix</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.data.frame</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_point</span>(s2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_s2_lnglat</span>(wk<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_xy</span>(x)))))</span>
+<span id="cb12-17">}</span></code></pre></div></div>
+<p>I’m not sure these need a package so much as a place to be seen.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>s2</category>
+  <category>wk</category>
+  <category>spatial</category>
+  <category>rgl</category>
+  <guid>https://hypertidy.org/posts/2026-08-10_s2-guide/</guid>
+  <pubDate>Mon, 10 Aug 2026 00:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Icechunk is coming - versioned cloud-native Zarr, GDAL, and R</title>
   <dc:creator>Michael Sumner</dc:creator>
@@ -13776,489 +15626,6 @@ font-style: inherit;">diff</span>(ys))</span></code></pre></div></div>
   <category>raster</category>
   <guid>https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/</guid>
   <pubDate>Fri, 09 Dec 2022 00:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>GDAL raster read/write by blocks</title>
-  <dc:creator>Michael D. Sumner</dc:creator>
-  <link>https://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/</link>
-  <description><![CDATA[ 
-
-
-
-
-
-
-<section id="read-and-write-raster-by-blocks." class="level2">
-<h2 class="anchored" data-anchor-id="read-and-write-raster-by-blocks.">Read and write raster by blocks.</h2>
-<p>A block is another word for a tile, a tile in a small-ish raster window within a larger raster. Tiles can be very clever, such as 256x256, they make a nice way to organize large data- keeping pieces of data that are nearby spatial nearby to each other in memory. There is a pair of functions internal to <a href="https://github.com/hypertidy/vapour">vapour</a> that will 1) read data from a raster block 2) write data to a raster block. At the moment only Float64 data is handled.</p>
-</section>
-<section id="tiles" class="level2">
-<h2 class="anchored" data-anchor-id="tiles">Tiles</h2>
-<p>Tiles are a way of organizing rasters, a tile may be 256x256, 512x512 (typically powers of 2 for sensible reasons), or they may be of higher dimensions 256x256x8 - this is really a private detail for a storage format, such as a file. The data values stored in a tile are a nother matter, these are like variables - we might have 1 variable (say elevation) stored in a double floating point value, or we might have 3 variables of byte values for storing an RGB image. These are independent concepts to the size of the tile, and strictly there may be no variables at all, just the abstract idea of the tiling.</p>
-<p>Another kind of block, or tile is a the <em>scanline</em> of a raster. Imagine reading each row of the raster, from the top row to the bottom. Each line is its own kind of degenerate tile. We can read from a raster this way no matter what its internal tiling is, just software might be opening several tiles and reading just one line from each. So, best if we match our “tile attack” to the native structure of the data.</p>
-<p>Here we find a large, tiled raster, obtain its internal tiling, and use that to <em>update</em> a copy of the same file.</p>
-<p>Please note how we copy the source file, then write to that. There’s probably other software better suited to doing this atm, this post simply aims to air the topic a little in an R context.</p>
-<p>Here we use only temporary files that we download, and copy as needed. In practice, you should set this up to work across different physical disks, and for better workflow we need the ability to open an empty file to write to (WIP).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1">raster_url <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"ftp://ftp.data.pgc.umn.edu/elev/dem/setsm/REMA/mosaic/v1.1/200m/REMA_200m_dem.tif"</span></span>
-<span id="cb1-2"></span>
-<span id="cb1-3">readfrom_file <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">pattern =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"readfrom"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>)</span>
-<span id="cb1-4">writeto_file <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">pattern =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"writeto"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>)</span>
-<span id="cb1-5"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## file size is 1.3Gb</span></span>
-<span id="cb1-6">curl<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">curl_download</span>(raster_url, readfrom_file)</span>
-<span id="cb1-7"></span>
-<span id="cb1-8"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## this now makes a copy of the 1.3Gb file, so we have two of them</span></span>
-<span id="cb1-9">fs<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">file_copy</span>(readfrom_file, writeto_file)</span></code></pre></div></div>
-</div>
-<p>Now we want the tiling</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">info <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> vapour<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">vapour_raster_info</span>(readfrom_file)</span>
-<span id="cb2-2">tiling <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">list</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">dimension =</span> info<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>dimXY, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tiles =</span> info<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tilesXY)</span>
-<span id="cb2-3">fac <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">100</span></span>
-<span id="cb2-4">fac <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">*</span> tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles</span>
-<span id="cb2-5"><span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">if</span> (tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>] <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>) {</span>
-<span id="cb2-6">  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## let's take fac scanlines at a time</span></span>
-<span id="cb2-7">  tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>] <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> fac</span>
-<span id="cb2-8">}</span>
-<span id="cb2-9">calc_steps <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">function</span>(dimension, tiles) {</span>
-<span id="cb2-10">  bounds_x <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>, dimension, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">by =</span> tiles)</span>
-<span id="cb2-11">  steps_x <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span>  <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rep</span>(tiles, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">length.out =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">length</span>(bounds_x)<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)</span>
-<span id="cb2-12">  dangle_x <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">sum</span>(steps_x) <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span>dimension</span>
-<span id="cb2-13">  <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">if</span> (dangle_x <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">&gt;</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>) steps_x[<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">length</span>(steps_x)] <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> steps_x[<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">length</span>(steps_x)] <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span> dangle_x</span>
-<span id="cb2-14">  </span>
-<span id="cb2-15">  <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">list</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">head</span>(bounds_x, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>), steps_x)</span>
-<span id="cb2-16">}</span>
-<span id="cb2-17">x_step <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">calc_steps</span>(tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>dimension[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>], tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>])</span>
-<span id="cb2-18">y_step <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">calc_steps</span>(tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>dimension[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>], tiling<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>])</span>
-<span id="cb2-19">y_step</span>
-<span id="cb2-20"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">system.time</span>({</span>
-<span id="cb2-21"><span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">for</span> (i <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">in</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq_along</span>(x_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>]])) {</span>
-<span id="cb2-22">  startx <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> x_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>]][i]</span>
-<span id="cb2-23">  countx <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> x_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>]][i]</span>
-<span id="cb2-24">  <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">for</span> (j <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">in</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq_along</span>(y_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>]])) {</span>
-<span id="cb2-25">  starty <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> y_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>]][j]</span>
-<span id="cb2-26">  county <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> y_step[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>]][j]</span>
-<span id="cb2-27">    </span>
-<span id="cb2-28">  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## now read</span></span>
-<span id="cb2-29">  offset <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(startx, starty)</span>
-<span id="cb2-30">  dimension <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(countx, county)</span>
-<span id="cb2-31">  vals <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> vapour<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">:::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">vapour_read_raster_block</span>(readfrom_file, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">offset =</span> offset, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">dimension =</span> dimension, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">band_output_type =</span> info<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>datatype, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">band =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)[[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>L]]</span>
-<span id="cb2-32">  </span>
-<span id="cb2-33">  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## do something to the values</span></span>
-<span id="cb2-34">  <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">any</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">na.omit</span>(vals) <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">&gt;</span> info<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>nodata_value)) {</span>
-<span id="cb2-35">    vals <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> vals <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">*</span> <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span></span>
-<span id="cb2-36">    vapour<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">:::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">vapour_write_raster_block</span>(writeto_file, vals, offset, dimension, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">band =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">overwrite =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span>
-<span id="cb2-37">  }</span>
-<span id="cb2-38">  }</span>
-<span id="cb2-39">}</span></code></pre></div></div>
-</div>
-
-
-</section>
-
- ]]></description>
-  <category>gdal</category>
-  <category>raster</category>
-  <guid>https://hypertidy.org/posts/2022-04-05_gdal_raster_blocks/</guid>
-  <pubDate>Wed, 04 May 2022 00:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>GDAL warper with R</title>
-  <dc:creator>Michael D. Sumner</dc:creator>
-  <link>https://hypertidy.org/posts/2022-04-25_gdalwarper-in-R/</link>
-  <description><![CDATA[ 
-
-
-
-
-
-
-<section id="an-unfinished-post" class="level2">
-<h2 class="anchored" data-anchor-id="an-unfinished-post">An unfinished post</h2>
-<p>There’s several meanings floating around when you say the “GDAL warper”. It can mean</p>
-<ul>
-<li>command-line <a href="https://gdal.org/apps">gdalwarp</a></li>
-<li>the <em>rasterio</em> package in Python, and its <a href="https://rasterio.readthedocs.io/en/latest/topics/virtual-warping.html">WarpedVRT</a></li>
-<li>the GDAL C++ API warping library</li>
-</ul>
-<p>We can also mean</p>
-<ul>
-<li>the <em>sf</em> package in R, and its <a href="https://r-spatial.github.io/sf/reference/gdal_utils.html">gdal_utils()</a> function</li>
-<li>the <em>stars</em> package in R, and its <a href="https://r-spatial.github.io/stars/reference/st_warp.html">st_warp()</a> function</li>
-<li>the <em>terra</em> package in R, and its <a href="https://rspatial.github.io/terra/reference/project.html">project()</a> function</li>
-<li>the <a href="https://github.com/gearslaboratory/gdalUtils">gdalUtils</a> package in R</li>
-<li>the <a href="https://github.com/JoshOBrien/gdalUtilities">gdalUtilities</a> package in R</li>
-</ul>
-<p>But, what I mean is the GDAL C++ API warping library.</p>
-</section>
-<section id="the-gdal-c-api-warping-library" class="level2">
-<h2 class="anchored" data-anchor-id="the-gdal-c-api-warping-library">The GDAL C++ API warping library</h2>
-<p>GDAL is complex. It deals with very many different formats, and has many tools. In terms of this post, it has very <em>low-level development facilities</em>, written in C++. This means you can usually go as deep as you need into a geospatial problem by writing C++ code against the library directly. Often you don’t need C++ and can use Python, and sometimes you can use R depending on what is exposed there. Sometimes you need to modify GDAL itself, and you can do anything you want then(!), which is how open source is supposed to work.</p>
-<p>Key feature of the <em>gdalwarp_lib.cpp</em> <code>GDALWarp()</code> C++ function, versus the <code>GDALWarpDirect()</code>, <code>GDALWarpIndirect()</code> and the lower level <code>GDALWarpMulti()</code> and <code>GDALWarpImage()</code> functions.</p>
-<p>When we use <em>gdalwarp_lib</em>, we get handling of multiple-zoom level sources without intervention on our own.</p>
-<p>Most use cases I see of the warper facilities are for whole-sale conversion of large datasets, multiple input files converted to a another projection in a large output file or series of tiles.</p>
-</section>
-<section id="the-warper-is-also-a-generalized-rasterio" class="level2">
-<h2 class="anchored" data-anchor-id="the-warper-is-also-a-generalized-rasterio">The warper is also a generalized RasterIO</h2>
-<p>(rasterio is a famous python package for using GDAL’s raster facilities, it’s not what we mean here).</p>
-<p>RasterIO is a C++ function in the GDAL library, its job is to take a source data set (i.e.&nbsp;a path to GeoTIFF) and to provide you with a window of pixels from that source. A window can be a subset, the entire raster, or a resampling (i.e.&nbsp;fewer pixels than native) of either the entire or a subset of the raster.</p>
-<p>It’s really, cool and using it looks like this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode c++ code-with-copy"><code class="sourceCode cpp"><span id="cb1-1">err <span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">=</span> rasterBand<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-&gt;</span>RasterIO<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">(</span>GF_Read<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> </span>
-<span id="cb1-2">                           Xoffset<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> Yoffset<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> </span>
-<span id="cb1-3">                           nXSize<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> nYSize<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span></span>
-<span id="cb1-4">                           <span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">&amp;</span>double_scanline<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">[</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">],</span> </span>
-<span id="cb1-5">                           outXSize<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> outYSize<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> </span>
-<span id="cb1-6">                           GDT_Float64<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span></span>
-<span id="cb1-7">                           <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">,</span> <span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">&amp;</span>psExtraArg<span class="op" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">);</span></span></code></pre></div></div>
-<p>There is <em>a lot</em> going on in that function call, but in short the key parts are (these are my argument-variable-names):</p>
-<ul>
-<li><code>rasterBand-&gt;RasterIO()</code> is the way we read a pixel values, we have a raster band and we call the member function RasterIO()</li>
-<li><code>Xoffset</code>, <code>Yoffset</code> is the first column and row we should consider for reading (0,0 if we start at the top left corner)</li>
-<li><code>nXSize</code>, <code>nYSize</code></li>
-<li><code>outXSize</code>, <code>outYSize</code> is the dimension of the window we get out</li>
-</ul>
-<p>That last bits, the two kinds of <em>Size</em> is the magic, we can ask to start at a particular row,column and read out a given number of pixels in x and y. But, not only that we can specifiy where to end in the source. If nXSize and outXSize are not equal in value then we have asked for a resampling of the source “only read every <code>nXSize / outXSize</code> values in the x direction. If they are equal, just read every one. Note also that we might ask for an outX/YSize that is <em>larger</em> than the source nXSize/nYSize - and this would give us a resampling to higher resolution. This is really where the resampling algorithm comes in. ‘Nearest neighbour’ would give us copies of pixels, ‘Bilinear’ and interpolation between source pixels for new pixels in between. Other algorithms include ‘Cubic’, ‘Lanczos’, ‘Average’, ‘Sum’.</p>
-<p>This is the key behind the fast and lazy reads provided by the terra and sf packages in R, this was originally available also in rgdal and raster made heavy use of it.</p>
-<p>But, what is the offset and the size? We really want to think in geographic coordinates, and this is exactly what <code>crop()</code> does for example. We get a discretized crop, not an exact one because we only get to read by this raster-based mechanism - we are bound to the size and alignment of the source pixels.</p>
-<p>Under the hood, functions like crop() do the following:</p>
-<pre class="psuedorcode"><code>offsets/scale vs. xlim,ylim</code></pre>
-<p>The other arguments in RasterIO.</p>
-<ul>
-<li><code>GF_Read</code> controls the mode we are into (read or write or update)</li>
-<li><code>GDT_Float64</code> controls the type of data we get out (64 bit doubles here, GDAL will auto-convert if the source is different type)</li>
-<li><code>0, 0, &amp;psExtraArg</code> are further details we won’t discuss (though, the way resampling is done is controlled in the extra args options).</li>
-</ul>
-<p>What are its limitations:</p>
-<ul>
-<li>only one source at a time, you can’t resample from multiple rasters at once (we are using offset/size indexing so the rasters must all be the same shape, you can read multiple bands)</li>
-<li></li>
-</ul>
-<p>What is interesting about RasterIO vs.&nbsp;Warping is that we would never ever use warping for pure graphics. It doesn’t make sens</p>
-</section>
-<section id="enter-the-wutang-warper" class="level2">
-<h2 class="anchored" data-anchor-id="enter-the-wutang-warper">Enter the <del>WuTang</del> Warper!</h2>
-<p>Doing discretized extent raster math is boring. With the warper we don’t need to do it.</p>
-<p>This is because the warper is for <em>changing projections</em>, this is an entire re-modelling of raster data. (in the 2000s it was possible to do but still quite slow and problematic, hence you have very slowly changing standards and perceptions of what is possible/normal/appropriate in software comunities etc.).</p>
-<p>This is a global longlat data set, but we want a local projection so we adopt one by finding its specification.</p>
-<pre><code>
-</code></pre>
-<p>If we were using RasterIO we’d have to do this kind of math to run the index function.</p>
-<p>But with the warper, we can use an extent (but we still need to <em>align</em> it, or we won’t get what the RasterIO facility would faithfully give).</p>
-
-
-</section>
-
- ]]></description>
-  <category>news</category>
-  <category>code</category>
-  <guid>https://hypertidy.org/posts/2022-04-25_gdalwarper-in-R/</guid>
-  <pubDate>Mon, 25 Apr 2022 00:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>
