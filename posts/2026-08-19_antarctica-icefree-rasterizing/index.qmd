@@ -181,7 +181,7 @@ cat(sprintf("Cells that differ: %s out of %s (%.3f%%)\n",
 
 controlledburn burned 25,954 polygons onto a 31-billion-cell grid in
 under a second, producing a sparse run-length table small enough to
-hold in memory. Any tile can be extracted and materialised on demand.
+hold in memory. Any tile can be extracted and materialized on demand.
 The raster was never read — only its grid specification. The polygons
 were never validated or reprojected — just raw WKB bytes from a
 cloud-hosted GeoPackage.
@@ -195,9 +195,9 @@ the same table without re-burning.
 ## Creating a raster file
 
 Now we have a very dense version of our rock layer as a latent raster, we can
-materialise arbitrary windows of it and write them to an actual raster file.
-The strategy: create a SPARSE_OK Cloud-Optimised GeoTIFF (COG), iterate over
-spatial tiles, crop the sparse burn result to each tile, materialise the dense
+materialize arbitrary windows of it and write them to an actual raster file.
+The strategy: create a SPARSE_OK Cloud-Optimized GeoTIFF (COG), iterate over
+spatial tiles, crop the sparse burn result to each tile, materialize the dense
 matrix, and write it via `gdalraster`. Tiles with no burned pixels are skipped
 entirely — SPARSE_OK means unwritten tiles cost nothing on disk.
 
@@ -210,7 +210,7 @@ No dense matrix is ever allocated — it is pure data-frame filtering, so the
 cost depends only on how many run-length entries fall inside the window, not
 on how many pixels the full grid contains. This is what makes it feasible to
 iterate over thousands of tiles without blowing up memory: each iteration
-crops, materialises a small dense block, writes it, and discards it.
+crops, materializes a small dense block, writes it, and discards it.
 
 ### Why super-tiles instead of native 512×512 blocks?
 
@@ -275,7 +275,7 @@ tiles <- tiles[tiles$tile_row %in%
                  unique(ceiling(data_rows / superblock)), ]
 ```
 
-The loop itself is straightforward: crop → materialise → write.
+The loop itself is straightforward: crop → materialize → write.
 
 ```{r}
 #| label: geotiff-loop
@@ -336,15 +336,19 @@ The following code chunk is purely for illustration, these locations probably ar
 pts <- matrix(c(-1680000, -1100000,
                  2200000,   400000,
                  -300000,  -700000), ncol = 2, byrow = TRUE)
-
+pts <- structure(c(2412867, 2426358, 2424194, 2437557, 2437175, 2441121, 
+2443539, 2443284, -911354, -909445, -915172, -913263, -913136, 
+-912245, -914281, -920645), dim = c(8L, 2L))
 extract_burn(ba, pts, fun = "id")
+
+extract_burn(be, pts, fun = "sum")
 ```
 
 The function returns `NA` for background cells (no geometry touched that
 pixel) and the geometry ID for cells inside a polygon. With `fun = "sum"`,
 coverage-mode burns return exact fractional coverage at each point.
 
-This pattern generalises. Because the sparse representation is a reusable
+This pattern generalizes. Because the sparse representation is a reusable
 intermediate, other raster operations — zonal statistics, reclassification,
 distance transforms — can be built on top of the same sparse tables without
 re-burning or allocating a full dense grid. The burn is computed once;
@@ -361,7 +365,7 @@ Terauds 2023) — a union of rock outcrop layers from imagery spanning
 128 × 128 tiles. The file is 613 MB.
 
 That 2-bit packing is already a 4× saving over a byte raster —
-but it is a fixed per-pixel economy. Every tile is materialised:
+but it is a fixed per-pixel economy. Every tile is materialized:
 ocean, ice sheet, and rock alike each cost their full 4096 bytes.
 The encoding is indifferent to the fact that the vast majority of
 pixels say the same thing: zero. Recompressing the same tiles
