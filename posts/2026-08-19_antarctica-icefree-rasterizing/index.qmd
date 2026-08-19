@@ -1,0 +1,10 @@
+---
+title: "antarctica icefree rasterizing"
+author: "Michael Sumner"
+date: "2026-08-19"
+categories:
+  - code
+  - news
+---
+
+
