@@ -4667,6 +4667,472 @@ font-style: inherit;">#     time_resolution:      Forecasts initialized every 6 
   <pubDate>Fri, 26 Jun 2026 00:00:00 GMT</pubDate>
 </item>
 <item>
+  <title>Grids: regular, rectilinear, curvilinear</title>
+  <dc:creator>Michael Sumner</dc:creator>
+  <link>https://hypertidy.org/posts/2026-05-28_regular-rectilinear-curvilinear/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+
+<section id="the-problem-with-curvilinear" class="level2">
+<h2 class="anchored" data-anchor-id="the-problem-with-curvilinear">The problem with “curvilinear”</h2>
+<p>The word <em>curvilinear</em> has a problem in geospatial and earth observation. It gets used interchangeably with “has two-dimensional lon/lat coordinate arrays” or even “is in geographic coordinates”. Neither of these is a helpful meaning, and conflating them causes real problems - both in how we think about data and in how we write code to handle it.</p>
+<p>This post attempts to explain the terminology from a particular stance. Start with this hierarchy:</p>
+<blockquote class="blockquote">
+<p><strong>regular -&gt; rectilinear -&gt; curvilinear -&gt; unstructured</strong></p>
+</blockquote>
+<p>Each step relaxes a geometric constraint, and our starting point is that the first 3 types are a <em>structured grid</em>. The distinguishing criterion between each step is not the coordinate reference system. It is the <em>minimum amount of information needed to specify the position of every cell</em> - which is exactly the amount of information that has to be stored.</p>
+<p>This post is a companion to <a href="https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear">Detecting hidden grids in curvilinear coordinates</a>, which develops the practical detection problem. Here we make a stance about a confusing feature of terminology and explain why it matters with real world examples.</p>
+<hr>
+</section>
+<section id="structured-grids" class="level2">
+<h2 class="anchored" data-anchor-id="structured-grids">Structured grids</h2>
+<p>“Structured” just means that every element in every dimension has the <em>same number of other-dimension counterparts</em>. It’s rectangular: in 1D that’s a set of intervals, in 2D a mosaic of axis-aligned rectangular cells, in 3D a mosaic of axis-aligned rectangular cuboids, and upwards. We can replace intervals, rectangles, cuboids, tesseracts, … with another kind of element: a point. In 1D it’s just a sequence of points, in 2D and above it’s the Cartesian product of sequences of indices. When we talk about structured vs unstructured we are not talking about the spacing of coordinates in any sense - always just index positions. The index structure is, in more formal terms, a cubical complex or regular CW complex; the Earth system modelling community calls this “logically rectangular,” a term we return to below in <em>“Logically rectangular” and the Earth system model vocabulary</em>.</p>
+</section>
+<section id="the-ladder-defined-by-storage" class="level2">
+<h2 class="anchored" data-anchor-id="the-ladder-defined-by-storage">The ladder, defined by storage</h2>
+<p>The cleanest single organizing principle comes from scientific visualization (the VTK data model, the KTH/Weinkauf taxonomy): grid types differ in how <em>implicitly</em> or <em>explicitly</em> positions must be stated.</p>
+<section id="regular-uniform" class="level3">
+<h3 class="anchored" data-anchor-id="regular-uniform">Regular (uniform)</h3>
+<p>Positions are <em>fully implicit</em>. The grid is completely specified by:</p>
+<ul>
+<li>an origin <img src="https://latex.codecogs.com/png.latex?(x_0,%20y_0)"></li>
+<li>a resolution <img src="https://latex.codecogs.com/png.latex?(%5CDelta%20x,%20%5CDelta%20y)"></li>
+<li>dimensions <img src="https://latex.codecogs.com/png.latex?(n_x,%20n_y)"></li>
+</ul>
+<p>(Here if you need please pause for a pedantic <sup>1</sup> footnote).</p>
+<p>Every cell centre follows from index arithmetic alone. No coordinate arrays are stored - or if they are, they are redundant.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># synthetic example</span></span>
+<span id="cb1-2">ex <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">18</span>, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>)  <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## extent xmin, xmax, ymin, ymax </span></span>
+<span id="cb1-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># - same information as bbox xmin,ymin,xmax,ymax</span></span>
+<span id="cb1-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#dimension, or shape (ncols,nrows)</span></span>
+<span id="cb1-5">dm <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>)</span>
+<span id="cb1-6"></span>
+<span id="cb1-7"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(terra)</span></code></pre></div></div>
+</details>
+<div class="cell-output cell-output-stderr">
+<pre><code>terra 1.9.44</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">r <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rast</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ext</span>(ex), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncols =</span> dm[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrows =</span> dm[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>])</span>
+<span id="cb3-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.polygons</span>(r), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">asp =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lwd =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>)</span>
+<span id="cb3-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">points</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">xyFromCell</span>(r, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ncell</span>(r)))</span></code></pre></div></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-regular" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-regular-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://hypertidy.org/posts/2026-05-28_regular-rectilinear-curvilinear/index_files/figure-html/fig-regular-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-regular-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: A regular grid: uniform spacing, axis-aligned. Fully specified by four numbers and a CRS.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>There are two clear ways to think about a regular grid, little area rectangles or a set of centre points - each contains exactly the same information, and each is completely definable by six numbers - ncols, nrows, xmin, ymin, xmax, ymax. Those numbers might be rearrange in order or expressed as <code>offset</code> <code>scale</code> (a transform), but that doesn’t change anything materially.<br>
+The netCDF convention for a regular grid stores 1D coordinate variables, a value for every step in the dimension. This is the <strong>degenerate rectilinear</strong> case: the 1D vectors happen to be uniformly spaced, so the six-number specification is sufficient. Many files store them anyway, and many readers treat the uniform case no differently from the variable-spacing case.</p>
+<p>What are the coordinates? Well they are the positions of the points above, the centres of a cell. It’s trivial to observe that we only need 8 points for every x coordinate, 5 for every y coordinate. But, in turn we don’t need the coordinates at all <em>because they were generated</em> from 6 numbers. Those six are extremely general, every regular grid ever is a variation on those values: positive ncols, nrows &gt;= 1; any numbers at all for xmin, xmax, ymin, ymax so long at xmax &gt; xmin; ymax &gt; ymin.</p>
+<p>The coordinates stored in the 1D vectors are <em>derived</em> values - computed from those 6 numbers by the formula xi=xmin+(i+0.5)⋅Δxx_i = x_{min} + (i + 0.5) x xi=xmin+(i+0.5)⋅Δx (or the equivalent for edges). So storing them is not just redundant, it is a lossy redundancy - the stored floats have accumulated rounding error relative to the exact values the formula would produce. The 6-number specification is not only more compact, it is more precise.</p>
+<p><em>In the wild:</em> NSIDC sea ice concentration products, ERA5 reanalysis on a regular lat/lon grid, most remote sensing imagery.</p>
+<hr>
+</section>
+<section id="rectilinear" class="level3">
+<h3 class="anchored" data-anchor-id="rectilinear">Rectilinear</h3>
+<p>Positions are <em>semi-implicit</em>. The grid remains axis-aligned and orthogonal, but the spacing along each axis may vary independently. Specified by:</p>
+<ul>
+<li>one 1D vector of <img src="https://latex.codecogs.com/png.latex?x"> positions (length <img src="https://latex.codecogs.com/png.latex?n_x">)</li>
+<li>one 1D vector of <img src="https://latex.codecogs.com/png.latex?y"> positions (length <img src="https://latex.codecogs.com/png.latex?n_y">)</li>
+</ul>
+<p>Cell <img src="https://latex.codecogs.com/png.latex?(i,%20j)"> is at <img src="https://latex.codecogs.com/png.latex?(x_i,%20y_j)"> - still the outer product of two 1D sequences. Two arrays, not <img src="https://latex.codecogs.com/png.latex?n_x%20%5Ctimes%20n_y"> arrays.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># synthetic example</span></span>
+<span id="cb4-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># x &lt;- c(0, 1, 3, 6, 10)   # non-uniform</span></span>
+<span id="cb4-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># y &lt;- c(0, 2, 3, 7)</span></span>
+<span id="cb4-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># show grid lines: horizontal and vertical only, variable spacing</span></span>
+<span id="cb4-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># contrast with regular above</span></span></code></pre></div></div>
+</details>
+</div>
+<p>This is the grid type that netCDF calls simply “a grid with coordinate variables” - 1D variables sharing a name with a dimension. A logarithmically-spaced pressure axis is rectilinear. A global ocean product with uniform longitude spacing but Mercator-compressed latitude spacing is rectilinear (and, as the companion post shows, is <em>detected</em> as rectilinear in lon/lat with Mercator y-spacing).</p>
+<p><em>In the wild:</em> BRAN ocean reanalysis (uniform lon, Mercator lat), pressure-level atmospheric data, many regional climate model outputs.</p>
+<p><strong>Note on contested usage:</strong> Some systems (particularly in HPC/CFD) have begun using <em>rectilinear</em> to cover both regular and curvilinear cases, blurring the distinction. In this post, <em>rectilinear</em> means what it says: rectangle-forming, axis-aligned, independently varying in each dimension. The distinction from regular matters because the storage and the indexing arithmetic differ. (See <em>The affine/homogeneous coordinates aside</em> below for why rectilinear grids quietly drop the geotransform machinery.)</p>
+<hr>
+</section>
+<section id="curvilinear" class="level3">
+<h3 class="anchored" data-anchor-id="curvilinear">Curvilinear</h3>
+<p>Positions are <em>fully explicit</em>. The grid retains the combinatorial structure of a regular grid - cells are still indexed <img src="https://latex.codecogs.com/png.latex?(i,%20j)">, each cell still has four neighbours - but the physical positions of cells cannot be expressed as the outer product of two 1D sequences. You need:</p>
+<ul>
+<li>a 2D array of <img src="https://latex.codecogs.com/png.latex?x"> (or longitude) values, shape <img src="https://latex.codecogs.com/png.latex?(n_y,%20n_x)"></li>
+<li>a 2D array of <img src="https://latex.codecogs.com/png.latex?y"> (or latitude) values, shape <img src="https://latex.codecogs.com/png.latex?(n_y,%20n_x)"></li>
+</ul>
+<p>Total storage: <img src="https://latex.codecogs.com/png.latex?2%20%5Ctimes%20n_x%20n_y"> values instead of <img src="https://latex.codecogs.com/png.latex?n_x%20+%20n_y">.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># synthetic example: apply a smooth warp to a regular grid</span></span>
+<span id="cb5-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># e.g. rotate + shear, or a polar stereographic → lonlat forward projection</span></span>
+<span id="cb5-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># show that rows are no longer horizontal, columns no longer vertical</span></span>
+<span id="cb5-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># this is the ESMF example: a grid warped to put the pole over land</span></span></code></pre></div></div>
+</details>
+</div>
+<p>The canonical geoscience examples are ocean model grids warped to move the numerical pole away from the geographic North Pole (tripolar grids, ORCA family), and polar stereographic or Lambert conformal grids <em>stored</em> in geographic coordinates. The cells are quadrilaterals. Grid lines curve. But the connectivity is the same as a regular grid - you can still walk from <img src="https://latex.codecogs.com/png.latex?(i,%20j)"> to <img src="https://latex.codecogs.com/png.latex?(i+1,%20j)">.</p>
+<p>In CF conventions, curvilinear grids are identified by <em>auxiliary coordinate variables</em>: <code>lat(y, x)</code> and <code>lon(y, x)</code> are 2D variables listed in the <code>coordinates</code> attribute, not 1D dimension coordinates. This is the code-level signal.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># detecting curvilinear in vapour</span></span>
+<span id="cb6-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># </span><span class="al" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">TODO</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">: show vapour::gdal_raster_data on a curvilinear source</span></span>
+<span id="cb6-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># show that coordinate arrays have dim &gt; 1 in both axes</span></span>
+<span id="cb6-4"></span>
+<span id="cb6-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># library(vapour)</span></span>
+<span id="cb6-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># src &lt;- "some_ocean_model.nc"</span></span>
+<span id="cb6-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># ...</span></span></code></pre></div></div>
+</div>
+<p><em>In the wild:</em> NEMO/ORCA ocean models, MOM6, ROMS, HYCOM - all use bipolar or tripolar grids. Many Antarctic sea ice model outputs. MODIS/VIIRS L2 swath products (genuinely curvilinear - scan geometry, not a reprojected regular grid).</p>
+<hr>
+</section>
+<section id="unstructured" class="level3">
+<h3 class="anchored" data-anchor-id="unstructured">Unstructured</h3>
+<p>No implicit connectivity. Each cell’s position and its neighbours must be stated explicitly. The index <img src="https://latex.codecogs.com/png.latex?(i,%20j)"> no longer applies - cells are numbered arbitrarily. This covers:</p>
+<ul>
+<li>triangulations (FEM ocean models: FVCOM, SCHISM, ADCIRC)</li>
+<li>Voronoi/MPAS hexagonal grids</li>
+<li>point clouds</li>
+</ul>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># synthetic Delaunay triangulation over a region</span></span>
+<span id="cb7-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># contrast with the i,j indexing of curvilinear above</span></span></code></pre></div></div>
+</details>
+</div>
+<p><em>In the wild:</em> MPAS-Ocean, FVCOM coastal ocean models, coastline data, terrain TINs.</p>
+<hr>
+</section>
+</section>
+<section id="the-spectrum-as-a-table" class="level2">
+<h2 class="anchored" data-anchor-id="the-spectrum-as-a-table">The spectrum as a table</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Connectivity</th>
+<th>Coordinate storage</th>
+<th>CF signal</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Regular</td>
+<td>implicit <img src="https://latex.codecogs.com/png.latex?(i,j)"></td>
+<td>origin + step (4 numbers)</td>
+<td>1D coord vars, uniform spacing</td>
+</tr>
+<tr class="even">
+<td>Rectilinear</td>
+<td>implicit <img src="https://latex.codecogs.com/png.latex?(i,j)"></td>
+<td>two 1D vectors</td>
+<td>1D coord vars, variable spacing</td>
+</tr>
+<tr class="odd">
+<td>Curvilinear</td>
+<td>implicit <img src="https://latex.codecogs.com/png.latex?(i,j)"></td>
+<td>two 2D arrays</td>
+<td>2D auxiliary coord vars</td>
+</tr>
+<tr class="even">
+<td>Unstructured</td>
+<td>explicit table</td>
+<td><img src="https://latex.codecogs.com/png.latex?n_%7Bcells%7D"> position pairs + connectivity</td>
+<td>UGRID convention</td>
+</tr>
+</tbody>
+</table>
+<p>The progression is strict containment: every regular grid is rectilinear; every rectilinear grid <em>could</em> be stored as curvilinear (wastefully); a curvilinear grid is a structured grid (logically rectangular in the sense of Balaji 2006).</p>
+<hr>
+</section>
+<section id="logically-rectangular-and-the-earth-system-model-vocabulary" class="level2">
+<h2 class="anchored" data-anchor-id="logically-rectangular-and-the-earth-system-model-vocabulary">“Logically rectangular” and the Earth system model vocabulary</h2>
+<p>The Earth system modelling community (ESMF, GFDL, NEMO) uses a slightly different framing that is worth knowing. Balaji (2006) defines a grid as <em>logically rectangular</em> if its coordinate space maps one-to-one to an integer index space - i.e., cells can be addressed as <img src="https://latex.codecogs.com/png.latex?(i,%20j)">. This covers regular, rectilinear, <em>and</em> curvilinear in our ladder above. Unstructured grids are not logically rectangular.</p>
+<p>ESMF then distinguishes <em>uniform</em>, <em>rectilinear</em>, and <em>curvilinear</em> as subtypes of logically rectangular - exactly the ladder above minus unstructured. This is consistent usage.</p>
+<p>The key sentence from Balaji: <em>“The coordinate space may continue to be physically curvilinear; yet, in index space, grid cells will be rectilinear boxes.”</em> Index space is always regular. Physical space may be warped. Curvilinear is a statement about physical space, not index space.</p>
+<hr>
+</section>
+<section id="curvilinear-is-not-a-crs" class="level2">
+<h2 class="anchored" data-anchor-id="curvilinear-is-not-a-crs">“Curvilinear” is not a CRS</h2>
+<p>Here is the specific conflation this post exists to name.</p>
+<p>A regular Polar Stereographic grid - say, the NSIDC 25 km Southern Ocean grid on EPSG:3412 - is <strong>regular</strong>. It has uniform spacing in projected coordinates. It can be fully specified by four numbers and a CRS string. We are not saying anything at all about the <em>area</em> or <em>distance</em> on the Earth represented by those cells. This is true in Stereographic (it varies), it’s true in Mercator, in longitude/latitude, in Lambert Azimuthal Equal Area, in Equidistant Conic: it doesn’t matter - the real-world “correctness” of area, distance, or angle is irrelevant to the regularity of the grid in its native CRS.</p>
+<p>When a Polar Stereographic grid’s cell centres are forward-projected to geographic coordinates and stored as <code>lat(y, x)</code> / <code>lon(y, x)</code> two-dimensional arrays in a NetCDF file, the <em>storage format</em> looks curvilinear. The CF signal is present: 2D auxiliary coordinate variables. But the underlying geometry is not curvilinear - it is regular, with two arrays of floating-point noise standing in for four exact integers.</p>
+<p>This is the entropy problem described in the companion post. The confusion arises because:</p>
+<ol type="1">
+<li>CF conventions use the shape of coordinate arrays as the proxy for grid type, and a reprojected regular grid has 2D arrays.</li>
+<li>Many tools that read CF files label anything with 2D coordinate variables as “curvilinear” without checking whether those arrays have rectilinear or regular structure.</li>
+<li>“Geographic coordinates” and “curvilinear coordinates” have been conflated in enough documentation that people assume any lon/lat grid is curvilinear.</li>
+</ol>
+<p>The correct test is geometric, not syntactic: <em>can the positions be expressed as the outer product of two 1D sequences (rectilinear), or as origin + step (regular)?</em> If yes, the grid is not curvilinear regardless of how its coordinates are stored.</p>
+<p>The detection methods in <a href="https://www.hypertidy.org/posts/2026-02-07_cryptic-curvilinear-detection/cryptic-curvilinear">the companion post</a> are the practical implementation of this test.</p>
+<hr>
+</section>
+<section id="genuinely-curvilinear-examples" class="level2">
+<h2 class="anchored" data-anchor-id="genuinely-curvilinear-examples">Genuinely curvilinear examples</h2>
+<p>To make the distinction concrete: these are cases where the 2D coordinate arrays are <em>not</em> hiding a regular grid.</p>
+<p><strong>ORCA bipolar ocean grid.</strong> The NEMO ocean model uses a grid that is regular in the Southern Ocean and tropics but deforms near the North Pole to place the numerical singularity over land (Greenland and Siberia). The resulting <code>nav_lon</code> / <code>nav_lat</code> arrays cannot be factored into 1D sequences by any projection. This is genuinely curvilinear.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># </span><span class="al" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">TODO</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">: plot nav_lon/nav_lat from an ORCA file, zoom to Arctic</span></span>
+<span id="cb8-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># show the non-rectangular cells near the bipolar region</span></span></code></pre></div></div>
+</details>
+</div>
+<p><strong>MODIS/VIIRS L2 swath.</strong> Sensor scan geometry produces curved swaths. Adjacent scan lines are not parallel, and the scan angle distortion means cells grow toward swath edges. No single projected CRS straightens this.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># </span><span class="al" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">TODO</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">: plot boundary polygon coloured by scan-line index</span></span>
+<span id="cb9-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># show the bow-tie artifact at scan edges</span></span></code></pre></div></div>
+</details>
+</div>
+<p><strong>WRF/rotated-pole regional climate model.</strong> The model domain is regular in a rotated coordinate system (pole relocated to the equator of a rotated sphere), which becomes curvilinear in standard geographic coordinates. Detecting this is the Mercator analogue for rotated-pole: project to the rotated CRS, check for regularity there.</p>
+<hr>
+</section>
+<section id="the-degenerate-rectilinear-case" class="level2">
+<h2 class="anchored" data-anchor-id="the-degenerate-rectilinear-case">The degenerate rectilinear case</h2>
+<p>One last terminological note. NetCDF files frequently store 1D coordinate vectors for regular grids - a <code>lon</code> vector of length <img src="https://latex.codecogs.com/png.latex?n_x"> and a <code>lat</code> vector of length <img src="https://latex.codecogs.com/png.latex?n_y">, both uniformly spaced. Strictly speaking this is <em>rectilinear</em> storage (the format allows variable spacing), but the data is <em>regular</em> (the spacing happens to be uniform).</p>
+<p>This is the <strong>degenerate rectilinear</strong> case: a rectilinear format carrying regular content. It matters because:</p>
+<ul>
+<li>Tools that test only for uniform spacing on 1D arrays correctly identify the grid as regular.</li>
+<li>Tools that check only “does it have 1D coordinate variables?” treat it as rectilinear (variable spacing allowed) and may not exploit the regularity.</li>
+<li>The four-number specification is recoverable from the 1D vectors trivially.</li>
+</ul>
+<p>For the netCDF case it is mostly a storage efficiency question. The interesting case is when the 1D vectors are <em>non-uniformly spaced</em> - genuinely rectilinear - which occurs in pressure-level data, stretched ocean grids (e.g.&nbsp;MOM with enhanced tropical resolution), and Mercator-latitude ocean products.</p>
+<hr>
+</section>
+<section id="references-and-further-reading" class="level2">
+<h2 class="anchored" data-anchor-id="references-and-further-reading">References and further reading</h2>
+<ul>
+<li><p>Balaji, V. (2006). <em>A standard description of grids used in earth system models.</em> GFDL/NOAA. The foundational taxonomy for the Earth system modelling community; introduces the logically rectangular / mosaic framework. <a href="https://extranet.gfdl.noaa.gov/~vb/gridstd/">GFDL grid standards</a></p></li>
+<li><p>ESMF Reference Manual §12.1 - the most consistently used set of definitions in practice for geoscience regridding tools. Distinguishes uniform / rectilinear / curvilinear as subtypes of logically rectangular. <a href="https://earthsystemmodeling.org">earthsystemmodeling.org</a></p></li>
+<li><p>CF Conventions §5 - the syntactic signal: 1D dimension coordinates vs 2D auxiliary coordinates. Does not define grid type geometrically but the encoding conventions follow the taxonomy here. <a href="https://cfconventions.org/Data/cf-conventions/cf-conventions-1.11/cf-conventions.html#coordinate-types">cfconventions.org</a></p></li>
+<li><p>Weinkauf, T. (KTH, 2015). <em>Grids and Interpolation</em> - the clearest single slide deck on the implicit/semi-implicit/explicit storage framing. Not geoscience-specific; comes from scientific visualisation.</p></li>
+<li><p>Wikipedia: <a href="https://en.wikipedia.org/wiki/Regular_grid">Regular grid</a> - covers the structured grid sub-hierarchy with reasonable precision.</p></li>
+<li><p><em>Detecting hidden grids in curvilinear coordinates</em> (this site, 2026-02-07) - the practical companion: how to test whether a 2D lon/lat array is actually a regular projected grid with lost metadata.</p></li>
+<li><p><em>Coordinates broken in NetCDF</em> (this site, 2025-09-04) - an earlier treatment of the related problem of CF files with missing or misleading coordinate metadata.</p></li>
+</ul>
+<hr>
+</section>
+<section id="the-ladder-is-manifold-agnostic-and-that-is-the-point" class="level2">
+<h2 class="anchored" data-anchor-id="the-ladder-is-manifold-agnostic-and-that-is-the-point">The ladder is manifold-agnostic — and that is the point</h2>
+<p>The regular → rectilinear → curvilinear ladder characterises grids by their index structure and coordinate storage alone. The manifold — sphere, plane, torus, ellipsoid — is not part of the definition. You can have a regular grid on a sphere (HEALPix patches, cubed-sphere faces) or a regular grid on a plane; regularity is a property of the indexing, not the embedding. This is not a limitation of the ladder; it is the source of its generality and simplicity.</p>
+<p>The longlat case is a clean illustration of what happens when you <em>ignore</em> the manifold. A global regular longlat grid is perfectly regular by the ladder’s definition: uniform spacing, Cartesian product index, four numbers and a CRS to specify it completely. And that’s fine — until your application needs to know that the top row is a pole and the left and right edges are the same meridian. At that point the ladder gives you no help. The wrapping logic, the polar singularity, the fact that cells covering Fiji and cells covering its antipode are not indexed as neighbours — none of that is encoded in the grid structure. It is external knowledge that the application must supply.</p>
+<p>The ladder doesn’t fail at that boundary. It never claimed to address it.</p>
+<hr>
+</section>
+<section id="what-wrapping-logic-reveals" class="level2">
+<h2 class="anchored" data-anchor-id="what-wrapping-logic-reveals">What “wrapping logic” reveals</h2>
+<p>A regular longlat grid at 1° resolution has 360 × 180 = 64,800 cells. The top row contains 360 cells, all of which map to the South Pole — a single point. One cell (or at most three, for a T-shaped pole cap) would do the same geometric work. The other 357 are redundant, and the grid structure has no way to say so. Similarly, cell <img src="https://latex.codecogs.com/png.latex?(0,%20j)"> and cell <img src="https://latex.codecogs.com/png.latex?(359,%20j)"> are geographic neighbours — they share an edge at the antimeridian — but in index space they are as far apart as two cells can be. The Cartesian product index is silent about this.</p>
+<p>This is not a pathology. It is simply what you get when you discretise a sphere with a tool designed for a flat rectangle. The grid is doing its job correctly by the ladder’s definition. The mismatch is between the ladder’s scope and the application’s needs.</p>
+<p>When the manifold <em>does</em> matter to an application — global topology, correct adjacency, equal-area cells, no polar redundancy — you are outside the ladder’s scope. That is precisely the problem that DGGS are designed to solve.</p>
+<hr>
+</section>
+<section id="dggs-discretising-the-manifold-directly" class="level2">
+<h2 class="anchored" data-anchor-id="dggs-discretising-the-manifold-directly">DGGS: discretising the manifold directly</h2>
+<p>Discrete global grid systems (H3, S2, HEALPix, ISEA) approach the problem from the other direction. The manifold comes first; the discretisation is designed for the sphere, so adjacency, area, and topology are correct by construction. H3 hexagons near Fiji are indexed as neighbours of other hexagons near Fiji. There is no polar row of redundant cells because the addressing scheme is built around the sphere’s actual geometry.</p>
+<p>The price is the Cartesian product index structure. DGGS cells don’t factor into rows and columns in any natural global sense (HEALPix has local patches with regular structure; H3 has a hierarchical addressing scheme with local regularity; but neither is globally Cartesian-product-indexable). This is why DGGS feel like unstructured grids to tools that expect <img src="https://latex.codecogs.com/png.latex?(i,%20j)"> — and in the ladder’s terms, they are. The structured/unstructured distinction still applies internally to a DGGS, but the global topology is not rectangular.</p>
+<p>So DGGS sit outside the ladder not because they are more complex than unstructured grids, but because the ladder’s premise — index structure independent of the manifold — is exactly what DGGS reject. They are a different answer to a different question.</p>
+<p>The ladder is the right tool when the manifold can be treated as external context. DGGS are the right tool when the manifold must be built into the addressing scheme. These are complementary, not competing.</p>
+<hr>
+</section>
+<section id="workarounds-that-live-on-the-ladder" class="level2">
+<h2 class="anchored" data-anchor-id="workarounds-that-live-on-the-ladder">Workarounds that live on the ladder</h2>
+<p>Most real-world geospatial work stays on the ladder but handles the manifold through external convention rather than anything the grid structure provides. This is worth naming:</p>
+<ul>
+<li><strong>Tripolar ocean grids</strong> (NEMO ORCA, MOM6 tripolar): curvilinear grids that move the numerical pole singularity over land. The grid is still logically rectangular — still on the ladder — but the topology (two northern poles, one southern pole) is encoded in the coordinate arrays and the model’s halo-exchange logic, not in the index structure.</li>
+<li><strong>NSIDC polar grids</strong>: regular projected grids (EPSG:3412, EPSG:3413) that implicitly wrap in the azimuthal sense. The grid structure doesn’t know this; applications that care about the antimeridian handle it separately.</li>
+<li><strong><code>vaster</code> and <code>vapour</code></strong>: deliberately silent about topology. They operate on the ladder — grid arithmetic, coordinate lookup, raster I/O — and leave manifold questions to the caller. This is the right scope decision; encoding sphere topology into a raster grid library would be the wrong level of abstraction.</li>
+</ul>
+<p>The “subtle relationships and workflows and workarounds” in curvilinear ocean models are mostly the accumulated cost of living on the ladder with a spherical manifold. The ladder is the floor, not the ceiling.</p>
+<hr>
+</section>
+<section id="the-seawifs-l3bin-the-connector" class="level2">
+<h2 class="anchored" data-anchor-id="the-seawifs-l3bin-the-connector">The SeaWiFS L3bin: the connector</h2>
+<p>The sinusoidal L3 grid and the L3bin addressing scheme together make the ladder boundary more concrete than any abstract example.</p>
+<p>The <strong>sinusoidal regular grid</strong> is the rectangular-index version of global equal-area ocean colour compositing. It is a regular grid in sinusoidal projection: uniform spacing in projected coordinates, four numbers and a CRS, perfectly on the ladder. But sinusoidal projection preserves area by compressing x-extent toward the poles: high-latitude rows are physically narrow. When you impose a uniform <img src="https://latex.codecogs.com/png.latex?n_x"> column count across all rows, most high-latitude cells fall outside the Earth’s disk and are fill. The grid is valid; it is just mostly empty at the poles, and the emptiness is structural, baked in by the choice to force a sphere into a rectangle.</p>
+<p>The <strong>SeaWiFS/MODIS/VIIRS L3bin</strong> resolves this directly. Each latitude row contains exactly as many bins as needed to tile that latitude band — no more, no fewer. Row widths vary. The result is a ragged array: not a matrix, not a Cartesian product, not on the ladder. By the ladder’s definition it is unstructured — each bin has an explicit address (the bin number) rather than a <img src="https://latex.codecogs.com/png.latex?(i,%20j)"> index pair.</p>
+<p>But it is the <em>simplest possible</em> unstructured case. The bins are still organised by latitude band. The addressing scheme (bin number → row → column-within-row) is well-defined and compact. The geometry is explicit but not complicated. It is unstructured by necessity, not by complexity — the minimum departure from the ladder required to take the sphere seriously.</p>
+<p>The contrast is the hook:</p>
+<ul>
+<li>The sinusoidal regular grid: <em>technically</em> on the ladder, equal-area, but with a wasteful rectangular fiction imposed on a spherical reality. The manifold is ignored; fill cells paper over the mismatch.</li>
+<li>The L3bin: off the ladder, but honest. The ragged structure <em>is</em> the sphere’s geometry expressed directly in the data structure. You traded the Cartesian product index for an accurate account of what you actually have.</li>
+</ul>
+<p>This is the L3bin’s value as a connector. It is not an exotic case — it is used in virtually every ocean colour dataset from SeaWiFS through PACE. And it sits exactly at the boundary the ladder defines, making the boundary legible.</p>
+<p>A post that works through the L3bin addressing scheme in R — reading bin numbers, recovering lat/lon, comparing to the sinusoidal regular grid counterpart — would make the abstract ladder concrete in a way that the regular/rectilinear/curvilinear examples cannot. That is post #2 (or #3, after the curvilinear detection post).</p>
+<hr>
+</section>
+<section id="the-affinehomogeneous-coordinates-aside" class="level2">
+<h2 class="anchored" data-anchor-id="the-affinehomogeneous-coordinates-aside">The affine/homogeneous coordinates aside</h2>
+<p><em>(Parked from a detour in the main post draft — too interesting to discard, too long to include.)</em></p>
+<p>The GDAL geotransform is a 2×3 affine matrix (equivalently, a 3×3 homogeneous matrix with the bottom row fixed at [0, 0, 1]): the full projective/affine machinery for mapping pixel index → Cartesian position in a flat 2D plane. This is a genuinely 2D spatial problem, so the homogeneous coordinates are natural.</p>
+<p>The rectilinear case exposes how much of that is a 1.5D trick. A rectilinear grid is two independent 1D problems — “where is column <img src="https://latex.codecogs.com/png.latex?i"> on the x-axis” and “where is row <img src="https://latex.codecogs.com/png.latex?j"> on the y-axis” — combined. There is no cross-term, no rotation, no shear. The “transform” collapses to two separate monotone sequences. Nobody would think to write a 3×3 homogeneous matrix for a 1D lookup table, because a lookup table is obviously just a lookup table.</p>
+<p>The geotransform works for the regular case because regular grids are the degenerate rectilinear case — the lookup tables happen to be arithmetic sequences, so they compress back to origin + step, which is what the six geotransform numbers encode. The homogeneous machinery is present, but with most of its degrees of freedom set to zero.</p>
+<p>The shadow quality: the geotransform is the full 2D affine apparatus applied to what is, in the regular case, a product of two 1D arithmetic sequences. When you move to rectilinear coordinates — genuinely variable spacing, two lookup tables — no one reaches for a matrix from a higher-dimensional space. The 1D lookup table is self-evidently sufficient. The geotransform convention makes the regular case look more 2D than it is. (Rotated or sheared regular grids are the exception that proves the rule — see the footnote on the Regular section above.)</p>
+<hr>
+<p><em>The gproj package, which implements regularity detection, is at <a href="https://github.com/mdsumner/gproj">github.com/mdsumner/gproj</a>. The vaster package provides the regular grid arithmetic used throughout the hypertidy ecosystem.</em></p>
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>A regular grid need not be axis-aligned: an affine transform — with rotation, shear, and independent dx/dy — still specifies every cell position implicitly from its index. GDAL’s geotransform is exactly this: six numbers covering origin, scale, and the two off-diagonal (rotation/shear) components. The index structure, the storage economy, and the “regular” classification are unchanged. Rotated or sheared regular grids are uncommon in practice but not exotic; some satellite products use them. We ignore the off-diagonal case in the main text because it adds notation without changing the argument.↩︎</p></li>
+</ol>
+</section></div> ]]></description>
+  <category>gdal</category>
+  <category>raster</category>
+  <category>netcdf</category>
+  <category>projections</category>
+  <category>theory</category>
+  <guid>https://hypertidy.org/posts/2026-05-28_regular-rectilinear-curvilinear/</guid>
+  <pubDate>Thu, 28 May 2026 00:00:00 GMT</pubDate>
+</item>
+<item>
   <title>R, GDAL, Zarr, and the Missing Recipe Format for Raster Datasets</title>
   <dc:creator>Michael Sumner</dc:creator>
   <link>https://hypertidy.org/posts/2026-05-27_raster-stack-zarr-virtualization/</link>
@@ -10530,6 +10996,483 @@ Extent:       -3950000  3950000  -3950000  4350000</code></pre>
   <pubDate>Sat, 07 Feb 2026 00:00:00 GMT</pubDate>
 </item>
 <item>
+  <title>R vs JavaScript Datetime Parsing</title>
+  <dc:creator>Michael Sumner</dc:creator>
+  <link>https://hypertidy.org/posts/2025-12-30_datetime-js-r/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+
+<section id="r-vs-javascript-datetime-parsing-behaviours-and-gotchas" class="level1">
+<h1>R vs JavaScript Datetime Parsing: Behaviours and Gotchas</h1>
+<p>Datetime parsing across R and JavaScript has subtle but dangerous differences. Both languages make assumptions that can silently produce incorrect results, and critically, they fail in <em>opposite</em> ways.</p>
+<section id="the-core-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-core-problem">The Core Problem</h2>
+<p>Both languages must decide: when given a datetime string without timezone information, should it be interpreted as <strong>local time</strong> or <strong>UTC</strong>?</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 45%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Language</th>
+<th>Default assumption (no tz info)</th>
+<th>ISO 8601 <code>Z</code> suffix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>R</td>
+<td>Local time</td>
+<td><strong>Likely ignored</strong> (see below)</td>
+</tr>
+<tr class="even">
+<td>JavaScript</td>
+<td>Depends on format</td>
+<td>Respected as UTC</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="javascript-behaviour" class="level2">
+<h2 class="anchored" data-anchor-id="javascript-behaviour">JavaScript Behaviour</h2>
+<section id="format-determines-interpretation" class="level3">
+<h3 class="anchored" data-anchor-id="format-determines-interpretation">Format determines interpretation</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Space-separated → LOCAL time (trap!)</span></span>
+<span id="cb1-2"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00"</span>)</span>
+<span id="cb1-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Thu Jan 01 1970 00:00:00 GMT+1100</span></span>
+<span id="cb1-4"></span>
+<span id="cb1-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// ISO 8601 with Z → UTC (correct)</span></span>
+<span id="cb1-6"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01T00:00:00Z"</span>)</span>
+<span id="cb1-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Thu Jan 01 1970 11:00:00 GMT+1100</span></span>
+<span id="cb1-8"></span>
+<span id="cb1-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Space-separated with explicit UTC → UTC (correct)</span></span>
+<span id="cb1-10"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00 UTC"</span>)</span>
+<span id="cb1-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Thu Jan 01 1970 11:00:00 GMT+1100</span></span>
+<span id="cb1-12"></span>
+<span id="cb1-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// GMT works the same as UTC</span></span>
+<span id="cb1-14"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00 GMT"</span>)</span>
+<span id="cb1-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Thu Jan 01 1970 11:00:00 GMT+1100</span></span></code></pre></div></div>
+</section>
+<section id="javascript-gotchas" class="level3">
+<h3 class="anchored" data-anchor-id="javascript-gotchas">JavaScript gotchas</h3>
+<ol type="1">
+<li><strong>Space-separated format silently assumes local time</strong> — this is the most dangerous default for portable code</li>
+<li><strong>Only ISO 8601 format is in the ECMAScript spec</strong> — space-separated formats with <code>UTC</code>/<code>GMT</code> suffix work universally in practice but are technically implementation-dependent</li>
+<li><strong>No <code>tz</code> parameter equivalent</strong> — you cannot specify a timezone during parsing; you must embed it in the string or use <code>Date.UTC()</code></li>
+</ol>
+</section>
+<section id="javascript-solutions" class="level3">
+<h3 class="anchored" data-anchor-id="javascript-solutions">JavaScript solutions</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb2-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Option 1: Use ISO 8601 format (most robust)</span></span>
+<span id="cb2-2"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01T00:00:00Z"</span>)</span>
+<span id="cb2-3"></span>
+<span id="cb2-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Option 2: Append UTC (most readable)</span></span>
+<span id="cb2-5"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00 UTC"</span>)</span>
+<span id="cb2-6"></span>
+<span id="cb2-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Option 3: Convert space-separated to ISO</span></span>
+<span id="cb2-8"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(str<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">replace</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">' '</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'T'</span>) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Z'</span>)</span>
+<span id="cb2-9"></span>
+<span id="cb2-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Option 4: Parse components explicitly (verbose but unambiguous)</span></span>
+<span id="cb2-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// Note: month is 0-indexed!</span></span>
+<span id="cb2-12"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">new</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span>(<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Date</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">UTC</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1970</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>))</span></code></pre></div></div>
+</section>
+</section>
+<section id="r-behaviour" class="level2">
+<h2 class="anchored" data-anchor-id="r-behaviour">R Behaviour</h2>
+<section id="the-tz-parameter" class="level3">
+<h3 class="anchored" data-anchor-id="the-tz-parameter">The <code>tz</code> parameter</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Explicit UTC → correct (epoch = 0)</span></span>
+<span id="cb3-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.integer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.POSIXct</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tz =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"UTC"</span>))</span>
+<span id="cb3-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [1] 0</span></span>
+<span id="cb3-4"></span>
+<span id="cb3-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># No tz specified → local time (AEST = UTC+11, so -39600 seconds)</span></span>
+<span id="cb3-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.integer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.POSIXct</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00"</span>))</span>
+<span id="cb3-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [1] -39600</span></span>
+<span id="cb3-8"></span>
+<span id="cb3-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># ISO 8601 with Z → likely parsed as local time (Z ignored)</span></span>
+<span id="cb3-10"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.integer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.POSIXct</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01T00:00:00Z"</span>))</span>
+<span id="cb3-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [1] -39600  ← on a machine with local timezone set to AEST</span></span>
+<span id="cb3-12"></span>
+<span id="cb3-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># </span><span class="al" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">DANGER</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">: On a server with system timezone set to UTC, this returns 0</span></span>
+<span id="cb3-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># which makes it APPEAR that Z is being respected—but it's a coincidence!</span></span></code></pre></div></div>
+</section>
+<section id="r-gotchas" class="level3">
+<h3 class="anchored" data-anchor-id="r-gotchas">R gotchas</h3>
+<ol type="1">
+<li><strong>The <code>Z</code> suffix is likely ignored</strong> — R’s parsing relies on the system’s C library (<code>strptime</code>), which may not interpret <code>Z</code> as a timezone indicator. The string is parsed as local time regardless of the <code>Z</code>.</li>
+<li><strong>Tests can pass by accident</strong> — If your system timezone is configured to UTC (common on servers), parsing will <em>appear</em> to respect the <code>Z</code> suffix when it’s actually just a coincidence. The bug only surfaces when code runs on a machine with a different timezone configuration.</li>
+<li><strong>Default is local time</strong> — omitting <code>tz</code> uses the system timezone, whatever that may be</li>
+<li><strong>The <code>T</code> separator works</strong> — R accepts ISO 8601 format for the datetime portion, it just ignores the <code>Z</code></li>
+</ol>
+</section>
+<section id="r-solutions" class="level3">
+<h3 class="anchored" data-anchor-id="r-solutions">R solutions</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Always specify tz explicitly</span></span>
+<span id="cb4-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.POSIXct</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01 00:00:00"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tz =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"UTC"</span>)</span>
+<span id="cb4-3"></span>
+<span id="cb4-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># For ISO 8601 strings with Z, strip Z and specify tz</span></span>
+<span id="cb4-5">s <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01T00:00:00Z"</span></span>
+<span id="cb4-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.POSIXct</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gsub</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"T"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">" "</span>, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gsub</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Z$"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">""</span>, s)), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tz =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"UTC"</span>)</span>
+<span id="cb4-7"></span>
+<span id="cb4-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Or use a package that respects ISO 8601 properly</span></span>
+<span id="cb4-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># lubridate::ymd_hms() handles Z correctly</span></span>
+<span id="cb4-10">lubridate<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ymd_hms</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"1970-01-01T00:00:00Z"</span>)</span></code></pre></div></div>
+</section>
+</section>
+<section id="cross-language-comparison" class="level2">
+<h2 class="anchored" data-anchor-id="cross-language-comparison">Cross-Language Comparison</h2>
+<p>Given the string <code>"1970-01-01T00:00:00Z"</code> representing the Unix epoch:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 33%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Language</th>
+<th>System TZ</th>
+<th>Code</th>
+<th>Result (seconds since epoch)</th>
+<th>Correct?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>JavaScript</td>
+<td>Any</td>
+<td><code>new Date("1970-01-01T00:00:00Z").getTime() / 1000</code></td>
+<td><code>0</code></td>
+<td>✓</td>
+</tr>
+<tr class="even">
+<td>R</td>
+<td>UTC</td>
+<td><code>as.integer(as.POSIXct("1970-01-01T00:00:00Z"))</code></td>
+<td><code>0</code></td>
+<td>✓ (by accident!)</td>
+</tr>
+<tr class="odd">
+<td>R</td>
+<td>AEST</td>
+<td><code>as.integer(as.POSIXct("1970-01-01T00:00:00Z"))</code></td>
+<td><code>-39600</code></td>
+<td>✗</td>
+</tr>
+<tr class="even">
+<td>R</td>
+<td>Any</td>
+<td><code>as.integer(as.POSIXct("1970-01-01 00:00:00", tz="UTC"))</code></td>
+<td><code>0</code></td>
+<td>✓</td>
+</tr>
+<tr class="odd">
+<td>R</td>
+<td>Any</td>
+<td><code>as.integer(lubridate::ymd_hms("1970-01-01T00:00:00Z"))</code></td>
+<td><code>0</code></td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="recommendations" class="level2">
+<h2 class="anchored" data-anchor-id="recommendations">Recommendations</h2>
+<section id="if-you-control-the-format" class="level3">
+<h3 class="anchored" data-anchor-id="if-you-control-the-format">If you control the format</h3>
+<p>Use ISO 8601 with <code>Z</code> for JavaScript, but always use explicit <code>tz = "UTC"</code> in R regardless of string format.</p>
+</section>
+<section id="if-exchanging-data-between-r-and-javascript" class="level3">
+<h3 class="anchored" data-anchor-id="if-exchanging-data-between-r-and-javascript">If exchanging data between R and JavaScript</h3>
+<p>There is no single string format that both languages interpret correctly as UTC without extra handling:</p>
+<ul>
+<li><strong>ISO 8601 with Z</strong> (<code>"1970-01-01T00:00:00Z"</code>): JavaScript ✓, R ✗ (may appear to work if system TZ is UTC)</li>
+<li><strong>Space-separated with UTC</strong> (<code>"1970-01-01 00:00:00 UTC"</code>): JavaScript ✓, R ✗ (doesn’t parse “UTC” suffix)</li>
+<li><strong>Space-separated plain</strong> (<code>"1970-01-01 00:00:00"</code>): Both interpret as local time (consistent but usually wrong)</li>
+</ul>
+<p>The safest approach is to use numeric Unix timestamps (seconds or milliseconds since epoch) when exchanging data, or always apply explicit timezone handling on both sides.</p>
+</section>
+<section id="summary-table" class="level3">
+<h3 class="anchored" data-anchor-id="summary-table">Summary table</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 36%">
+<col style="width: 43%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Scenario</th>
+<th>JavaScript</th>
+<th>R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Parse as UTC</td>
+<td>Append <code>Z</code> or <code>UTC</code></td>
+<td>Use <code>tz = "UTC"</code> parameter</td>
+</tr>
+<tr class="even">
+<td>ISO 8601 <code>Z</code> respected?</td>
+<td>Yes</td>
+<td>No (may appear to work if system TZ is UTC)</td>
+</tr>
+<tr class="odd">
+<td>Space-separated default</td>
+<td>Local time</td>
+<td>Local time</td>
+</tr>
+<tr class="even">
+<td>Explicit tz parameter?</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td>Safe portable format</td>
+<td>ISO 8601 + Z</td>
+<td>N/A (always need <code>tz</code> param)</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="notes" class="level2">
+<h2 class="anchored" data-anchor-id="notes">Notes</h2>
+<ul>
+<li>UTC and GMT are functionally equivalent for parsing purposes in both languages</li>
+<li>JavaScript’s <code>Date.UTC()</code> function accepts numeric components and returns milliseconds since epoch, with the bizarre gotcha that months are 0-indexed</li>
+<li>R’s <code>as.POSIXct()</code> relies on the system’s C library (<code>strptime</code>) for parsing; the <code>Z</code> suffix is likely ignored and the string is parsed as local time</li>
+<li><strong>Testing is unreliable</strong>: if your development/CI server has system timezone set to UTC, datetime tests will pass by accident and the bug will only appear on machines with different timezone configuration</li>
+<li>The only truly portable approach in base R is to always use <code>tz = "UTC"</code> explicitly, which has been available in R for 20+ years now</li>
+<li>lubridate handles ISO 8601 consistently by doing its own parsing rather than delegating to the system</li>
+</ul>
+
+
+</section>
+</section>
+
+ ]]></description>
+  <category>code</category>
+  <category>news</category>
+  <guid>https://hypertidy.org/posts/2025-12-30_datetime-js-r/</guid>
+  <pubDate>Tue, 30 Dec 2025 00:00:00 GMT</pubDate>
+</item>
+<item>
   <title>Raster logic without pixels</title>
   <dc:creator>Michael Sumner</dc:creator>
   <link>https://hypertidy.org/posts/2025-12-21_vaster-grid-logic/vaster-grid-logic.html</link>
@@ -14814,818 +15757,6 @@ max values  :         255,         237,         213 </code></pre>
   <category>gdal</category>
   <guid>https://hypertidy.org/posts/2024-12-04_plot_native/</guid>
   <pubDate>Wed, 04 Dec 2024 00:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>GDAL and image tiles, the {ceramic} package</title>
-  <dc:creator>Michael D. Sumner</dc:creator>
-  <link>https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/</link>
-  <description><![CDATA[ 
-
-
-
-
-
-
-<p>A new version of <a href="https://hypertidy.github.io/ceramic/">{ceramic}</a> is now on CRAN, version 0.8.0.</p>
-<p>The package exists for two purpose</p>
-<ol type="1">
-<li>to download tiles from image servers</li>
-<li>to load raster data from image servers</li>
-</ol>
-<p>NOTE: we need a Mapbox key for the Mapbox servers see, please see <a href="https://hypertidy.github.io/ceramic/reference/get_api_key.html">ceramic::get_api_key()</a>.</p>
-<p>The original versions of ceramic didn’t really separate these tasks but the new version does.</p>
-<section id="get-raster-data-from-online" class="level2">
-<h2 class="anchored" data-anchor-id="get-raster-data-from-online">Get raster data from online</h2>
-<p>We can read satellite imagery or elevation with a central point and a buffer (in metres).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">library</span>(ceramic)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Loading required package: terra</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>terra 1.7.23</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">pt <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cbind</span>(<span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">147.3257</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">42.8826</span>)</span>
-<span id="cb4-2"></span>
-<span id="cb4-3">(im <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_location</span>(pt, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">buffer =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">15000</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">25000</span>)))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-dimensions  : 960, 576, 3  (nrow, ncol, nlyr)
-resolution  : 52.08333, 52.08333  (x, y)
-extent      : 16385222, 16415222, -5319119, -5269119  (xmin, xmax, ymin, ymax)
-coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
-source(s)   : memory
-colors RGB  : 1, 2, 3 
-names       : red, green, blue 
-min values  :   0,     0,    0 
-max values  : 255,   255,  252 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">(el <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_elevation</span>(pt, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">buffer =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">15000</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">25000</span>)))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-dimensions  : 960, 576, 1  (nrow, ncol, nlyr)
-resolution  : 52.08333, 52.08333  (x, y)
-extent      : 16385222, 16415222, -5319119, -5269119  (xmin, xmax, ymin, ymax)
-coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
-source(s)   : memory
-name        :  lyr.1 
-min value   :   -1.9 
-max value   : 1264.9 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1">op <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">par</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">mfcol =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>))</span>
-<span id="cb8-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(el, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">legend =</span> F); <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(im, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>); <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(el, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">legend =</span> F, </span>
-<span id="cb8-3">                                                 <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">col =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">hcl.colors</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">64</span>)[<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tail</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq_len</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">64</span>), <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">45</span>)])</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/hobart-image-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">par</span>(op)</span></code></pre></div></div>
-</div>
-<p>These raster objects are in terra ‘SpatRaster’ format (older ceramic used raster package).</p>
-<p>These use the Mapbox ‘mapbox.satellite’ and ‘mapbox-terrain-rgb’ tile servers.</p>
-</section>
-<section id="get-raster-tiles-from-online" class="level2">
-<h2 class="anchored" data-anchor-id="get-raster-tiles-from-online">Get raster tiles from online</h2>
-<p>If we want the actual tiles, we can use the original <code>get_tiles()</code> function. (In older versions <code>cc_location()</code> and <code>cc_elevation()</code> would <em>invoke</em> <code>get_tiles</code>, but no longer).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1">pt <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cbind</span>(<span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">147.3257</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">42.8826</span>)</span>
-<span id="cb10-2"></span>
-<span id="cb10-3">imtiles <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">get_tiles</span>(pt, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">buffer =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">15000</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">25000</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
-https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">str</span>(imtiles)</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>List of 3
- $ files : chr [1:24] "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3722/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3723/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3724/2586.jpg" "/perm_storage/home/mdsumner/.cache/.ceramic/api.mapbox.com/v4/mapbox.satellite/12/3725/2586.jpg" ...
- $ tiles :List of 2
-  ..$ tiles:'data.frame':   24 obs. of  2 variables:
-  .. ..$ x: int [1:24] 3722 3723 3724 3725 3722 3723 3724 3725 3722 3723 ...
-  .. ..$ y: int [1:24] 2586 2586 2586 2586 2587 2587 2587 2587 2588 2588 ...
-  .. ..- attr(*, "out.attrs")=List of 2
-  .. .. ..$ dim     : Named int [1:2] 4 6
-  .. .. .. ..- attr(*, "names")= chr [1:2] "x" "y"
-  .. .. ..$ dimnames:List of 2
-  .. .. .. ..$ x: chr [1:4] "x=3722" "x=3723" "x=3724" "x=3725"
-  .. .. .. ..$ y: chr [1:6] "y=2586" "y=2587" "y=2588" "y=2589" ...
-  ..$ zoom : int 12
-  ..- attr(*, "class")= chr "tile_grid"
- $ extent: num [1:4] 16385222 16415222 -5319119 -5269119</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1">eltiles <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">get_tiles</span>(pt, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">buffer =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">15000</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">25000</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
-https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">head</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">gsub</span>(ceramic<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ceramic_cache</span>(), <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">""</span>,  eltiles<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>files))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "/api.mapbox.com/v4/mapbox.satellite/12/3722/2586.jpg"
-[2] "/api.mapbox.com/v4/mapbox.satellite/12/3723/2586.jpg"
-[3] "/api.mapbox.com/v4/mapbox.satellite/12/3724/2586.jpg"
-[4] "/api.mapbox.com/v4/mapbox.satellite/12/3725/2586.jpg"
-[5] "/api.mapbox.com/v4/mapbox.satellite/12/3722/2587.jpg"
-[6] "/api.mapbox.com/v4/mapbox.satellite/12/3723/2587.jpg"</code></pre>
-</div>
-</div>
-<p>And to see what tiles we have we can materialize their footprint in <a href="https://paleolimbot.github.io/wk/reference/rct.html">wk::rct()</a> form, this is way more efficient than having to use polygons.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1">zoomtiles <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> ceramic<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ceramic_tiles</span>(imtiles<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>tiles<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>zoom)</span>
-<span id="cb18-2"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## sub out the ones we just triggered</span></span>
-<span id="cb18-3">zoomtiles <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> dplyr<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">filter</span>(zoomtiles, fullname <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">%in%</span> imtiles<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span>files)</span>
-<span id="cb18-4">rc <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> ceramic<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tiles_to_polygon</span>(zoomtiles)</span>
-<span id="cb18-5"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(rc)</span>
-<span id="cb18-6"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ext</span>(im), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## see the image from above is not the tiles, but the buffer around a point</span></span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/rct-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">read_tiles</span>(pt, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">buffer =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">15000</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">25000</span>)))  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## but we can read thos tiles exactly</span></span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Preparing to download: 24 tiles at zoom = 12 from 
-https://api.mapbox.com/v4/mapbox.satellite/</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(rc, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">border =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"white"</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/rct-2.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-</section>
-<section id="diverse-query-inputs" class="level2">
-<h2 class="anchored" data-anchor-id="diverse-query-inputs">Diverse query inputs</h2>
-<p>Finally, we can use a point and buffer to get imagery, or we can use a spatial object, currently supported are objects from {geos}, {wk}, {terra}, {sf}, {sp}, {raster}, and {stars}.</p>
-<p>Here’s an example.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1">wkarea <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> wk<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rct</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">xmin =</span> <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">5e6</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ymin =</span> <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2e6</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">xmax =</span> <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2e6</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ymax =</span> <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3e6</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">crs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"+proj=laea +lon_0=25 +lat_0=31"</span>)</span>
-<span id="cb22-2">im2 <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_location</span>(wkarea)</span>
-<span id="cb22-3">el2 <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_elevation</span>(wkarea)</span>
-<span id="cb22-4">op <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">par</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">mfcol =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>))</span>
-<span id="cb22-5"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(el2, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">legend =</span> F); <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(im2, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>); <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(el2, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">col =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">grey.colors</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">128</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">legend =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">FALSE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/index_files/figure-html/wk-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">par</span>(op)</span></code></pre></div></div>
-</div>
-<p>(Please note that the result is still in Mercator, the query can be in any projection but we’re not matching that here, only its extent - ceramic version 0.8.0 is merely a stepping stone to some of the things we can do better with GDAL).</p>
-<p>Previous versions of <code>cc_location()</code> and <code>cc_elevation()</code> were stuck with only ‘zoom’ and ‘max_tiles’ arguments, these make sense when you restrict exactly to the available tiles but when you just want a given area and a resolution, ‘dimension’ is more appropriate.</p>
-<p>By default, the dimension is chosen relative to the graphics device. But, we can also specify exactly what we want. (Use zero for one of the dimensions to let the system figure out an appropriate size for the query you have).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_location</span>(wkarea)</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-dimensions  : 960, 776, 3  (nrow, ncol, nlyr)
-resolution  : 7094.906, 7094.906  (x, y)
-extent      : 4203326, 9708973, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
-coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
-source(s)   : memory
-colors RGB  : 1, 2, 3 
-names       : red, green, blue 
-min values  :   0,     0,    0 
-max values  : 255,   255,  255 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_location</span>(wkarea, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">dimension =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">400</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">700</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-dimensions  : 700, 400, 3  (nrow, ncol, nlyr)
-resolution  : 13766.3, 9730.157  (x, y)
-extent      : 4203326, 9709847, 105375.6, 6916485  (xmin, xmax, ymin, ymax)
-coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
-source(s)   : memory
-colors RGB  : 1, 2, 3 
-names       : red, green, blue 
-min values  :   0,     2,    0 
-max values  : 255,   255,  255 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">cc_location</span>(wkarea, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">dimension =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1024</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-dimensions  : 1267, 1024, 3  (nrow, ncol, nlyr)
-resolution  : 5377.463, 5377.463  (x, y)
-extent      : 4203326, 9709847, 103240.4, 6916485  (xmin, xmax, ymin, ymax)
-coord. ref. : WGS 84 / Pseudo-Mercator (EPSG:3857) 
-source(s)   : memory
-colors RGB  : 1, 2, 3 
-names       : red, green, blue 
-min values  :   0,     1,    0 
-max values  : 255,   255,  255 </code></pre>
-</div>
-</div>
-</section>
-<section id="some-other-improvements" class="level2">
-<h2 class="anchored" data-anchor-id="some-other-improvements">Some other improvements</h2>
-<ul>
-<li>it’s faster, for loading reads data from image servers directly with the GDAL warper API</li>
-<li>we have separation of tile downloading and interaction from raster loading via GDAL</li>
-<li>we don’t materialize tiles as polygons, we have the tile description, or the compact <code>rct</code> representation</li>
-<li>new functions <code>read_tiles()</code>, <code>unpack_rgb()</code>,</li>
-</ul>
-<p>See the full list of changes here: <a href="https://hypertidy.github.io/ceramic/news/index.html">https://hypertidy.github.io/ceramic/news/index.html</a>.</p>
-<p>ceramic is my final CRAN package that had direct dependencies on rgdal, rgeos, or maptools - in some ways it was the most challenging for me and had loomed as a problem for some time. But, I’ve progressed my own tool kit well in the time and I learnt a lot with this update.</p>
-<p>A future version will probably make the separation (are we tiles, or are we loading raster?) more complete, at any rate there are better ways to organize these things now. There are data sources, data readers and writers, data structures, and algorithms. This work is part of a family of tools that aims to make that orthogonality real and accessible.</p>
-
-
-</section>
-
- ]]></description>
-  <category>gdal</category>
-  <category>r-packages</category>
-  <category>ceramic</category>
-  <guid>https://hypertidy.org/posts/2023-04-22_gdal_image_tiles/</guid>
-  <pubDate>Sat, 22 Apr 2023 00:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>Degenerate Rectilinear (WIP)</title>
-  <dc:creator>Michael D. Sumner</dc:creator>
-  <link>https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/</link>
-  <description><![CDATA[ 
-
-
-
-
-
-
-<p>There are a lot of problems when it comes to array representation in data formats and software. There is a whole family of complex issues with sometimes subtle or even cryptic causes, and here we focus on one particular detail.</p>
-<section id="degenerate-rectilinear-coordinates" class="level2">
-<h2 class="anchored" data-anchor-id="degenerate-rectilinear-coordinates">Degenerate Rectilinear Coordinates</h2>
-<p>I have taken to saying this phrase to describe a particular situation in array handling. I get confused responses, or normally just no response or feedback on the term itself. I think it’s <em>extremely</em> important though. Python communities raced up to where R was a few years back and just sped on by without any nod to what R folks had learned, I think that’s a huge failure and I take it personally.</p>
-<p>Here’s what it is. Let’s say we have a pretty low resolution grid of the world, we break up the entire range of longitude and latitude into intervals, 360 for <em>meridians</em> and 180 for <em>parallels</em>.</p>
-<p>(This is neat because in whole number terms, this is exactly the right number).</p>
-<p>So, define a grid, we make it a farily typical 1-degree-per-pixel grid of the entire globe flattened unceremoniously from an<br>
-angular coordinate system “longitude and latitude” to one where we just plot those numbers in x,y on a flat plane.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## define a grid in -180,180 -90,90 (360x180)</span></span>
-<span id="cb1-2">dm <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">360</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>)</span>
-<span id="cb1-3">xlim <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>)</span>
-<span id="cb1-4">ylim <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">90</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">90</span>)</span>
-<span id="cb1-5"></span>
-<span id="cb1-6"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## create a grid</span></span>
-<span id="cb1-7">dat <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">matrix</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>), <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>L, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>L)[<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rep</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">:</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">each =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>), <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rep</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">:</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">each =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">90</span>)]</span>
-<span id="cb1-8"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## we don't get much from this because 0,1 0,1</span></span>
-<span id="cb1-9"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## and the world isn't 0,360 0,180 anyway (that would have been handy!)</span></span>
-<span id="cb1-10"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">#image(dat)</span></span>
-<span id="cb1-11"></span>
-<span id="cb1-12"></span>
-<span id="cb1-13">xs <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq</span>(xlim[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>], xlim[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>], <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">length.out =</span> dm[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>] <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">+</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)</span>
-<span id="cb1-14">ys <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">seq</span>(ylim[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>], ylim[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>], <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">length.out =</span> dm[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>] <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">+</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)</span>
-<span id="cb1-15"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">image</span>(xs, ys, dat, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">asp =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)</span>
-<span id="cb1-16">maps<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">map</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/grid-stuff-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>What happened there? Well, <code>dat</code> is a matrix, a 2D array in R. It has 360 <em>rows</em> and 180 <em>columns</em> (but yes, we are treating the world map as if it had 360 columns, 180 rows - but that is not this blogpost). Just don’t question it right now, but be assured we are treating the world as having 360 unique whole number longitudes, and 180 unique whole number latitudes.</p>
-<p>We can <code>image()</code> that, by which I mean draw a pixel map on the screen of all the values in the matrix as if they were a field of little rectangles.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">image</span>(dat)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/image-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>But, that’s very boring because we don’t have any idea where anything is in 0,1 0,1 space.</p>
-<p>What if we use <code>xlim</code> and <code>ylim</code>, these are <code>plot()</code> arguments in R (and exist in <code>image()</code> too).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">image</span>(dat, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">xlim =</span> xlim, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ylim =</span> ylim)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/xlim-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Ok that was a trick, our matrix is drawn as a tiny dot right at 0,0, because xlim/ylim is about the plot not the data.</p>
-<p>No more tricks, <code>image()</code> has 3 arguments <code>x,y,z</code> for normal usage.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">image</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">x =</span> xs, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">y =</span> ys, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">z =</span> dat, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">asp =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/xyz-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Why does that work? We essentially have an x coordinate and a y coordinate for every pixel <em>edge</em>. We have one for the left side of the leftmost pixel column, and the second one is the right side of the left most pixel, and so on. We used <code>dm[1] + 1</code> and <code>dm[2] + 1</code> up there exactly because we wanted xlim and ylim to be the very extremes of the data.</p>
-<p>Cool, explained - a matrix has a coordinate array for each side, we plot it like a map with those. Done.</p>
-</section>
-<section id="we-are-so-so-so-not-done." class="level2">
-<h2 class="anchored" data-anchor-id="we-are-so-so-so-not-done.">We are so so so not done.</h2>
-<p>I’m not here to explain how <code>image()</code> works in R, but that’s kind of necessary because I want people who <em>don’t use R</em> to also read this.</p>
-</section>
-<section id="what-is-rectilinear" class="level2">
-<h2 class="anchored" data-anchor-id="what-is-rectilinear">What is Rectilinear?</h2>
-<p>Rectilinear means varying in one dimension. When applied to axis coordinates it just means you have a position along the axis for each step. These can vary in how big each step is, and that is exactly when we say it’s <em>rectilinear</em>, because otherwise it’s <em>regular</em>.</p>
-<p>Our <code>ys</code> above are a regular list of coordinates, each one is exactly the same distance apart (distance in the frame we are using, forget about the actual Earth).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">op <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">par</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">mfrow =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>))</span>
-<span id="cb5-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(ys)</span>
-<span id="cb5-3"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">range</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">diff</span>(ys))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 1 1</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">diff</span>(ys))</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/index_files/figure-html/ys-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>See? They just plod along with exactly the same delta between each, in this case the step size is 1 but it could be anything.</p>
-</section>
-<section id="what-do-you-mean-degenerate" class="level2">
-<h2 class="anchored" data-anchor-id="what-do-you-mean-degenerate">What do you mean Degenerate?</h2>
-<blockquote class="blockquote">
-<p>Isn’t this a bad word, pejorative?</p>
-</blockquote>
-<p>Well no, it means something very specific.</p>
-<p>It means even though there is a quite a lot of data, the <em>information</em> is confused or confounded. The required information could be expressed very compactly, but it’s actually obscured by the details.</p>
-
-
-</section>
-
- ]]></description>
-  <category>netcdf</category>
-  <category>raster</category>
-  <guid>https://hypertidy.org/posts/2022-12-09_netcdf-degenerate-rectilinear/</guid>
-  <pubDate>Fri, 09 Dec 2022 00:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>

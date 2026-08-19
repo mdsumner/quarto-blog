@@ -5,7 +5,7 @@ format: html
 date: 2025-12-30
 editor: visual
 categories: [code, news]
-draft: true
+draft: false
 ---
 
 # R vs JavaScript Datetime Parsing: Behaviours and Gotchas
@@ -16,16 +16,16 @@ Datetime parsing across R and JavaScript has subtle but dangerous differences. B
 
 Both languages must decide: when given a datetime string without timezone information, should it be interpreted as **local time** or **UTC**?
 
-| Language   | Default assumption (no tz info) | ISO 8601 `Z` suffix |
-|------------|--------------------------------|---------------------|
-| R          | Local time                     | **Likely ignored** (see below) |
-| JavaScript | Depends on format              | Respected as UTC |
+| Language   | Default assumption (no tz info) | ISO 8601 `Z` suffix            |
+|-----------------|---------------------------------|----------------------|
+| R          | Local time                      | **Likely ignored** (see below) |
+| JavaScript | Depends on format               | Respected as UTC               |
 
 ## JavaScript Behaviour
 
 ### Format determines interpretation
 
-```javascript
+``` javascript
 // Space-separated → LOCAL time (trap!)
 new Date("1970-01-01 00:00:00")
 // Thu Jan 01 1970 00:00:00 GMT+1100
@@ -45,13 +45,13 @@ new Date("1970-01-01 00:00:00 GMT")
 
 ### JavaScript gotchas
 
-1. **Space-separated format silently assumes local time** — this is the most dangerous default for portable code
-2. **Only ISO 8601 format is in the ECMAScript spec** — space-separated formats with `UTC`/`GMT` suffix work universally in practice but are technically implementation-dependent
-3. **No `tz` parameter equivalent** — you cannot specify a timezone during parsing; you must embed it in the string or use `Date.UTC()`
+1.  **Space-separated format silently assumes local time** — this is the most dangerous default for portable code
+2.  **Only ISO 8601 format is in the ECMAScript spec** — space-separated formats with `UTC`/`GMT` suffix work universally in practice but are technically implementation-dependent
+3.  **No `tz` parameter equivalent** — you cannot specify a timezone during parsing; you must embed it in the string or use `Date.UTC()`
 
 ### JavaScript solutions
 
-```javascript
+``` javascript
 // Option 1: Use ISO 8601 format (most robust)
 new Date("1970-01-01T00:00:00Z")
 
@@ -70,7 +70,7 @@ new Date(Date.UTC(1970, 0, 1, 0, 0, 0))
 
 ### The `tz` parameter
 
-```r
+``` r
 # Explicit UTC → correct (epoch = 0)
 as.integer(as.POSIXct("1970-01-01 00:00:00", tz = "UTC"))
 # [1] 0
@@ -89,14 +89,14 @@ as.integer(as.POSIXct("1970-01-01T00:00:00Z"))
 
 ### R gotchas
 
-1. **The `Z` suffix is likely ignored** — R's parsing relies on the system's C library (`strptime`), which may not interpret `Z` as a timezone indicator. The string is parsed as local time regardless of the `Z`.
-2. **Tests can pass by accident** — If your system timezone is configured to UTC (common on servers), parsing will *appear* to respect the `Z` suffix when it's actually just a coincidence. The bug only surfaces when code runs on a machine with a different timezone configuration.
-3. **Default is local time** — omitting `tz` uses the system timezone, whatever that may be
-4. **The `T` separator works** — R accepts ISO 8601 format for the datetime portion, it just ignores the `Z`
+1.  **The `Z` suffix is likely ignored** — R's parsing relies on the system's C library (`strptime`), which may not interpret `Z` as a timezone indicator. The string is parsed as local time regardless of the `Z`.
+2.  **Tests can pass by accident** — If your system timezone is configured to UTC (common on servers), parsing will *appear* to respect the `Z` suffix when it's actually just a coincidence. The bug only surfaces when code runs on a machine with a different timezone configuration.
+3.  **Default is local time** — omitting `tz` uses the system timezone, whatever that may be
+4.  **The `T` separator works** — R accepts ISO 8601 format for the datetime portion, it just ignores the `Z`
 
 ### R solutions
 
-```r
+``` r
 # Always specify tz explicitly
 as.POSIXct("1970-01-01 00:00:00", tz = "UTC")
 
@@ -113,8 +113,8 @@ lubridate::ymd_hms("1970-01-01T00:00:00Z")
 
 Given the string `"1970-01-01T00:00:00Z"` representing the Unix epoch:
 
-| Language   | System TZ | Code | Result (seconds since epoch) | Correct? |
-|------------|-----------|------|------------------------------|----------|
+| Language | System TZ | Code | Result (seconds since epoch) | Correct? |
+|------------|------------|------------|------------------------|------------|
 | JavaScript | Any | `new Date("1970-01-01T00:00:00Z").getTime() / 1000` | `0` | ✓ |
 | R | UTC | `as.integer(as.POSIXct("1970-01-01T00:00:00Z"))` | `0` | ✓ (by accident!) |
 | R | AEST | `as.integer(as.POSIXct("1970-01-01T00:00:00Z"))` | `-39600` | ✗ |
@@ -140,8 +140,8 @@ The safest approach is to use numeric Unix timestamps (seconds or milliseconds s
 ### Summary table
 
 | Scenario | JavaScript | R |
-|----------|------------|---|
-| Parse as UTC | Append `Z` or ` UTC` | Use `tz = "UTC"` parameter |
+|--------------------------|-------------------------------|---------------|
+| Parse as UTC | Append `Z` or `UTC` | Use `tz = "UTC"` parameter |
 | ISO 8601 `Z` respected? | Yes | No (may appear to work if system TZ is UTC) |
 | Space-separated default | Local time | Local time |
 | Explicit tz parameter? | No | Yes |

@@ -101,17 +101,17 @@ We should use {terra} as the default output format. (It is currently still {rast
 
 Use of more GDAL VRT. There are tasks that can be easily replaced by VRT, that include
 
--   augmenting missing metadata (netcdf typically doesn't store an explicit crs for longlat data)
--   swapping hemispheres from 0,360 or -180,180 convention data
--   augmenting incorrect georeferencing (GHRSST/MURSST benefits from an assigned geotransform, to fix the broken 1D coordinate arrays that aren't sufficiently precise in Float32)
--   combining disparate layers, the two polar grids of sea ice concentration can be easily streamed into a global grid (transverse merctor, longlat)
--   many others, specific to dataset vagaries
+- augmenting missing metadata (netcdf typically doesn't store an explicit crs for longlat data)
+- swapping hemispheres from 0,360 or -180,180 convention data
+- augmenting incorrect georeferencing (GHRSST/MURSST benefits from an assigned geotransform, to fix the broken 1D coordinate arrays that aren't sufficiently precise in Float32)
+- combining disparate layers, the two polar grids of sea ice concentration can be easily streamed into a global grid (transverse merctor, longlat)
+- many others, specific to dataset vagaries
 
 We explored many of these options, and then developed quite a few of them into GDAL itself, if GDAL can recognized or workaround a problem data set then we can remove R code that understands them and it will also work in other programming languages. For us these included
 
--   GRIB files that weren't recognized as being in polar projections
--   issues with the warper when using degenerate rectlinear coordinates
--   many new "gdal_translate" options for the "vrt://" connection that provides a general mechanism to easily inline "VRT fixes" in a single line of text.
+- GRIB files that weren't recognized as being in polar projections
+- issues with the warper when using degenerate rectlinear coordinates
+- many new "gdal_translate" options for the "vrt://" connection that provides a general mechanism to easily inline "VRT fixes" in a single line of text.
 
 The resource should publically available on any machine. We could do this by exposing our data library via web services, but we have concerns about permission to do that and so we are working on a case-by-case basis to determine some of these overal questions.
 
