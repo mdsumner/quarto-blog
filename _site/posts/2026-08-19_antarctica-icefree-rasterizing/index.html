@@ -478,7 +478,7 @@ Other layers: REMA_Mosaic_Index_v2_10m, REMA_Mosaic_Index_v2_32m</code></pre>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.315   0.042   0.357 </code></pre>
+  0.302   0.044   0.347 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ba</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -501,7 +501,7 @@ Object size: 27 MB</code></pre>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.826   0.213   5.040 </code></pre>
+  4.860   0.254   5.114 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>be</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -673,7 +673,6 @@ Object size: 27 MB</code></pre>
 <section id="extracting-point-values" class="level2">
 <h2 class="anchored" data-anchor-id="extracting-point-values">Extracting point values</h2>
 <p>Not every downstream operation needs a dense raster. <code>extract_burn()</code> queries the sparse tables directly at arbitrary point locations, with no materialisation step at all. It matches interior runs by row equality and column interval containment, and edges/lines/points by exact (row, col) match. Cost is O(points + hits), independent of grid dimension.</p>
-<p>The following code chunk is purely for illustration, these locations probably are NA in terms of the polygons.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Some coordinates in the burn's CRS (Antarctic Polar Stereographic)</span></span>
 <span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>pts <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="sc">-</span><span class="dv">1680000</span>, <span class="sc">-</span><span class="dv">1100000</span>,</span>
@@ -682,9 +681,21 @@ Object size: 27 MB</code></pre>
 <span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>pts <span class="ot">&lt;-</span> <span class="fu">structure</span>(<span class="fu">c</span>(<span class="dv">2412867</span>, <span class="dv">2426358</span>, <span class="dv">2424194</span>, <span class="dv">2437557</span>, <span class="dv">2437175</span>, <span class="dv">2441121</span>, </span>
 <span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a><span class="dv">2443539</span>, <span class="dv">2443284</span>, <span class="sc">-</span><span class="dv">911354</span>, <span class="sc">-</span><span class="dv">909445</span>, <span class="sc">-</span><span class="dv">915172</span>, <span class="sc">-</span><span class="dv">913263</span>, <span class="sc">-</span><span class="dv">913136</span>, </span>
 <span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a><span class="sc">-</span><span class="dv">912245</span>, <span class="sc">-</span><span class="dv">914281</span>, <span class="sc">-</span><span class="dv">920645</span>), <span class="at">dim =</span> <span class="fu">c</span>(<span class="dv">8</span>L, <span class="dv">2</span>L))</span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="fu">extract_burn</span>(ba, pts, <span class="at">fun =</span> <span class="st">"id"</span>)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>e_approx <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(ba, pts, <span class="at">fun =</span> <span class="st">"id"</span>)</span>
 <span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a><span class="fu">extract_burn</span>(be, pts, <span class="at">fun =</span> <span class="st">"sum"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>e_cover <span class="ot">&lt;-</span> <span class="fu">extract_burn</span>(be, pts, <span class="at">fun =</span> <span class="st">"sum"</span>)</span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="at">approx =</span> e_approx, <span class="at">cover =</span> e_cover)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     approx     cover
+[1,]  19038 1.0000000
+[2,]  19024 1.0000000
+[3,]     NA 0.0000000
+[4,]  19048 1.0000000
+[5,]  19048 1.0000000
+[6,]  19051 0.5053515
+[7,]  19059 1.0000000
+[8,]     NA 0.0000000</code></pre>
+</div>
 </div>
 <p>The function returns <code>NA</code> for background cells (no geometry touched that pixel) and the geometry ID for cells inside a polygon. With <code>fun = "sum"</code>, coverage-mode burns return exact fractional coverage at each point.</p>
 <p>This pattern generalizes. Because the sparse representation is a reusable intermediate, other raster operations — zonal statistics, reclassification, distance transforms — can be built on top of the same sparse tables without re-burning or allocating a full dense grid. The burn is computed once; everything else is derived.</p>

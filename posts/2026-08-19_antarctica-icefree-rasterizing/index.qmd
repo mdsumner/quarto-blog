@@ -327,11 +327,10 @@ materialisation step at all. It matches interior runs by row equality and
 column interval containment, and edges/lines/points by exact (row, col)
 match. Cost is O(points + hits), independent of grid dimension.
 
-The following code chunk is purely for illustration, these locations probably are NA in terms of the polygons.
 
 ```{r}
 #| label: extract-points
-#| eval: false
+#| eval: true
 # Some coordinates in the burn's CRS (Antarctic Polar Stereographic)
 pts <- matrix(c(-1680000, -1100000,
                  2200000,   400000,
@@ -339,14 +338,15 @@ pts <- matrix(c(-1680000, -1100000,
 pts <- structure(c(2412867, 2426358, 2424194, 2437557, 2437175, 2441121, 
 2443539, 2443284, -911354, -909445, -915172, -913263, -913136, 
 -912245, -914281, -920645), dim = c(8L, 2L))
-extract_burn(ba, pts, fun = "id")
+e_approx <- extract_burn(ba, pts, fun = "id")
 
-extract_burn(be, pts, fun = "sum")
+e_cover <- extract_burn(be, pts, fun = "sum")
+cbind(approx = e_approx, cover = e_cover)
 ```
 
 The function returns `NA` for background cells (no geometry touched that
 pixel) and the geometry ID for cells inside a polygon. With `fun = "sum"`,
-coverage-mode burns return exact fractional coverage at each point.
+coverage-mode burns return exact fractional coverage at each point.  
 
 This pattern generalizes. Because the sparse representation is a reusable
 intermediate, other raster operations — zonal statistics, reclassification,

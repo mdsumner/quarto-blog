@@ -250,7 +250,7 @@ font-style: inherit;">"approx"</span>)</span>
 <span id="cb13-6">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  0.315   0.042   0.357 </code></pre>
+  0.302   0.044   0.347 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">ba</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -315,7 +315,7 @@ font-style: inherit;">"coverage"</span>)</span>
 <span id="cb19-4">})</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  4.826   0.213   5.040 </code></pre>
+  4.860   0.254   5.114 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1">be</span></code></pre></div></div>
 <div class="cell-output cell-output-stdout">
@@ -1021,7 +1021,6 @@ font-style: inherit;">close</span>()</span></code></pre></div></div>
 <section id="extracting-point-values" class="level2">
 <h2 class="anchored" data-anchor-id="extracting-point-values">Extracting point values</h2>
 <p>Not every downstream operation needs a dense raster. <code>extract_burn()</code> queries the sparse tables directly at arbitrary point locations, with no materialisation step at all. It matches interior runs by row equality and column interval containment, and edges/lines/points by exact (row, col) match. Cost is O(points + hits), independent of grid dimension.</p>
-<p>The following code chunk is purely for illustration, these locations probably are NA in terms of the polygons.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><span class="co" style="color: #5E5E5E;
 background-color: null;
@@ -1128,7 +1127,9 @@ background-color: null;
 font-style: inherit;">8</span>L, <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2</span>L))</span>
-<span id="cb34-8"><span class="fu" style="color: #4758AB;
+<span id="cb34-8">e_approx <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">extract_burn</span>(ba, pts, <span class="at" style="color: #657422;
 background-color: null;
@@ -1136,13 +1137,33 @@ font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"id"</span>)</span>
 <span id="cb34-9"></span>
-<span id="cb34-10"><span class="fu" style="color: #4758AB;
+<span id="cb34-10">e_cover <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">extract_burn</span>(be, pts, <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">fun =</span> <span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"sum"</span>)</span></code></pre></div></div>
+font-style: inherit;">"sum"</span>)</span>
+<span id="cb34-11"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cbind</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">approx =</span> e_approx, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">cover =</span> e_cover)</span></code></pre></div></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     approx     cover
+[1,]  19038 1.0000000
+[2,]  19024 1.0000000
+[3,]     NA 0.0000000
+[4,]  19048 1.0000000
+[5,]  19048 1.0000000
+[6,]  19051 0.5053515
+[7,]  19059 1.0000000
+[8,]     NA 0.0000000</code></pre>
+</div>
 </div>
 <p>The function returns <code>NA</code> for background cells (no geometry touched that pixel) and the geometry ID for cells inside a polygon. With <code>fun = "sum"</code>, coverage-mode burns return exact fractional coverage at each point.</p>
 <p>This pattern generalizes. Because the sparse representation is a reusable intermediate, other raster operations — zonal statistics, reclassification, distance transforms — can be built on top of the same sparse tables without re-burning or allocating a full dense grid. The burn is computed once; everything else is derived.</p>
