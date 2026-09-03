@@ -1,0 +1,211 @@
+---
+title: "Writing controlledburn output in parallel"
+description: "The serial COG write loop from the last post, replaced by 24 workers writing disjoint Zarr chunks. The 31-billion-cell grid on disk in 28 seconds of 9.5 MB."
+author: "Michael Sumner"
+date: "2026-09-03"
+categories: [controlledburn, rasterization, Antarctica, GDAL, Zarr, mirai]
+format:
+  html:
+    code-fold: false
+    toc: true
+execute:
+  eval: false
+---
+
+In [Rasterizing ice-free Antarctica](../2026-08-19_antarctica-icefree-rasterizing/) the
+rasterization itself was fast, and the slow part was the file. The
+write loop visited about 8000 super-tiles, materializing each one from the sparse
+burn and pushing it into a COG through a single dataset handle. That handle is the
+whole problem: the COG driver's create path writes a temporary GeoTIFF and then
+rewrites it on close, and neither step tolerates a second writer.
+
+Every iteration of that loop is independent - crop, materialize, write - and the
+burn object it reads from is 27 MB. The only thing shared is the sink. So change the
+sink.
+
+## Why Zarr
+
+A Zarr array is a small metadata file plus one file per chunk. Two processes writing
+different chunks never touch the same bytes, so there is nothing to coordinate. GDAL's
+Zarr driver also declines to write a chunk that is entirely fill value (it will even
+unlink an existing one), which means the store on disk *is* the sparse representation:
+chunks over open ocean and interior ice sheet do not exist.
+
+The plan is
+
+1. create the empty store once, in the parent, with GDAL
+2. open it in update mode from each worker, with its own handle, and write whole chunks
+3. if a COG is still wanted, make it with one `translate()` at the end
+
+
+## Instantiate
+
+```{r}
+library(controlledburn)
+library(gdalraster)
+library(mirai)
+
+ext <- ba$extent
+dm  <- ba$dimension
+chunk_size <- 2048L
+zarr_path  <- file.path(tempdir(), "rema_approx.zarr")
+
+ds <- create(
+  format = "Zarr", dst_filename = zarr_path,
+  xsize = dm[1], ysize = dm[2], nbands = 1, dataType = "Int32",
+  options = c(paste0("BLOCKSIZE=", chunk_size, ",", chunk_size),
+              "COMPRESS=ZSTD", "FORMAT=ZARR_V2"),
+  return_obj = TRUE)
+ds$setGeoTransform(vaster::extent_dim_to_gt(ext, dm))
+ds$setProjection(raster_info$projection$Wkt)
+ds$setNoDataValue(band = 1, 0)   # fill_value; all-zero chunks are never written
+ds$close()
+```
+
+The 4x4 "super-tile" from the last post is gone. A chunk write is one file write, so
+the chunk is the natural unit of parallel work; 2048 keeps each dense allocation at
+16 MB for Int32. (If 512-pixel chunks are wanted for cloud reads, set `BLOCKSIZE=512,512`
+and keep iterating over 2048 windows; GDAL splits each write into 16 chunk files that
+are still disjoint per worker.)
+
+## Populate
+
+The tile index and the pre-filter to rows that carry data are unchanged. The worker
+opens the store in update mode, writes a batch of chunks, and closes. It calls nothing
+that dirties metadata, so `.zarray` and `.zmetadata` are not rewritten on close.
+
+```{r}
+write_tiles <- function(tile_batch, zarr_path) {
+  ds <- methods::new(gdalraster::GDALRaster, zarr_path, read_only = FALSE)
+  on.exit(ds$close(), add = TRUE)
+  n <- 0L
+  for (i in seq_len(nrow(tile_batch))) {
+    t <- tile_batch[i, ]
+    sub <- controlledburn::crop_burn(ba, c(t$xmin, t$xmax, t$ymin, t$ymax))
+    if (nrow(sub$runs) == 0 && nrow(sub$edges) == 0) next
+    mat <- controlledburn::materialize_chunk(sub, fun = "id")
+    mat[is.na(mat)] <- 0L
+    ds$write(band = 1, xoff = t$offset_x, yoff = t$offset_y,
+             xsize = t$ncol, ysize = t$nrow, rasterData = as.integer(t(mat)))
+    n <- n + 1L
+  }
+  n
+}
+environment(write_tiles) <- globalenv()
+
+daemons(24)
+everywhere(library(controlledburn), ba = ba)   # ships ba once per daemon
+
+batches <- split(tiles, cut(seq_len(nrow(tiles)), 24 * 4L, labels = FALSE))
+system.time({
+  res <- mirai_map(batches, write_tiles, .args = list(zarr_path = zarr_path))[.progress]
+})
+daemons(0)
+```
+
+Two `mirai` details that cost me a round trip. Objects passed through `...` to
+`everywhere()` are assigned into each daemon's global environment, which is exactly
+the "send the 27 MB once" behaviour wanted here; a plain `<-` inside the expression is
+evaluated in a clean environment and lost (use `<<-` if you assign there). And
+reparenting the worker function to `globalenv()` stops it dragging the Quarto chunk
+environment along with every task.
+
+## Result
+
+On a 32-cpu, 64 GB machine with 24 daemons:
+
+```
+   user  system elapsed
+  ...     ...    28.0
+```
+
+```{r}
+library(terra)
+rast(zarr_path)
+#> class       : SpatRaster
+#> size        : 182568, 170318, 1  (nrow, ncol, nlyr)
+#> resolution  : 32, 32  (x, y)
+#> extent      : -2700096, 2750080, -2500096, 3342080  (xmin, xmax, ymin, ymax)
+#> source      : rema_approx.zarr
+
+f0 <- fs::dir_ls(zarr_path, recurse = TRUE)
+length(f0)
+#> [1] 722
+sum(fs::file_size(f0))
+#> 9.48M
+```
+
+The grid could hold ceiling(170318 / 2048) x ceiling(182568 / 2048) = 84 x 90 = 7560
+chunks. About 718 of them exist. That is 9.5% of the continent's bounding box with any
+rock in it at the 2048-pixel scale, a number obtained by listing a directory, and the
+whole store is 9.5 MB - alongside the 27 MB burn object, the 5.6 MB DEFLATE COG, and
+the 613 MB uncompressed AADC product from last time, it is another point on the same
+continuum.
+
+## Coda: the COG is now cheap
+
+If the COG is still the deliverable, the expensive part - materializing every tile -
+has already happened in parallel. What remains is one sequential translate, I/O-bound,
+with the COG driver's own threads handling compression and overviews:
+
+```{r}
+set_config_option("GDAL_NUM_THREADS", "ALL_CPUS")
+translate(zarr_path, file.path(tempdir(), "rema_approx.tif"),
+          cl_arg = c("-of", "COG", "-co", "BLOCKSIZE=512", "-co", "SPARSE_OK=YES",
+                     "-co", "COMPRESS=DEFLATE", "-co", "OVERVIEW_RESAMPLING=NEAREST",
+                     "-co", "NUM_THREADS=ALL_CPUS"))
+```
+
+Things I have not done yet, and want to:
+
+- Time this step, so there is an honest end-to-end "how long to get a COG" number
+  against the original serial loop.
+- Check whether reading a sparse Zarr into the COG driver preserves sparsity as well
+  as writing blocks directly did (`SPARSE_OK=YES` should skip the absent chunks, which
+  come back as nodata).
+- The Zarr driver has no classic-API overviews; for a Zarr-native product the
+  pyramid would be additional arrays (the multiscales convention in GDAL 3.13 for
+  Zarr V3), which is a separate post.
+
+## Appendix: populating without GDAL in the workers
+
+The other question I set out with was whether GDAL could instantiate the store and
+something more generic could fill it. It can. A Zarr V2 chunk is: the full chunk shape
+(edge chunks padded with `fill_value`), C order, the declared dtype (`<i4` here),
+passed through the declared compressor, saved as `row.col` in the array directory,
+0-based. If the store is created with `COMPRESS=ZLIB`, base R already has the encoder,
+because `memCompress(type = "gzip")` emits a zlib stream, which is what the numcodecs
+`zlib` codec expects.
+
+```{r}
+write_chunk_raw <- function(mat, row_chunk, col_chunk, array_dir, chunk_size) {
+  full <- matrix(0L, chunk_size, chunk_size)
+  full[seq_len(nrow(mat)), seq_len(ncol(mat))] <- mat
+  bytes <- writeBin(as.integer(t(full)), raw(), size = 4L, endian = "little")
+  writeBin(memCompress(bytes, type = "gzip"),
+           file.path(array_dir, sprintf("%d.%d", row_chunk, col_chunk)))
+}
+```
+
+This has no shared writes of any kind, not even the metadata files, and it is the
+mirror image of a Zarr *reader*, which is where I am headed with `zaro`. Open
+questions to explore:
+
+- ZSTD or Blosc from R without pulling in a heavy dependency, since ZLIB is the slow
+  codec.
+- Whether the worker should write chunks at all, or emit `(chunk key, bytes)` pairs so
+  the sink can be a local directory, an object store, or something that builds a
+  kerchunk/Icechunk reference set instead.
+- Doing the same for the coverage-mode burn (`Float32`, `<f4`), where the chunks are
+  no longer mostly a single value and the compressor choice matters more.
+
+::: {.callout-note}
+## A note on the surrounding tools
+
+As before, this leans on tools in active development - `controlledburn`, `grout`,
+`vaster` - and on `gdalraster` and `mirai`, which are not. The Zarr driver's behaviour
+under concurrent update (metadata rewritten only when dirtied, empty chunks skipped)
+is what I observed here and what a reading of the driver suggests, but it is not a
+documented guarantee; check the `.zmetadata` mtime and the chunk-file count on a small
+grid before trusting it on a large one.
+:::
