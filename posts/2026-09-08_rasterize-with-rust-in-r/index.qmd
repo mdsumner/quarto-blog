@@ -1,0 +1,98 @@
+---
+title: "rasterize with rust in r"
+author: "Michael Sumner"
+date: "2026-09-08"
+draft: true
+categories:
+  - code
+  - news
+---
+
+The [controlledburn-rs](https://github.com/hypertidy/controlledburn-rs) project is a Rust library
+to rasterize *abstractly*. 
+
+When we rasterize we create a matrix-version of a polygon in a grid. 
+
+```{r terra}
+pl <- rnaturalearth::ne_countries() |> 
+  dplyr::mutate(id = dplyr::row_number()) |> 
+  terra::vect()
+
+library(terra)
+pl1 <-  pl[pl$sovereignt %in% c("Australia", "Papua New Guinea"), ] 
+(r <- rasterize(pl1, rast(pl1), field = "id"))
+plot(r)
+```
+
+This dataset has two polygons, which are now described at the pixel level by values `8` and `138`, and because we have 
+grid in memory the values explicit, we can see our little ascii-map of two sovereign nations at very low resolution:  
+
+```{r values}
+as.array(r)
+```
+
+This doesn't scale well for super massive grids, don't try this - terra will work very hard to put the four hundred and nine billion values somewhere, and even though the file will be tiny in the end it has to materialize every pixel on the way. 
+
+```{r massive, eval=FALSE}
+rr <- rast(pl1, ncols = 640000, nrow = 640000)
+rr
+rasterize(pl1, rast(pl1), field = "id", filename = "my-massive.tif")
+```
+
+Instead, we can *rasterize abstractly* - here with a cheap R package cbr that runs the Rust library code in controlledburn. 
+
+```{r abstract}
+library(cbr)
+## geos gives us interchange for SpatVector
+burn <- cb_burn(geos::as_geos_geometry(pl1), dimension = c(10, 10))
+burn
+plot(burn)
+str(burn)
+```
+
+Not only is the representation compact (ok, we have 53 rows describing 100 values, which is more data than the pixels ... so its compact *for large grids* not tiny ones) we also have *edges* which are pixels that have one or more partial-coverings of the polygon/s. In approximate mode we don't bother with those edges:
+
+```{r approx}
+burn_approx <- cb_burn(geos::as_geos_geometry(pl1), dimension = c(10, 10), coverage = FALSE)
+str(burn_approx)
+plot(burn_approx)
+```
+
+We only have 11 rows to describe as start,stop indexes. 
+
+This scales very nicely, and we don't have to prepare the data with id - by default the burn will record the index-id of inputs, and we have some nice helpers like "specify dimension of the x side, figure out the y side by aspect ratio". 
+
+```{r scale}
+library(cbr)
+system.time(burn_big <- cb_burn(geos::as_geos_geometry(pl1), dimension = 640000))
+lobstr::obj_size(burn_big)
+burn_big
+plot(burn_big,by_id = TRUE)
+```
+
+This object is informationally equivalent to a super massive GeoTIFF that is compressed. There's no tiling or overviews in our form (but see `cb_crop()` for cutting this index into tiles). 
+
+We have also wasted an enormous number of virtual pixels on very low resolution polygons, so let's do something more realistic.
+
+First, [thelist](https://github.com/mdsumner/thelist) exists purely to host this statewide file of polygons. 
+
+```{r concat-list}
+dsn <- "/vsicurl/https://github.com/mdsumner/thelist/releases/download/v0.0.1/list_parcels_tasmania.parquet"
+parcels <- terra::vect(dsn)
+parcels
+geom <- geos::as_geos_geometry(parcels)
+lobstr::obj_size(geom)
+
+```
+
+Rasterize them abstractly. 
+
+```{r parcels}
+library(cbr)
+b <- cb_burn(geom, coverage = FALSE, dimension = 12000)
+plot(b, by_id = FALSE)
+```
+
+## Materializing
+
+See this post for materializing efficiently to a GeoTIFF (via Zarr) with the original controlledburn R/C++ package: https://www.hypertidy.org/posts/2026-09-03_controlled-burn/
