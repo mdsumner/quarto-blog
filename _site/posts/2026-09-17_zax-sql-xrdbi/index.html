@@ -9,7 +9,7 @@
 <meta name="author" content="Michael Sumner">
 <meta name="dcterms.date" content="2026-09-17">
 
-<title>Rspeaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy</title>
+<title>R speaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -117,10 +117,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <link rel="stylesheet" href="../../styles.css">
-<meta property="og:title" content="Rspeaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy">
+<meta property="og:title" content="R speaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy">
 <meta property="og:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta property="og:site_name" content="hypertidy">
-<meta name="twitter:title" content="Rspeaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy">
+<meta name="twitter:title" content="R speaks Zax SQL: dbplyr and the tensor-as-table model – hypertidy">
 <meta name="twitter:description" content="Geospatial data, GDAL, and R — Michael Sumner">
 <meta name="twitter:card" content="summary">
 </head>
@@ -347,10 +347,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Rspeaks Zax SQL: dbplyr and the tensor-as-table model</h1>
+      <h1 class="title">R speaks Zax SQL: dbplyr and the tensor-as-table model</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">code</div>
                 <div class="quarto-category">news</div>
+                <div class="quarto-category">zarr</div>
+                <div class="quarto-category">xrdbi</div>
+                <div class="quarto-category">dbplyr</div>
               </div>
                   </div>
   </div>
@@ -406,50 +409,85 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> <span class="dt">month</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> <span class="dt">month</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Here is that query as an ordinary dplyr pipeline, and the SQL dbplyr 2.4.0 generates for it. This is reproducible with no server at all, using dbplyr’s simulated Postgres connection:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dbplyr)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>era5 <span class="ot">&lt;-</span> <span class="fu">lazy_frame</span>(</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">valid_time =</span> <span class="fu">Sys.time</span>(), <span class="at">longitude =</span> <span class="dv">1</span>, <span class="at">latitude =</span> <span class="dv">1</span>, <span class="at">t2m =</span> <span class="dv">1</span>,</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">con =</span> <span class="fu">simulate_postgres</span>(), <span class="at">.name =</span> <span class="fu">ident_q</span>(<span class="st">"era5.'single/temporal'"</span>)</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>era5 <span class="sc">|&gt;</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(longitude <span class="sc">==</span> <span class="dv">45</span>, latitude <span class="sc">==</span> <span class="dv">60</span>) <span class="sc">|&gt;</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(<span class="at">month =</span> <span class="fu">date_part</span>(<span class="st">"month"</span>, valid_time)) <span class="sc">|&gt;</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">t2m_mean =</span> <span class="fu">mean</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>            <span class="at">t2m_std  =</span> <span class="fu">sd</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(month) <span class="sc">|&gt;</span></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show_query</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> `month`, <span class="fu">AVG</span>(`t2m`) <span class="kw">AS</span> `t2m_mean`, <span class="fu">STDDEV_SAMP</span>(`t2m`) <span class="kw">AS</span> `t2m_std`</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">SELECT</span> `q01`.<span class="op">*</span>, date_part(<span class="st">'month'</span>, `valid_time`) <span class="kw">AS</span> `month`</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">FROM</span> era5.<span class="st">'single/temporal'</span> <span class="kw">AS</span> `q01`</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">WHERE</span> (`longitude` <span class="op">=</span> <span class="fl">45.0</span>) <span class="kw">AND</span> (`latitude` <span class="op">=</span> <span class="fl">60.0</span>)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> `q01`</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> `month`</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> `month`</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'dplyr'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:stats':
+
+    filter, lag</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dbplyr)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'dbplyr'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:dplyr':
+
+    ident, sql, sql_escape_ident, sql_escape_string</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>era5 <span class="ot">&lt;-</span> <span class="fu">lazy_frame</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">valid_time =</span> <span class="fu">Sys.time</span>(), <span class="at">longitude =</span> <span class="dv">1</span>, <span class="at">latitude =</span> <span class="dv">1</span>, <span class="at">t2m =</span> <span class="dv">1</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">con =</span> <span class="fu">simulate_postgres</span>(), <span class="at">.name =</span> <span class="fu">ident_q</span>(<span class="st">"era5.'single/temporal'"</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>era5 <span class="sc">|&gt;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(longitude <span class="sc">==</span> <span class="dv">45</span>, latitude <span class="sc">==</span> <span class="dv">60</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(<span class="at">month =</span> <span class="fu">date_part</span>(<span class="st">"month"</span>, valid_time)) <span class="sc">|&gt;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">t2m_mean =</span> <span class="fu">mean</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>            <span class="at">t2m_std  =</span> <span class="fu">sd</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(month) <span class="sc">|&gt;</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show_query</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;SQL&gt;
+SELECT "month", AVG("t2m") AS "t2m_mean", STDDEV_SAMP("t2m") AS "t2m_std"
+FROM (
+  SELECT *, date_part('month', "valid_time") AS "month"
+  FROM era5.'single/temporal'
+  WHERE ("longitude" = 45.0) AND ("latitude" = 60.0)
+) AS "q01"
+GROUP BY "month"
+ORDER BY "month"</code></pre>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> `month`, <span class="fu">AVG</span>(`t2m`) <span class="kw">AS</span> `t2m_mean`, <span class="fu">STDDEV_SAMP</span>(`t2m`) <span class="kw">AS</span> `t2m_std`</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">SELECT</span> `q01`.<span class="op">*</span>, date_part(<span class="st">'month'</span>, `valid_time`) <span class="kw">AS</span> `month`</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">FROM</span> era5.<span class="st">'single/temporal'</span> <span class="kw">AS</span> `q01`</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">WHERE</span> (`longitude` <span class="op">=</span> <span class="fl">45.0</span>) <span class="kw">AND</span> (`latitude` <span class="op">=</span> <span class="fl">60.0</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> `q01`</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> `month`</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> `month`</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>(Simulated connections print backticks; a live RPostgres connection quotes identifiers with double quotes. On a real connection the table reference is <code>tbl(con, I("era5.'single/temporal'"))</code> rather than <code>ident_q()</code>.)</p>
 <p>That is, up to a subquery and spelling, the query from their post. Two details I like: dbplyr writes <code>STDDEV_SAMP</code>, which is what Postgres’s (and DataFusion’s) <code>STDDEV</code> is an alias for, so it is being <em>more</em> explicit, not less compatible; and <code>date_part</code> isn’t a special case - dbplyr passes unknown functions through verbatim, which happens to be exactly the escape hatch a young dialect needs.</p>
 <p>The pattern extends naturally. A regional aggregation - the thing that actually exercises chunk-level pushdown - is just a bounding box in the WHERE clause:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>era5 <span class="sc">|&gt;</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">between</span>(longitude, <span class="dv">100</span>, <span class="dv">160</span>), <span class="fu">between</span>(latitude, <span class="sc">-</span><span class="dv">70</span>, <span class="sc">-</span><span class="dv">40</span>),</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>         valid_time <span class="sc">&gt;=</span> <span class="st">"2020-01-01"</span>, valid_time <span class="sc">&lt;</span> <span class="st">"2021-01-01"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(<span class="at">month =</span> <span class="fu">date_part</span>(<span class="st">"month"</span>, valid_time)) <span class="sc">|&gt;</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">t2m_mean =</span> <span class="fu">mean</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(month)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> `month`, <span class="fu">AVG</span>(`t2m`) <span class="kw">AS</span> `t2m_mean`, <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> `n`</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">SELECT</span> `q01`.<span class="op">*</span>, date_part(<span class="st">'month'</span>, `valid_time`) <span class="kw">AS</span> `month`</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">FROM</span> era5.<span class="st">'single/temporal'</span> <span class="kw">AS</span> `q01`</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">WHERE</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    (`longitude` <span class="kw">BETWEEN</span> <span class="fl">100.0</span> <span class="kw">AND</span> <span class="fl">160.0</span>) <span class="kw">AND</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    (`latitude` <span class="kw">BETWEEN</span> <span class="op">-</span><span class="fl">70.0</span> <span class="kw">AND</span> <span class="op">-</span><span class="fl">40.0</span>) <span class="kw">AND</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    (`valid_time` <span class="op">&gt;=</span> <span class="st">'2020-01-01'</span>) <span class="kw">AND</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    (`valid_time` <span class="op">&lt;</span> <span class="st">'2021-01-01'</span>)</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> `q01`</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> `month`</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> `month`</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>era5 <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">between</span>(longitude, <span class="dv">100</span>, <span class="dv">160</span>), <span class="fu">between</span>(latitude, <span class="sc">-</span><span class="dv">70</span>, <span class="sc">-</span><span class="dv">40</span>),</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>         valid_time <span class="sc">&gt;=</span> <span class="st">"2020-01-01"</span>, valid_time <span class="sc">&lt;</span> <span class="st">"2021-01-01"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(<span class="at">month =</span> <span class="fu">date_part</span>(<span class="st">"month"</span>, valid_time)) <span class="sc">|&gt;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">t2m_mean =</span> <span class="fu">mean</span>(t2m, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(month)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> `month`, <span class="fu">AVG</span>(`t2m`) <span class="kw">AS</span> `t2m_mean`, <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> `n`</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">SELECT</span> `q01`.<span class="op">*</span>, date_part(<span class="st">'month'</span>, `valid_time`) <span class="kw">AS</span> `month`</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">FROM</span> era5.<span class="st">'single/temporal'</span> <span class="kw">AS</span> `q01`</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">WHERE</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    (`longitude` <span class="kw">BETWEEN</span> <span class="fl">100.0</span> <span class="kw">AND</span> <span class="fl">160.0</span>) <span class="kw">AND</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    (`latitude` <span class="kw">BETWEEN</span> <span class="op">-</span><span class="fl">70.0</span> <span class="kw">AND</span> <span class="op">-</span><span class="fl">40.0</span>) <span class="kw">AND</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    (`valid_time` <span class="op">&gt;=</span> <span class="st">'2020-01-01'</span>) <span class="kw">AND</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    (`valid_time` <span class="op">&lt;</span> <span class="st">'2021-01-01'</span>)</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> `q01`</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> `month`</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> `month`</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>A <code>BETWEEN</code> on a coordinate column is a hyperslab. The R user wrote a filter; the Zax planner decides what that means in terms of I/O. That division of labour is precisely the one dbplyr assumes about every database it talks to.</p>
 </section>
 <section id="wiring-it-up" class="level2">
@@ -464,7 +502,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="why-this-matters-beyond-a-demo" class="level2">
 <h2 class="anchored" data-anchor-id="why-this-matters-beyond-a-demo">Why this matters beyond a demo</h2>
 <p><strong>A correctness oracle, both ways.</strong> xrdbi and Zax now implement the same tensor-to-relation flattening on either side of a wire. Running identical pipelines against xrdbi-local (xarray on your laptop) and Zax-remote (125 TB of Icechunk) cross-checks the fiddly semantics: broadcast order, coordinate column behaviour, aggregation over flattened dimensions. Where they agree, R users get a strong story - same dplyr code, laptop or petabyte. Where they disagree, one of us has found a bug or an underspecified corner of the model, and either outcome is useful feedback while the dialect is young.</p>
-<p><strong>Convergent evolution is the tell.</strong> Zax-SQL, xarray-sql, Beacon, and SedonaDB’s raster support are all landing on SQL-over-flattened-tensors from different directions (Earthmover’s post generously points at the other three). When the same interface emerges independently from a Rust query engine, a serverless Python project, a NetCDF client-server system, and a spatial SQL engine - and, from the R side, from a dbplyr backend - that is usually the sign of a real abstraction rather than a fad.</p>
+<p><strong>Convergent evolution.</strong> Zax-SQL, xarray-sql, Beacon, and SedonaDB’s raster support are all landing on SQL-over-flattened-tensors from different directions (Earthmover’s post generously points at the other three). When the same interface emerges independently from a Rust query engine, a serverless Python project, a NetCDF client-server system, and a spatial SQL engine - and, from the R side, from a dbplyr backend - that is probably not a fad.</p>
 <p><strong>The relational layer is the contract.</strong> In work factoring xrdbi’s core into an engine-agnostic translation layer (working name arrplyr), the plan had been a JSON-ish intermediate representation - variables, coordinate windows, strides, axis reductions - handed to engines like xarray, GDAL multidim, or pizzarr. The arrival of SQL-speaking array engines simplifies one whole branch of that picture: for Zax and its cousins, no IR is needed, because dbplyr’s native SQL generation <em>is</em> the contract, and the flattened relational model is the interchange format. The IR earns its keep only for engines with no SQL front door. And Earthmover’s roadmap - queries as saved, versioned, shareable objects; views as unmaterialized derived datasets - is the recipe-not-payload position: a query is a description of data, and it is the description you should store and exchange, not the bytes.</p>
 <p><strong>Agents, incidentally.</strong> Earthmover’s argument for SQL-first is partly that LLMs write competent SQL but poor memory-aware chunked-array code. The same argument holds one level up: agents and humans alike write competent <em>dplyr</em>, and dbplyr removes even the SQL from view. The grammar R users have applied to data frames for a decade now reaches petabyte tensor stores with no new API at all.</p>
 </section>

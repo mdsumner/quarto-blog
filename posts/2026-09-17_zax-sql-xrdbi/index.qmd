@@ -1,0 +1,227 @@
+---
+title: "R speaks Zax SQL: dbplyr and the tensor-as-table model"
+author: "Michael Sumner"
+date: "2026-09-17"
+categories: [code, news, zarr, xrdbi, dbplyr]
+---
+
+
+
+Earthmover announced [Zax and Zax-SQL](https://www.earthmover.io/blog/compute-roadmap)
+this week: a new query engine for chunked multidimensional arrays, fronted by
+SQL over the PostgreSQL wire protocol and Arrow Flight SQL. The relational
+mapping they describe is worth quoting:
+
+
+
+
+> It maps the NetCDF data model onto the relational model and lets you query
+> tensors as if they were rows and columns. The mapping is one-way and
+> equivalent to flattening the dataset: coordinates and data variables all
+> appear as columns of the same length, variables of differing dimensionality
+> are lazily broadcast against each other, and the row count is the outer
+> product of the dimensions.
+
+I want to flag something from the R side: **this virtual schema already has a
+mature query *generator* pointed at it**. It's dbplyr, the tidyverse's
+SQL compiler, and we have been building against exactly this flattened
+tensor-as-table model in [xrdbi](https://github.com/mdsumner/xrdbi), a
+DBI/dbplyr backend for xarray via reticulate. Same mapping, arrived at
+independently: coordinates and variables as equal-length columns, row count as
+the outer product of the dimensions, filters on coordinate columns standing in
+for array slicing.
+
+
+
+The difference is which side of the wire does the work. xrdbi intercepts the
+dbplyr pipeline *before* SQL and translates it into xarray selection and
+reduction calls (filter pushdown to coordinate selection, summarise to
+dimension reduction). Zax puts the same smarts server-side: the planner turns
+a WHERE clause into a coordinate selection in multidimensional space, works
+out which chunks intersect, and streams only those out of object storage.
+
+Which means pointing dplyr at Zax is not a new client. It's dbplyr doing the
+one thing it was always built for: generating SQL and sending it down a wire.
+
+## The climatology example, from dplyr
+
+Earthmover's headline query is a monthly climatology at a grid point, running
+against a 125 TB ERA5 Icechunk dataset:
+
+```sql
+SELECT DATE_PART('month', valid_time) as month,
+       AVG(t2m) as t2m_mean,
+       STDDEV(t2m) as t2m_std
+FROM era5.'single/temporal'
+WHERE longitude = 45.0 AND latitude = 60.0
+GROUP BY month
+ORDER BY month
+```
+
+Here is that query as an ordinary dplyr pipeline, and the SQL dbplyr 2.4.0
+generates for it. This is reproducible with no server at all, using dbplyr's
+simulated Postgres connection:
+
+```{r}
+#| label: lazy_frame
+library(dplyr)
+library(dbplyr)
+
+era5 <- lazy_frame(
+  valid_time = Sys.time(), longitude = 1, latitude = 1, t2m = 1,
+  con = simulate_postgres(), .name = ident_q("era5.'single/temporal'")
+)
+
+era5 |>
+  filter(longitude == 45, latitude == 60) |>
+  group_by(month = date_part("month", valid_time)) |>
+  summarise(t2m_mean = mean(t2m, na.rm = TRUE),
+            t2m_std  = sd(t2m, na.rm = TRUE)) |>
+  arrange(month) |>
+  show_query()
+```
+
+```sql
+SELECT `month`, AVG(`t2m`) AS `t2m_mean`, STDDEV_SAMP(`t2m`) AS `t2m_std`
+FROM (
+  SELECT `q01`.*, date_part('month', `valid_time`) AS `month`
+  FROM era5.'single/temporal' AS `q01`
+  WHERE (`longitude` = 45.0) AND (`latitude` = 60.0)
+) AS `q01`
+GROUP BY `month`
+ORDER BY `month`
+```
+
+
+
+
+(Simulated connections print backticks; a live RPostgres connection quotes
+identifiers with double quotes. On a real connection the table reference is
+`tbl(con, I("era5.'single/temporal'"))` rather than `ident_q()`.)
+
+That is, up to a subquery and spelling, the query from their post. Two details
+I like: dbplyr writes `STDDEV_SAMP`, which is what Postgres's (and
+DataFusion's) `STDDEV` is an alias for, so it is being *more* explicit, not
+less compatible; and `date_part` isn't a special case - dbplyr passes unknown
+functions through verbatim, which happens to be exactly the escape hatch a
+young dialect needs.
+
+The pattern extends naturally. A regional aggregation - the thing that
+actually exercises chunk-level pushdown - is just a bounding box in the WHERE
+clause:
+
+```r
+era5 |>
+  filter(between(longitude, 100, 160), between(latitude, -70, -40),
+         valid_time >= "2020-01-01", valid_time < "2021-01-01") |>
+  group_by(month = date_part("month", valid_time)) |>
+  summarise(t2m_mean = mean(t2m, na.rm = TRUE), n = n()) |>
+  arrange(month)
+```
+
+```sql
+SELECT `month`, AVG(`t2m`) AS `t2m_mean`, COUNT(*) AS `n`
+FROM (
+  SELECT `q01`.*, date_part('month', `valid_time`) AS `month`
+  FROM era5.'single/temporal' AS `q01`
+  WHERE
+    (`longitude` BETWEEN 100.0 AND 160.0) AND
+    (`latitude` BETWEEN -70.0 AND -40.0) AND
+    (`valid_time` >= '2020-01-01') AND
+    (`valid_time` < '2021-01-01')
+) AS `q01`
+GROUP BY `month`
+ORDER BY `month`
+```
+
+A `BETWEEN` on a coordinate column is a hyperslab. The R user wrote a filter;
+the Zax planner decides what that means in terms of I/O. That division of
+labour is precisely the one dbplyr assumes about every database it talks to.
+
+## Wiring it up
+
+Two routes, both using infrastructure R already has:
+
+- **Postgres wire**: `RPostgres::dbConnect()` to a Zax-SQL endpoint, then
+  `tbl()` and ordinary dplyr verbs. dbplyr's Postgres dialect should carry
+  most pipelines, since Zax-SQL uses Apache DataFusion for the relational
+  processing and DataFusion's SQL is Postgres-flavoured.
+- **Arrow Flight SQL**: the better wire for bulk results - Arrow record
+  batches straight into R with no text protocol in the middle. The ADBC
+  Flight SQL driver via `adbcdrivermanager`, with DBI compatibility through
+  `adbi`, gives dbplyr the same interface.
+
+Where it will misfire is dialect edges: DataFusion is not Postgres, so some
+translations (string and date functions, window frames) will emit SQL that
+Zax rejects. The remedy is the classic thin-backend move - a connection
+subclass with a `sql_translation()` method mapping to DataFusion names. That
+is a couple of hundred lines, the duckplyr-shaped package, and only worth
+writing once the friction is demonstrated rather than assumed.
+
+## Why this matters beyond a demo
+
+**A correctness oracle, both ways.** xrdbi and Zax now implement the same
+tensor-to-relation flattening on either side of a wire. Running identical
+pipelines against xrdbi-local (xarray on your laptop) and Zax-remote (125 TB
+of Icechunk) cross-checks the fiddly semantics: broadcast order, coordinate
+column behaviour, aggregation over flattened dimensions. Where they agree, R
+users get a strong story - same dplyr code, laptop or petabyte. Where they
+disagree, one of us has found a bug or an underspecified corner of the model,
+and either outcome is useful feedback while the dialect is young.
+
+**Convergent evolution.** Zax-SQL, xarray-sql, Beacon, and
+SedonaDB's raster support are all landing on SQL-over-flattened-tensors from
+different directions (Earthmover's post generously points at the other
+three). When the same interface emerges independently from a Rust query
+engine, a serverless Python project, a NetCDF client-server system, and a
+spatial SQL engine - and, from the R side, from a dbplyr backend - that is
+probably not a fad.
+
+**The relational layer is the contract.** In work factoring xrdbi's core
+into an engine-agnostic translation layer (working name arrplyr), the plan
+had been a JSON-ish intermediate representation - variables, coordinate
+windows, strides, axis reductions - handed to engines like xarray, GDAL
+multidim, or pizzarr. The arrival of SQL-speaking array engines simplifies
+one whole branch of that picture: for Zax and its cousins, no IR is needed,
+because dbplyr's native SQL generation *is* the contract, and the flattened
+relational model is the interchange format. The IR earns its keep only for
+engines with no SQL front door. And Earthmover's roadmap - queries as saved,
+versioned, shareable objects; views as unmaterialized derived datasets - is
+the recipe-not-payload position: a query is a description of data, and it is
+the description you should store and exchange, not the bytes.
+
+**Agents, incidentally.** Earthmover's argument for SQL-first is partly that
+LLMs write competent SQL but poor memory-aware chunked-array code. The same
+argument holds one level up: agents and humans alike write competent *dplyr*,
+and dbplyr removes even the SQL from view. The grammar R users have applied
+to data frames for a decade now reaches petabyte tensor stores with no new
+API at all.
+
+## Trying it
+
+Zax-SQL is live on every Arraylake plan including the free Community Tier:
+create an organization, subscribe to a Marketplace dataset (ERA5 is there),
+spin up a Zax-SQL service, and connect with RPostgres exactly as you would to
+any Postgres. The dplyr snippets above should be a working starting point,
+and `show_query()` shows you what is crossing the wire.
+
+I plan to write up a fuller "same table, two engines" comparison - identical
+pipelines against xrdbi and Zax with the results diffed. If you are
+interested in the R side of this (or the arrplyr factoring), issues and
+discussion at [xrdbi](https://github.com/mdsumner/xrdbi) are welcome.
+
+## Links
+
+- Earthmover, "Our compute roadmap: introducing Zax SQL":
+  https://www.earthmover.io/blog/compute-roadmap
+- Zax-SQL docs: https://docs.earthmover.io/compute/sql
+- xrdbi: https://github.com/mdsumner/xrdbi
+- dbplyr: https://dbplyr.tidyverse.org
+- Apache DataFusion: https://datafusion.apache.org
+- xarray-sql: https://xql.systems/xarray-sql/latest/
+- Beacon: https://maris-development.github.io/beacon/
+- SedonaDB: https://sedona.apache.org/sedonadb/latest/
+- Earthmover, "Tensors vs. tables":
+  https://www.earthmover.io/blog/tensors-vs-tables/
+
+
