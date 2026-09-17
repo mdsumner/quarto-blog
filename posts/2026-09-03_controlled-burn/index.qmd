@@ -81,9 +81,9 @@ write_tiles <- function(tile_batch, zarr_path) {
   n <- 0L
   for (i in seq_len(nrow(tile_batch))) {
     t <- tile_batch[i, ]
-    sub <- controlledburn::crop_burn(ba, c(t$xmin, t$xmax, t$ymin, t$ymax))
+    sub <- cbr::cb_crop(ba, c(t$xmin, t$xmax, t$ymin, t$ymax))
     if (nrow(sub$runs) == 0 && nrow(sub$edges) == 0) next
-    mat <- controlledburn::materialize_chunk(sub, fun = "id")
+    mat <- cbr::cb_materialize(sub, value = "id")
     mat[is.na(mat)] <- 0L
     ds$write(band = 1, xoff = t$offset_x, yoff = t$offset_y,
              xsize = t$ncol, ysize = t$nrow, rasterData = as.integer(t(mat)))
@@ -95,6 +95,8 @@ environment(write_tiles) <- globalenv()
 
 daemons(24)
 everywhere(library(controlledburn), ba = ba)   # ships ba once per daemon
+
+tiles <- grout::tile_index(grout::grout(dm, ext, c(chunk_size, chunk_size)))
 
 batches <- split(tiles, cut(seq_len(nrow(tiles)), 24 * 4L, labels = FALSE))
 system.time({
