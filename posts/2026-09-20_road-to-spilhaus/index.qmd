@@ -1,0 +1,143 @@
+---
+title: "The road to +proj=spilhaus"
+description: "Spilhaus went viral in 2018, shipped in ArcGIS in 2020, and landed in PROJ in 2025. That last step may not have been noticed widely enough. There's a picture of how our software landscape actually works."
+author: "Michael Sumner"
+date: "2026-09-20"
+categories: [projections, PROJ, GDAL, news]
+execute:
+  eval: false
+---
+
+Spilhaus is the map where the oceans are one continuous body and the continents are the ragged edge. It went viral in late 2018, it has been in ArcGIS Pro since 2020, and since March 2025 it is in PROJ, which means it is in GDAL, sf, terra, pyproj, QGIS, PostGIS and everything else that sits on that stack. Almost nobody noticed the last step. I think the whole arc is a tidy illustration of how our software landscape actually works. 
+
+## It was not a new projection
+
+Athelstan Spilhaus published ocean-centred maps from 1942, using existing conformal and equal-area projections. The square version people recognise appeared in 1979 and was republished in 1983 and 1991. Mathematically it is an oblique aspect of the Adams World in a Square II projection (Adams, 1925/1929), rotated 45 degrees so the square sits on a corner. Spilhaus chose a centre and an azimuth; he did not invent the maths.
+
+That matters for the story, because "implement Spilhaus" decomposes into two jobs: implement Adams WS2 (elliptic-function conformal maths), and then support an oblique, rotated aspect with the right parameters.
+
+## 2018-2020: viral, then reverse-engineered
+
+The map spread on social media in autumn 2018 with no usable coordinate system behind it. Bojan Savric, David Burrows and Melita Kennedy at Esri did the detective work, published it as a [storymap](https://storymaps.arcgis.com/stories/756bcae18d304a1eac140f19f4d5cb3d), and identified the parameters:
+
+```
+Projection: Adams Square II
+Azimuth: 40.17823482
+Longitude of centre: 66.94970198 E
+Latitude of centre: 49.56371678 S
+XY plane rotation: 45
+```
+
+It shipped as a projected coordinate system in ArcGIS 10.8 and ArcGIS Pro 2.5 in [February 2020](https://www.maproomblog.com/2020/02/the-spilhaus-projection-comes-to-arcgis-pro/), and the definitions became ESRI:54098 and ESRI:54099 in Esri's openly published projection-engine database. So to be fair to that company: the parameters were public, the WKT was public, and the storymap is still the best explainer on the web. What did not happen was any code landing in the open library everyone else depends on.
+
+## 2020: PROJ gets halfway there in three months
+
+Asger Petersen opened [OSGeo/PROJ#1851](https://github.com/OSGeo/PROJ/issues/1851) in January 2020, pointing at the Esri storymap and the parameters. By April, Kristian Evers had added `adams_hemi`, `adams_ws1`, `adams_ws2`, `guyou` and `peirce_q` to PROJ ([PR #2148](https://github.com/OSGeo/PROJ/pull/2148), "a first step towards implementing the Spilhaus projection as requested in #1851"), and Even Rouault had mapped Esri's `Adams_Square_II` WKT to `+proj=adams_ws2` and written an iterative inverse so `gdalwarp` could use it ([PR #2157](https://github.com/OSGeo/PROJ/pull/2157)). Both shipped in PROJ 7.1.0.
+
+The maths was there, the oblique/rotated aspect was not, and the issue sat for five years wearing the `pinned` label, whose stated purpose in the PROJ repo is to "prevent stale-bot from closing an issue". 
+
+<!-- TODO: a comment or two from the 2020-2024 gap in #1851 would make this concrete (ob_tran workarounds? who kept it alive?) -->
+
+## 2019-2024: everyone else routes around
+
+While the base layer was stalled, the demand did not go away, and the community did what it always does: reimplemented the forward transform wherever it was standing.
+
+- [Cartopy issue #1376](https://github.com/SciTools/cartopy/issues/1376) (October 2019) asked for Spilhaus and asked whether the rotation could live in cartopy or had to come from PROJ. It stayed open until 2025.
+- Torben Jansen published Observable notebooks for [Adams World in a Square I and II](https://observablehq.com/@toja/adams-world-in-a-square-i-ii), and for [Spilhaus](https://observablehq.com/@toja/spilhaus-world-ocean-map-in-a-square), on d3-geo. [Joe Davies](https://observablehq.com/@joewdavies/spilhaus-map) and others followed. This is where the "viral map" crowd already lived, so this is where most Spilhaus maps were actually being made.
+- Ricardo Lemos published [rtlemos/spilhaus](https://github.com/rtlemos/spilhaus), parallel R and Python scripts with `from_lonlat_to_spilhaus_xy` and its inverse, with a README that says the quiet part out loud: "Currently, the Spilhaus projection is missing in PROJ, making it unavailable for R and Python enthusiasts, among others: OSGeo/PROJ#1851."
+- [Chen et al. (Scientific Data, 2023)](https://www.nature.com/articles/s41597-023-02309-6) published an oceanographic case for the projection. Their maps were made in ArcGIS Pro 2.5; their open supplement was a "quasi-Spilhaus" d3 notebook based on Jansen's work, which they note carries "slight error", and they record that GMT and QGIS could not do it.
+
+Each of these gives you one thing: points forward, sometimes points inverse, in one language. None gives you a CRS. You cannot warp a raster with an Observable notebook, `st_transform()` a polygon layer with a Python script, or hand ESRI:54099 to a colleague and have their tools agree with yours. That is the difference between a projection formula and a projection in PROJ.
+
+## 2025: three days in February
+
+Javier Jimenez Shaw opened [PR #4401](https://github.com/OSGeo/PROJ/pull/4401) on 16 February 2025 and it was merged on 19 February. It implements `+proj=spilhaus` for both the sphere and the ellipsoid, using conformal latitudes with an additional correction that, in his words, "was not present in other implementations". The defaults are Spilhaus's parameters, so the bare string is the map:
+
+```
++proj=spilhaus
+## equivalent to
++proj=spilhaus +lon_0=66.94970198 +lat_0=-49.56371678 +azi=40.17823482 +rot=45
+```
+
+The same day, Even Rouault's [PR #4402](https://github.com/OSGeo/PROJ/pull/4402) wired ESRI:54099 and ESRI:54098 to `+proj=spilhaus`, which surfaced the last puzzle: Esri's coordinates differ from the raw Adams maths by a factor of sqrt(2). PROJ carries that as `+k_0=1.4142135...` on the Esri definitions, and Keith Jenkins's reference points from ArcGIS agreed to well under a metre. Interoperability is exactly this kind of unglamorous detail, done in public, with the test points in the PR.
+
+[PROJ 9.6.0](https://newreleases.io/project/github/OSGeo/PROJ/release/9.6.0) was released on 15 March 2025 with "Add Spilhaus projection (#4401)" as one line in the release notes. The [documentation page](https://proj.org/en/stable/operations/projections/spilhaus.html) is a parameter table.
+
+## After: a very quiet arrival
+
+What followed:
+
+- [Cartopy PR #2529](https://github.com/SciTools/cartopy/pull/2529) (May 2025) added a `Spilhaus` class, gated on PROJ 9.6 and pyproj 3.7.1. But pyproj 3.7.1 wheels bundle PROJ 9.5.1, so a `pip install` user got nothing until 3.7.2 in August 2025. Conda users got it sooner. <!-- TODO check bundled PROJ in pyproj 3.7.2 wheels -->
+- A NetBSD user [reported](https://www.mail-archive.com/proj@lists.osgeo.org/msg01414.html) 56 of 77 Spilhaus regression tests failing with round-trip errors of tens to hundreds of kilometres, everything else in PROJ passing, almost certainly a libm quirk. Conformal maths at the edges of a square is a stress test for platform floating point.
+- The [QGIS map gallery](https://hub.qgis.org/map-gallery/tags/spilhaus/) got one tagged post: "The beautiful Spilhaus projection ('oceans in a square') is new in PROJ 9.6.0."
+- The five-year issue closed with the PR and, as far as I can find, no announcement anywhere that ocean people read.
+
+Meanwhile, all of this just works, if and only if your PROJ is 9.6 or newer:
+
+```r
+library(sf)
+x <- st_transform(st_as_sf(rnaturalearth::ne_countries()), "+proj=spilhaus")
+
+library(terra)
+r <- project(rast("/vsicurl/https://example.org/global.tif"), "+proj=spilhaus")
+```
+
+```sh
+gdalwarp -t_srs "+proj=spilhaus" global.tif spilhaus.tif
+```
+
+```python
+from pyproj import Transformer
+t = Transformer.from_crs(4326, "+proj=spilhaus", always_xy=True)
+t.transform(147.3, -42.9)
+```
+
+Which brings me to the point.
+
+## What this says about the landscape
+
+**The base layer is where the leverage is, and where the least attention goes.** Five-plus years of demand produced maybe half a dozen independent reimplementations.  One contribution to PROJ made the projection available for raster, vector and raw coordinates, with an inverse, on the ellipsoid, with a database identity, in every downstream stack at once. Nobody had to change a line in GDAL, sf, terra, QGIS or PostGIS. 
+
+**"It's in PROJ" is not "it's in your hands."** The path from a merged PR to a working function on a user's machine runs through release cadence, wheel and CRAN binary builds, conda-forge, OSGeo4W, Linux distro freezes and QGIS LTR policy. Six to eighteen months of skew is normal, and it is invisible unless you know to look:
+
+```sh
+projinfo --version
+```
+
+```r
+sf::sf_extSoftVersion()["PROJ"]
+terra::gdal(lib = "proj")
+```
+
+```python
+import pyproj; pyproj.proj_version_str
+from osgeo import osr; osr.GetPROJVersionMajor()
+```
+
+If folks tried Spilhaus in mid-2025 and got an "unknown projection" error probably concluded it was not supported, not that they were on 9.5 or earlier.
+
+**Provenance is lost by default.** Search for the projection and you get the Esri storymap and Observable notebooks; the PROJ documentation page is a parameter table. The people who did the hard, general work are one line in a changelog. This is not a complaint about anyone; it is how the attention economy of open infrastructure works, and it is why I think projects like PROJ and GDAL need people whose job is partly to narrate what they have done.
+
+**The vendor question is less interesting than it looks.** Esri published the parameters and the WKT, and that is what the open implementation was built from and tested against. The gap is not secrecy; it was just not done properly until folded into PROJ. 
+
+## Next
+
+I am putting together notebooks that walk the chain, PROJ version to pyproj to GDAL to a global bathymetry raster, vectors and city points on one Spilhaus map, partly as a demo and partly to make the case that following upstream is a skill worth teaching. 
+
+[Spilhaus tracker: example python code](https://mdsumner.github.io/spilhaus-tracker/)
+
+
+
+## Links
+
+- [OSGeo/PROJ#1851 Spilhaus projection](https://github.com/OSGeo/PROJ/issues/1851)
+- [PR #4401 Add Spilhaus projection](https://github.com/OSGeo/PROJ/pull/4401)
+- [PR #4402 Export ESRI:54099 as PROJ string](https://github.com/OSGeo/PROJ/pull/4402)
+- [PR #2148 Adams, Guyou, Peirce projections](https://github.com/OSGeo/PROJ/pull/2148)
+- [PR #2157 Adams Square II ESRI WKT and inverse](https://github.com/OSGeo/PROJ/pull/2157)
+- [PROJ Spilhaus documentation](https://proj.org/en/stable/operations/projections/spilhaus.html)
+- [Esri: The Spilhaus map of the oceans will be supported in the next release of ArcGIS](https://community.esri.com/t5/mapping-blog/the-spilhaus-map-of-the-oceans-will-be-supported/ba-p/883199)
+- [Chen et al. 2023, Ocean Sciences with the Spilhaus Projection](https://www.nature.com/articles/s41597-023-02309-6)
+- [Cartopy issue #1376](https://github.com/SciTools/cartopy/issues/1376) and [PR #2529](https://github.com/SciTools/cartopy/pull/2529)
+- [rtlemos/spilhaus](https://github.com/rtlemos/spilhaus)
+- [pyproj changelog](https://pyproj4.github.io/pyproj/stable/history.html)
