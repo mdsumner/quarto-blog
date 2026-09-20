@@ -61,7 +61,7 @@ Javier Jimenez Shaw opened [PR #4401](https://github.com/OSGeo/PROJ/pull/4401) o
 
 The same day, Even Rouault's [PR #4402](https://github.com/OSGeo/PROJ/pull/4402) wired ESRI:54099 and ESRI:54098 to `+proj=spilhaus`, which surfaced the last puzzle: Esri's coordinates differ from the raw Adams maths by a factor of sqrt(2). PROJ carries that as `+k_0=1.4142135...` on the Esri definitions, and Keith Jenkins's reference points from ArcGIS agreed to well under a metre. Interoperability is exactly this kind of unglamorous detail, done in public, with the test points in the PR.
 
-[PROJ 9.6.0](https://newreleases.io/project/github/OSGeo/PROJ/release/9.6.0) was released on 15 March 2025 with "Add Spilhaus projection (#4401)" as one line in the release notes. The [documentation page](https://proj.org/en/stable/operations/projections/spilhaus.html) is a parameter table.
+[PROJ 9.6.0](https://github.com/OSGeo/PROJ/releases#release-9.6.0) was released on 15 March 2025 with "Add Spilhaus projection (#4401)" as one line in the release notes. The [documentation page](https://proj.org/en/stable/operations/projections/spilhaus.html) is a parameter table.
 
 ## After: a very quiet arrival
 
