@@ -92,7 +92,6 @@ t = Transformer.from_crs(4326, "+proj=spilhaus", always_xy=True)
 t.transform(147.3, -42.9)
 ```
 
-Which brings me to the point.
 
 ## What this says about the landscape
 
