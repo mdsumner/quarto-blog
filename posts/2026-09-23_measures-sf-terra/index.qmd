@@ -1,0 +1,525 @@
+---
+title: "Distance, perimeter and area in sf and terra: which number do you get?"
+author: "Michael Sumner"
+date: "2026-09-24"
+format:
+  html:
+    code-fold: false
+    toc: true
+execute:
+  echo: true
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+options(digits = 9)
+```
+
+In May 2025 a question on R-sig-Geo asked why `sf::st_perimeter()` gave a
+different answer from `sf::st_length(sf::st_boundary())` for the same small
+land parcel in France, with spherical geometry switched off
+([thread](https://stat.ethz.ch/pipermail/r-sig-geo/2025-May/029541.html)).
+There were three different numbers for the perimeter of that parcel, and each
+of them is correct for a particular model of the Earth and a particular
+meaning of "edge". I posted a
+[gist](https://gist.github.com/mdsumner/5daedfcbee851ca31a7aa9006dbf74cf)
+at the time as a start at unpicking them. (In my message on that thread,
+"sf+longlat-s2 uses Karney" should read "with s2 switched off".)
+
+The specific inconsistency in `st_perimeter()` has since been fixed in sf
+([#2541](https://github.com/r-spatial/sf/issues/2541)). What remains is the
+more general question this post is about: for a given geometry, how does each
+package decide which model of the Earth to measure on, and can a user predict
+the answer from the data in front of them?
+
+The short version:
+
+* **terra** decides from the geometry's coordinate reference system. Longitude
+  and latitude input is always measured on the ellipsoid. Projected input is
+  measured on the ellipsoid for area and cell size (by default), and in the
+  plane for perimeter and distance.
+* **sf** decides from the coordinate reference system *and* a session option,
+  `sf_use_s2()`. Longitude and latitude input is measured on a sphere when s2
+  is on (the default) and on the ellipsoid when it is off. Projected input is
+  always measured in the plane. The same option also selects the engine used
+  for predicates and overlay operations.
+
+The rest of the post establishes this with code, and then looks at how large
+the differences are and where they come from.
+
+## Versions
+
+Everything below depends on these versions, and the results should be re-run
+when they change.
+
+```{r versions}
+pkgs <- c("sf", "terra", "s2", "lwgeom", "geosphere", "geodist", "wk")
+vapply(pkgs, function(p) as.character(utils::packageVersion(p)), "")
+sf::sf_extSoftVersion()
+terra::gdal(lib = "all")
+```
+
+## The parcel
+
+This is the polygon from the thread, as a plain coordinate matrix in
+Lambert-93 (EPSG:2154, RGF93 on the GRS 1980 ellipsoid). It is about 40 m
+across. We keep three versions of it: projected, transformed to longitude and
+latitude (EPSG:4326), and with no CRS at all.
+
+```{r fixture}
+xy <- matrix(c(
+  320102.67, 6845954.56,
+  320111.85, 6845962.15,
+  320131.82, 6845971.55,
+  320134.33, 6845971.90,
+  320138.50, 6845953.21,
+  320141.93, 6845936.12,
+  320135.33, 6845935.07,
+  320118.58, 6845931.54,
+  320113.45, 6845929.91,
+  320105.18, 6845950.57,
+  320102.67, 6845954.56
+), ncol = 2, byrow = TRUE)
+
+p   <- sf::st_sfc(sf::st_polygon(list(xy)), crs = "EPSG:2154")  ## projected
+pll <- sf::st_transform(p, "EPSG:4326")                          ## longlat
+p0  <- sf::st_set_crs(p, NA)                                     ## no crs
+ll  <- sf::st_coordinates(pll)[, 1:2]
+seg_i <- seq_len(nrow(xy) - 1)
+```
+
+A small helper sets `sf_use_s2()` for one expression and restores it
+afterwards.
+
+```{r with-s2}
+with_s2 <- function(use, code) {
+  old <- suppressMessages(sf::sf_use_s2(use))
+  on.exit(suppressMessages(sf::sf_use_s2(old)))
+  force(code)
+}
+```
+
+## Three reference numbers
+
+Before calling any sf or terra function, we compute the perimeter and area
+directly under each of the three models, so that every later result can be
+labelled by which model it corresponds to.
+
+* **Planar**: each edge is a straight line in the projected coordinates, and
+  lengths and areas are Euclidean in those coordinates.
+* **Ellipsoid**: each edge is a geodesic on the WGS84 ellipsoid, computed with
+  Karney's algorithms (GeographicLib), here via geosphere.
+* **Sphere**: each edge is a great circle on a sphere of radius 6371010 m,
+  which is the radius s2 uses.
+
+```{r references}
+planar_perim <- sum(sqrt(rowSums((xy[seg_i + 1, ] - xy[seg_i, ])^2)))
+planar_area  <- abs(sum(xy[seg_i, 1] * xy[seg_i + 1, 2] -
+                        xy[seg_i + 1, 1] * xy[seg_i, 2])) / 2
+
+karney_perim <- sum(geosphere::distGeo(ll[seg_i, ], ll[seg_i + 1, ]))
+karney_area  <- geosphere::areaPolygon(ll)
+
+R_s2 <- 6371010
+sphere_perim <- s2::s2_perimeter(s2::as_s2_geography(pll), radius = R_s2)
+sphere_area  <- s2::s2_area(s2::as_s2_geography(pll), radius = R_s2)
+
+refs_perim <- c(planar = planar_perim, ellipsoid = karney_perim, sphere = sphere_perim)
+refs_area  <- c(planar = planar_area,  ellipsoid = karney_area,  sphere = sphere_area)
+refs_perim
+refs_area
+
+which_number <- function(x, refs) {
+  hit <- names(refs)[abs(refs - x) / refs < 1e-6]
+  if (length(hit) == 0) "OTHER" else paste(hit, collapse = "/")
+}
+```
+
+The perimeter is 129.249 m planar, 129.285 m on the ellipsoid and 129.098 m
+on the sphere. The area is 1049.65, 1050.24 and 1047.03 square metres
+respectively.
+
+### What each number is
+
+The ellipsoidal length of an edge is the same as its planar length in an
+azimuthal equidistant projection centred on one of its endpoints, because that
+projection preserves distance from its centre.
+
+```{r aeqd}
+aeqd_edge <- function(a, b) {
+  crs <- sprintf("+proj=aeqd +lon_0=%.12f +lat_0=%.12f +ellps=WGS84", a[1], a[2])
+  q <- terra::project(rbind(a, b), from = "EPSG:4326", to = crs)
+  sqrt(sum((q[2, ] - q[1, ])^2))
+}
+c(aeqd = sum(vapply(seg_i, function(i) aeqd_edge(ll[i, ], ll[i + 1, ]), 0)),
+  karney = karney_perim)
+```
+
+The spherical number is the same geodesic calculation with zero flattening and
+s2's radius.
+
+```{r sphere-as-karney}
+sum(geosphere::distGeo(ll[seg_i, ], ll[seg_i + 1, ], a = R_s2, f = 0))
+```
+
+The planar number is the ellipsoidal number scaled by the projection. Lambert-93
+is conformal, so at a point it has a single scale factor k in every direction.
+Lengths scale by k and areas by k squared. Measuring k numerically at the parcel
+reproduces both ratios.
+
+```{r scale-factor}
+k_perim <- planar_perim / karney_perim
+k_area  <- planar_area / karney_area
+
+cen <- colMeans(ll[seg_i, ])
+nb  <- geosphere::destPoint(cen, b = 45, d = 10)
+cq  <- terra::project(rbind(cen, nb), from = "EPSG:4326", to = "EPSG:2154")
+k_point <- sqrt(sum((cq[2, ] - cq[1, ])^2)) / 10
+
+c(k_point = k_point, k_perim = k_perim, k_perim_sq = k_perim^2, k_area = k_area)
+```
+
+At this location k is 0.999718, so the planar perimeter is 0.028% shorter than
+the ellipsoidal one and the planar area is 0.056% smaller. An equal-area
+projection centred on the parcel gives the ellipsoidal area to within about
+one part in 10^8.
+
+```{r laea}
+laea <- sprintf("+proj=laea +lon_0=%.12f +lat_0=%.12f +ellps=WGS84", cen[1], cen[2])
+c(laea = as.numeric(sf::st_area(sf::st_set_crs(sf::st_transform(pll, laea), laea))),
+  karney = karney_area)
+```
+
+## How each package decides
+
+### sf
+
+The decision in sf is visible in the source of `st_perimeter()`. The first
+branch is taken when `sf_use_s2()` is `TRUE` and the geometry is longitude and
+latitude.
+
+```{r sf-body}
+body(sf::st_perimeter)
+```
+
+The sf documentation for `st_area()` describes the same rule: with longitude
+and latitude coordinates, area is computed on the ellipsoid with
+`st_geod_area()` if `sf_use_s2()` is `FALSE`, and on the sphere with
+`s2_area()` if it is `TRUE`; with projected coordinates, area is computed in
+the plane. `st_length()` and `st_distance()` follow the same pattern.
+
+When s2 is off, the longitude and latitude branch of `st_perimeter()` goes via
+`st_length(st_boundary(x))`. It does not call lwgeom's perimeter, which
+declines longitude and latitude input:
+
+```{r lwgeom-perim}
+tryCatch(lwgeom::st_perimeter(pll), error = function(e) conditionMessage(e))
+```
+
+### terra
+
+terra has no global option for this. For longitude and latitude input, its
+documentation states that distances, lengths and areas are computed on the
+WGS84 ellipsoid with Karney's algorithms. For projected input, the behaviour
+differs between functions. `expanse()` and `cellSize()` have an argument
+`transform`, which defaults to `TRUE` and computes the result on the
+ellipsoid. `perim()` and `distance()` have no such argument and work in the
+plane.
+
+```{r terra-audit}
+vp  <- terra::vect(p)
+pts <- terra::vect(xy[1:2, ], crs = "EPSG:2154")
+r   <- terra::rast(terra::ext(320100, 320150, 6845925, 6845975), res = 10, crs = "EPSG:2154")
+unlist(list(
+  perim          = terra::perim(vp),
+  expanse        = terra::expanse(vp),
+  expanse_plane  = terra::expanse(vp, transform = FALSE),
+  distance       = as.numeric(terra::distance(pts)),
+  cellSize       = terra::global(terra::cellSize(r, unit = "m"), "mean")[1, 1],
+  cellSize_plane = terra::global(terra::cellSize(r, unit = "m", transform = FALSE), "mean")[1, 1]
+))
+## references for the distance row
+c(planar = sqrt(sum((xy[2, ] - xy[1, ])^2)), karney = geosphere::distGeo(ll[1, ], ll[2, ]))
+```
+
+The area of a nominal 10 m by 10 m cell is 100.056 square metres on the
+ellipsoid, which is 100 divided by k squared. The distance between the first
+two vertices is the planar value, 11.911 m, rather than the ellipsoidal
+11.915 m.
+
+## The grid
+
+Now every combination: four ways of asking for a perimeter, three ways of
+asking for an area, three versions of the polygon, and `sf_use_s2()` on and
+off. Each result is labelled by the reference number it matches.
+
+```{r grid-setup}
+inputs <- list(projected = p, longlat = pll, none = p0)
+
+perim_calls <- list(
+  "sf::st_perimeter"        = function(x) sf::st_perimeter(x),
+  "sf::st_length(boundary)" = function(x) sf::st_length(sf::st_boundary(x)),
+  "sf::st_length(cast MLS)" = function(x) sf::st_length(sf::st_cast(x, "MULTILINESTRING")),
+  "terra::perim"            = function(x) terra::perim(terra::vect(x))
+)
+area_calls <- list(
+  "sf::st_area"                     = function(x) sf::st_area(x),
+  "terra::expanse"                  = function(x) terra::expanse(terra::vect(x)),
+  "terra::expanse(transform=FALSE)" = function(x) terra::expanse(terra::vect(x), transform = FALSE)
+)
+
+run_grid <- function(calls, refs) {
+  out <- expand.grid(call = names(calls), input = names(inputs), s2 = c(TRUE, FALSE),
+                     stringsAsFactors = FALSE)
+  out$value <- NA_real_
+  out$msg <- ""
+  for (i in seq_len(nrow(out))) {
+    f <- calls[[out$call[i]]]
+    x <- inputs[[out$input[i]]]
+    r <- tryCatch(
+      withCallingHandlers(
+        with_s2(out$s2[i], as.numeric(f(x))),
+        warning = function(w) {
+          out$msg[i] <<- conditionMessage(w)
+          invokeRestart("muffleWarning")
+        }),
+      error = function(e) {
+        out$msg[i] <<- paste("ERROR:", conditionMessage(e))
+        NA_real_
+      })
+    out$value[i] <- r
+  }
+  out$matches <- vapply(out$value, function(v) if (is.na(v)) "-" else which_number(v, refs), "")
+  out
+}
+
+wide <- function(g) {
+  w <- reshape(g[, c("call", "input", "s2", "matches")],
+               idvar = c("call", "s2"), timevar = "input", direction = "wide")
+  names(w) <- sub("^matches\\.", "", names(w))
+  rownames(w) <- NULL
+  w
+}
+```
+
+```{r grid-perim}
+perim_grid <- run_grid(perim_calls, refs_perim)
+wide(perim_grid)
+```
+
+```{r grid-area}
+area_grid <- run_grid(area_calls, refs_area)
+wide(area_grid)
+```
+
+The three sf routes to a perimeter now agree with each other in every case,
+which was not true at the time of the original thread. With projected input,
+or no CRS, everything in sf is planar. With longitude and latitude input, sf
+gives the spherical number when s2 is on and the ellipsoidal number when it is
+off.
+
+terra does not read `sf_use_s2()`, so its rows are the same in both halves of
+each table. With longitude and latitude input it gives the ellipsoidal number
+for both perimeter and area. With projected input, `perim()` is planar and
+`expanse()` is ellipsoidal. With no CRS, terra computes in the plane and warns
+that the results may be wrong.
+
+For longitude and latitude data, which is the common case for data arriving
+from files and web services, the two packages with their default settings
+give different answers: sf gives 129.098 m and 1047.03 square metres, terra
+gives 129.285 m and 1050.24 square metres.
+
+## One option, two roles
+
+In sf, `sf_use_s2()` selects the model for measures and also the engine for
+predicates and overlays. With s2 off, longitude and latitude geometries go to
+GEOS, which treats the coordinates as planar. Measures, however, go to
+GeographicLib on the ellipsoid, where each edge is a geodesic. So within one
+session with s2 off, the same polygon has ellipsoidal geodesic edges for the
+purpose of its area and straight edges in longitude and latitude for the
+purpose of point-in-polygon.
+
+This matters for wide polygons at high latitude. A geodesic between two points
+at the same latitude does not follow the parallel; it bends toward the pole.
+Here is a box 120 degrees wide between 70 and 60 degrees south, and a point
+just inside its northern edge.
+
+```{r coupling}
+bx <- sf::st_sfc(sf::st_polygon(list(rbind(
+  c(-60, -70), c(60, -70), c(60, -60), c(-60, -60), c(-60, -70)))),
+  crs = "EPSG:4326")
+pt <- sf::st_sfc(sf::st_point(c(0, -62)), crs = "EPSG:4326")
+
+with_s2(TRUE,  list(area = sf::st_area(bx),
+                    intersects = sf::st_intersects(bx, pt, sparse = FALSE)[1, 1]))
+with_s2(FALSE, list(area = sf::st_area(bx),
+                    intersects = sf::st_intersects(bx, pt, sparse = FALSE)[1, 1]))
+```
+
+With s2 on, the area is spherical and the point is outside the polygon, which
+is consistent: on the sphere the northern edge passes south of 62 degrees
+south at longitude 0. With s2 off, the area is ellipsoidal, which is the more
+accurate model, but the point is now inside the polygon, because GEOS treats
+the northern edge as the straight line at 60 degrees south. A user who
+switches s2 off to obtain ellipsoidal measures therefore also changes the
+answers to spatial predicates, and the measures and predicates no longer
+describe the same polygon.
+
+## Point distance and two spheres
+
+For a single pair of points (the first two vertices of the parcel) there is a
+fourth number.
+
+```{r point-distance}
+a <- ll[1, , drop = FALSE]
+b <- ll[2, , drop = FALSE]
+pa <- sf::st_sfc(sf::st_point(a), crs = "EPSG:4326")
+pb <- sf::st_sfc(sf::st_point(b), crs = "EPSG:4326")
+c(
+  sf_s2     = with_s2(TRUE,  as.numeric(sf::st_distance(pa, pb))),
+  sf_nos2   = with_s2(FALSE, as.numeric(sf::st_distance(pa, pb))),
+  terra_geo = terra::distance(a, b, lonlat = TRUE),
+  terra_hav = terra::distance(a, b, lonlat = TRUE, method = "haversine"),
+  geodist   = geodist::geodist(a, b, measure = "geodesic"),
+  karney    = geosphere::distGeo(a, b),
+  planar    = sqrt(sum((xy[2, ] - xy[1, ])^2))
+)
+```
+
+sf with s2 off, terra's default method, geodist and geosphere all agree on the
+ellipsoidal distance. sf with s2 on gives the spherical distance. terra's
+`method = "haversine"` gives a third value, because it uses a sphere with the
+equatorial radius of WGS84 rather than s2's mean radius:
+
+```{r haversine-radius}
+c(terra_hav      = terra::distance(a, b, lonlat = TRUE, method = "haversine"),
+  hav_equatorial = geosphere::distHaversine(a, b, r = 6378137),
+  hav_mean_s2    = geosphere::distHaversine(a, b, r = R_s2))
+```
+
+The two spheres differ in radius by a factor of 1.0011, so "spherical
+distance" is itself not one number.
+
+<!-- TODO check at terra tip: the SpatRaster distance() method appeared to
+default to method = "haversine" in the CRAN source I read. Confirm with
+  getMethod("distance", signature(x = "SpatRaster", y = "missing"))
+and mention here if it still does. -->
+
+## How large is the difference, and where?
+
+For a 40 m parcel the differences are centimetres. It is tempting to conclude
+that the choice of model only matters for large polygons. For the sphere
+against the ellipsoid, that is not the case: the relative error in area is set
+by latitude and is essentially the same for a box one metre across and a box
+one degree across.
+
+```{r sweep}
+box <- function(lon0, lat0, size) {
+  m <- rbind(c(lon0, lat0), c(lon0 + size, lat0), c(lon0 + size, lat0 + size),
+             c(lon0, lat0 + size), c(lon0, lat0))
+  sf::st_sfc(sf::st_polygon(list(m)), crs = "EPSG:4326")
+}
+sweep_lat <- function(size, lats = seq(-89.5, 89.5 - size, by = 1)) {
+  do.call(rbind, lapply(lats, function(lat0) {
+    g <- box(147, lat0, size)
+    k <- geosphere::areaPolygon(sf::st_coordinates(g)[, 1:2])
+    data.frame(lat = lat0 + size / 2, size = size,
+               s2 = with_s2(TRUE, as.numeric(sf::st_area(g))) / k - 1,
+               terra = terra::expanse(terra::vect(g)) / k - 1)
+  }))
+}
+sw <- rbind(sweep_lat(0.001), sweep_lat(0.1), sweep_lat(1))
+range(sw$terra)
+```
+
+```{r sweep-plot}
+#| fig-cap: "Relative error of s2 spherical area against Karney ellipsoidal area, by latitude, for square boxes of three sizes. The three curves coincide."
+plot(sw$lat, 100 * sw$s2, type = "n", xlab = "latitude",
+     ylab = "area error vs ellipsoid (%)", main = "s2 sphere vs Karney ellipsoid")
+sizes <- unique(sw$size)
+for (s in sizes) {
+  d <- sw[sw$size == s, ]
+  lines(d$lat, 100 * d$s2, lty = match(s, sizes))
+}
+abline(h = 0, col = "grey")
+legend("topright", legend = paste(sizes, "deg box"), lty = seq_along(sizes))
+```
+
+The spherical area is 0.45% too large at the equator, correct near 35 degrees
+north and south, and 0.89% too small near the poles. At the latitudes of the
+Southern Ocean and Antarctica the spherical area is consistently between 0.5%
+and 0.9% smaller than the ellipsoidal area, regardless of the size of the
+polygon. terra agrees with Karney to within floating point precision
+throughout, since it uses the same library.
+
+Planar error behaves differently: it depends on the projection's scale factor
+over the polygon, which for a well-chosen local projection is small for small
+polygons and grows with distance from the projection's centre or standard
+lines.
+
+## What is an edge?
+
+All of the above assumes that everyone agrees on what the polygon is. The
+coordinates alone do not determine that. Between two vertices, an edge could
+be a geodesic on the ellipsoid, a great circle on the sphere, a straight line
+in some projection, or a line of constant latitude. For small polygons these
+coincide closely. For large ones they do not.
+
+Here is a box 10 degrees on each side at 60 degrees south, first with only its
+four corners, then densified at 0.1 degree spacing along its edges in
+longitude and latitude so that the northern and southern edges follow the
+parallels.
+
+```{r edges}
+b1  <- box(147, -60, 10)
+b1d <- sf::st_set_crs(sf::st_segmentize(sf::st_set_crs(b1, NA), 0.1), "EPSG:4326")
+c(
+  corners_karney   = geosphere::areaPolygon(sf::st_coordinates(b1)[, 1:2]),
+  densified_karney = geosphere::areaPolygon(sf::st_coordinates(b1d)[, 1:2]),
+  corners_terra    = terra::expanse(terra::vect(b1)),
+  densified_terra  = terra::expanse(terra::vect(b1d))
+)
+```
+
+The two versions differ in area by 0.25%, which is of the same order as the
+difference between the sphere and the ellipsoid at this latitude. terra and
+Karney agree on each version, so both treat the edges as geodesics and neither
+densifies implicitly.
+
+The same question applies to terra's `transform = TRUE` for projected
+polygons. The vertices are transformed to longitude and latitude and the edges
+are then treated as geodesics. An edge that is straight in the projection is
+not a geodesic, so for large polygons the result is the ellipsoidal area of a
+slightly different polygon. Densifying in the projected coordinates before
+measuring removes this.
+
+## Summary
+
+| input | sf, s2 on (default) | sf, s2 off | terra |
+|---|---|---|---|
+| longitude/latitude, length and perimeter | sphere | ellipsoid | ellipsoid |
+| longitude/latitude, area | sphere | ellipsoid | ellipsoid |
+| projected, length and perimeter | planar | planar | planar |
+| projected, area | planar | planar | ellipsoid (`transform = FALSE` for planar) |
+| no CRS | planar | planar | planar, with a warning |
+
+For longitude and latitude data, terra's rule can be stated in one line: it
+always measures on the ellipsoid. sf's answer depends on an option that is set
+per session, is on by default, and also determines how predicates and
+overlays are computed. The consequence is that an sf user who wants
+ellipsoidal measures has to change the behaviour of their spatial predicates
+as well, and a user who leaves the default gets a spherical measure whose
+error varies from +0.45% to -0.89% with latitude, independent of the size of
+the feature.
+
+Two changes would make each package's rule simpler to state. In sf, a way to
+select the ellipsoid for measures independently of the engine used for
+predicates, for example an argument to the measure functions or a separate
+option. In terra, extending the `transform` argument to `perim()` and
+`distance()`, so that projected input is measured on the ellipsoid for every
+quantity whenever the CRS is known, as it already is for area.
+
+In the meantime, the grid above can be run against any installed versions,
+and is a quick way to check which number a given function returns.
