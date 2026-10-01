@@ -179,7 +179,7 @@ The argument for the hook is that it is general. It adds no data model and no ne
 
 Out-of-memory arrays in R are not new, and some of the older work was remarkably capable:
 
-- **ff** gave R memory-mapped, chunked vectors and arrays long before most languages had anything comparable, with its own `[` methods doing the paging.
+- **ff** gave R memory-mapped, chunked vectors and arrays long before most languages had anything comparable, with its own `[` methods doing the paging. (I used ff heavily in my own [thesis, chapter 6](https://figshare.utas.edu.au/ndownloader/files/40906604) to map 4D ocean model to diving elephant seal movement estimates). 
 - **bigmemory** offered shared and file-backed matrices for parallel work.
 - **DelayedArray** and **HDF5Array** in Bioconductor provide lazy, chunk-aware arrays with block processing and delayed operations, and are the most complete answer to lazy compute on arrays in R.
 - **arrow** and **vroom** use ALTREP to hand R vectors whose contents are not yet in R memory.
