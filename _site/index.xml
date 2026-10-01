@@ -10,7 +10,516 @@
 <atom:link href="https://hypertidy.org/index.xml" rel="self" type="application/rss+xml"/>
 <description>Geospatial data, GDAL, and R — Michael Sumner</description>
 <generator>quarto-1.10.18</generator>
-<lastBuildDate>Thu, 24 Sep 2026 00:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 01 Oct 2026 00:00:00 GMT</lastBuildDate>
+<item>
+  <title>What R does today with an ALTREP that has a dim and no class</title>
+  <dc:creator>Michael Sumner</dc:creator>
+  <link>https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+
+<p>Base R can already read a remote, chunked, compressed array in planned batches, using nothing but its own indexing syntax. The object has no class and no methods: it is a double vector with a <code>dim</code> attribute. One of R’s indexing forms reaches it as a single planned request today; another reaches it one element at a time; and a small change to R would close that gap.</p>
+<p>I wanted to know how far R’s old and very rich array indexing could go as a query language for remote encoded chunks, without patching R. So I built <code>altarr</code>, a small ALTREP prototype, read through <code>src/main/subset.c</code> to see what each indexing form actually does, and measured it. Then I pointed it at a real Zarr store written by zarr-python.</p>
+<p>The short version: <code>x[cbind(i, j, k)]</code> is already first-class. <code>x[i, j, k]</code> works, but serially. And the information R would need to fix that is already sitting in a local variable inside <code>ArraySubset</code>.</p>
+<section id="two-kinds-of-array-question" class="level2">
+<h2 class="anchored" data-anchor-id="two-kinds-of-array-question">Two kinds of array question</h2>
+<p>There are two different things you can ask of a 3-d array with three index vectors. The <em>orthogonal</em> question asks for every combination: a hyperslab, the outer product of the indices. The <em>pointwise</em> question pairs the indices up: the first i with the first j with the first k, giving one value per point. A chunked store cares a lot about which one you mean, because they touch completely different sets of chunks.</p>
+<p>R and numpy chose opposite defaults:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>R</th>
+<th>numpy</th>
+<th>zarr-python</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>orthogonal (hyperslab)</td>
+<td><code>x[i, j, k]</code></td>
+<td><code>x[np.ix_(i, j, k)]</code></td>
+<td><code>z.oindex[i, j, k]</code></td>
+</tr>
+<tr class="even">
+<td>pointwise (points)</td>
+<td><code>x[cbind(i, j, k)]</code></td>
+<td><code>x[i, j, k]</code> with integer arrays</td>
+<td><code>z.vindex[i, j, k]</code></td>
+</tr>
+</tbody>
+</table>
+<p>Zarr grew two named accessors, <code>oindex</code> and <code>vindex</code>, to say what S and R have said in base syntax for decades. xarray meets the same split as orthogonal versus vectorized <code>isel</code>. I checked the table against a real store: on the Zarr array used later in this post, <code>z.vindex[[29, 14], [49, 24], [69, 34]]</code> and R’s <code>x[cbind(c(70, 35), c(50, 25), c(30, 15))]</code> both return <code>104999 50714</code>, and <code>z.oindex</code> returns the same 8 values as R’s <code>x[i, j, k]</code>. (The R indices are reversed and 1-based; more on why below.)</p>
+<p>Matrix indexing is one of the least appreciated parts of R. It long predates lazy evaluation in most of the places people now care about it, and as it turns out, it is exactly the form that reaches a lazy array as a single, plannable request.</p>
+</section>
+<section id="what-r-does-with-it" class="level2">
+<h2 class="anchored" data-anchor-id="what-r-does-with-it">What R does with it</h2>
+<p>ALTREP (since R 3.5) lets a package supply a vector whose contents come from somewhere other than a block of memory. The package registers methods: <code>Length</code>, <code>Elt</code> for one element, <code>Extract_subset</code> for a set of indices, <code>Dataptr</code> for a pointer to all the data. R’s own code calls them instead of reading memory. To R, the result is just a vector.</p>
+<p>So what happens when that vector has a <code>dim</code> attribute and you index it? Reading <code>src/main/subset.c</code> (R 4.3 and current trunk have the same structure), there are three paths:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>you write</th>
+<th>R calls</th>
+<th>the ALTREP object sees</th>
+<th>can it plan?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>x[i]</code></td>
+<td><code>VectorSubset</code> then <code>ExtractSubset</code></td>
+<td><code>Extract_subset(x, indx)</code>, every index at once</td>
+<td>yes</td>
+</tr>
+<tr class="even">
+<td><code>x[cbind(i, j, k)]</code></td>
+<td><code>mat2indsub</code> then <code>ExtractSubset</code></td>
+<td><code>Extract_subset(x, indx)</code>, every index at once</td>
+<td>yes</td>
+</tr>
+<tr class="odd">
+<td><code>x[i, j, k]</code></td>
+<td><code>ArraySubset</code> or <code>MatrixSubset</code></td>
+<td><code>Elt(x, offset)</code>, one element at a time</td>
+<td>no</td>
+</tr>
+<tr class="even">
+<td><code>x + 1</code>, <code>print(x)</code></td>
+<td>anything needing the data pointer</td>
+<td><code>Dataptr(x)</code></td>
+<td>must materialize</td>
+</tr>
+</tbody>
+</table>
+<p>Matrix indexing is converted to linear indices before it reaches ALTREP, but the whole set arrives in one call. That is enough: the object can recover each index’s chunk, find the unique chunks, and fetch them together.</p>
+<p>The rectangular form is the surprise. <code>ArraySubset</code> normalizes each subscript with <code>int_arraySubscript()</code> and holds the result in a local array, <code>subs[k]</code>: one integer vector per dimension. That is the hyperslab, exactly. But it never offers <code>subs</code> to ALTREP. It loops over the result in column-major order and calls <code>REAL_ELT()</code> once per element.</p>
+</section>
+<section id="altarr-the-experiment" class="level2">
+<h2 class="anchored" data-anchor-id="altarr-the-experiment">altarr: the experiment</h2>
+<p><code>altarr</code> is a small R package with a C core. <code>altarr(dim, chunk, fetch)</code> returns a lazy array: a double vector, a <code>dim</code> attribute, no class. Values arrive chunk by chunk from a fetch function you supply, so the store behind it can be object storage, Zarr, GDAL, or a generator in a test.</p>
+<p>The whole contract with the store is one function:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fetch</span>(chunks)</span>
+<span id="cb1-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># chunks:  integer matrix, one row per chunk, one column per dimension,</span></span>
+<span id="cb1-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#          0-based chunk coordinates</span></span>
+<span id="cb1-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># returns: list of numeric vectors, one per row, column-major,</span></span>
+<span id="cb1-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#          clipped at the array edge</span></span></code></pre></div></div>
+<p>A call to <code>fetch</code> is one round trip, however many chunks it asks for. The ALTREP methods do the rest:</p>
+<ul>
+<li><code>Elt</code> finds the element’s chunk, fetches it alone if it is not cached, and returns one value.</li>
+<li><code>Extract_subset</code> maps every index to its chunk, fetches all the uncached chunks in one call, then assembles.</li>
+<li><code>Dataptr</code> materializes the whole array, and refuses above <code>getOption("altarr.max_materialize", 1e6)</code> values.</li>
+</ul>
+<p>Here is a lazy 1440 x 720 x 365 array (378 million values, never allocated) from a generator with 20 ms of latency per call:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(altarr)</span>
+<span id="cb2-2">d  <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1440</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">720</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">365</span>L)</span>
+<span id="cb2-3">cs <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">60</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">60</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>L)</span>
+<span id="cb2-4">remote <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(chunks) {</span>
+<span id="cb2-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">Sys.sleep</span>(<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.02</span>)                     <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># one round trip</span></span>
+<span id="cb2-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lapply</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">seq_len</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">nrow</span>(chunks)), <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(r) {</span>
+<span id="cb2-7">    st <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> chunks[r, ] <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> cs <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L</span>
+<span id="cb2-8">    en <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pmin</span>(st <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> cs <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L, d)</span>
+<span id="cb2-9">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.vector</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">outer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">outer</span>(st[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>en[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e4</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (st[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>en[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]), <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"+"</span>),</span>
+<span id="cb2-10">                    <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e8</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (st[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>en[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>]), <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"+"</span>))</span>
+<span id="cb2-11">  })</span>
+<span id="cb2-12">}</span>
+<span id="cb2-13">x <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr</span>(d, cs, remote)</span>
+<span id="cb2-14"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">class</span>(x)           <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># "array"</span></span>
+<span id="cb2-15"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.object</span>(x)       <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># FALSE</span></span>
+<span id="cb2-16"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr_stats</span>(x)    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># counts Elt calls, fetch calls, chunks</span></span></code></pre></div></div>
+<p><code>altarr_stats()</code> counts what R actually asked for, which is how the numbers below were measured.</p>
+</section>
+<section id="measured" class="level2">
+<h2 class="anchored" data-anchor-id="measured">Measured</h2>
+<p>On the 378-million-value array, the planned paths read the same chunks as the element-at-a-time paths in a single round trip, and are 20 to 40 times faster.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/round-trips.svg" class="img-fluid figure-img" alt="Paired bars. Region 401 x 301 x 31: x[i, j, k] element at a time 4.38 s and 192 fetch calls; altarr_extract planned 0.21 s and 1 fetch call. 2000 scattered points: loop of x[i, j, k] 6.01 s and 287 fetch calls; x[cbind(i, j, k)] planned 0.15 s and 1 fetch call."></p>
+<figcaption>Seconds to read the same chunks, element at a time versus planned. Measured with <code>inst/examples/three-paths.R</code> in altarr, R 4.3.3, simulated 20 ms latency per fetch call.</figcaption>
+</figure>
+</div>
+<p>The latency stands in for an object-store GET, with a batch of chunks assumed to be fetched concurrently. A linear slice, <code>x[1:1e5]</code>, also goes through <code>Extract_subset</code>: 48 chunks in 1 call. Point extraction through <code>x[cbind(...)]</code> is already first-class in unpatched R; the rectangular form is correct and lazy, but serial.</p>
+</section>
+<section id="a-real-zarr-store" class="level2">
+<h2 class="anchored" data-anchor-id="a-real-zarr-store">A real Zarr store</h2>
+<p>A generator proves the mechanics; a real store proves the contract is enough. zarr-python wrote a Zarr v2 array of shape (30, 50, 70), chunks (7, 16, 20), zlib-compressed, C order. The chunk shape is ragged at every edge, and one chunk is entirely fill value, so the store simply omits its file.</p>
+<p><code>altarr_zarr_v2()</code> reads <code>.zarray</code> and implements <code>fetch</code> in about 85 lines of plain R: build the chunk key, read the file (or return <code>fill_value</code> if it is missing), <code>memDecompress()</code>, <code>readBin()</code>, and clip Zarr’s padded edge chunks.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">z <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr_zarr_v2</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"zdemo.zarr"</span>)</span>
+<span id="cb3-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dim</span>(z)                                        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># 70 50 30</span></span>
+<span id="cb3-3">z[<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cbind</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">70</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">35</span>), <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">50</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">25</span>), <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">15</span>))]     <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># 104999 50714, one fetch call</span></span>
+<span id="cb3-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr_extract</span>(z, , , )                       <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># every value, one fetch call</span></span></code></pre></div></div>
+<p>Every value matches zarr-python’s array exactly, including the omitted chunk and the clipped edges.</p>
+<p>The dimensions come out reversed, and that is deliberate. A C-order array of shape (s1, …, sn) has bytes that are already column-major for shape (sn, …, s1). So <code>altarr</code> gives R <code>dim</code> <code>c(70, 50, 30)</code> and decodes each chunk straight into place, with no transposition at all. R’s <code>x[i, j, k]</code> on that array is zarr’s <code>z.oindex[k, j, i]</code>, shifted by one.</p>
+</section>
+<section id="a-real-dataset-with-gdal-doing-the-hard-parts" class="level2">
+<h2 class="anchored" data-anchor-id="a-real-dataset-with-gdal-doing-the-hard-parts">A real dataset, with GDAL doing the hard parts</h2>
+<p>The zarr-python store keeps the package self-contained. For real data, the classic xarray tutorial <code>air_temperature</code> dataset is published as Zarr over HTTP, compressed with Blosc. A Blosc decoder and an HTTP range-reader are exactly the things <code>altarr</code> should not grow, so GDAL does both in one command:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">gdal</span> mdim convert <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb4-2">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ZARR:</span><span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">\"</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">/vsicurl/https://scottyhq.github.io/zarrdata/air_temperature.zarr/</span><span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">\"</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb4-3">  air_temperature.zarr <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--co</span> FORMAT=ZARR_V2 <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--co</span> ARRAY:COMPRESS=ZLIB</span></code></pre></div></div>
+<p>The result is a local, zlib-compressed Zarr v2 store, and the same reader opens it:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">x <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr_zarr_v2</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"air_temperature.zarr/air"</span>)</span>
+<span id="cb5-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dim</span>(x)                 <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># 53 x 25 x 2920: lon, lat, time</span></span>
+<span id="cb5-3">                       <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># int16, chunks 27 x 13 x 730, 16 of them</span></span>
+<span id="cb5-4"></span>
+<span id="cb5-5">x[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, ]            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># a time series at one cell, in kelvin</span></span>
+<span id="cb5-6">                       <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># orthogonal: Elt path, 4 chunks in 4 round trips</span></span>
+<span id="cb5-7"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">altarr_extract</span>(x, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, )      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># the same 4 chunks in 1 round trip</span></span>
+<span id="cb5-8"></span>
+<span id="cb5-9">x[<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cbind</span>(lon_i, lat_i, time_i)]   <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># a track, one time per position</span></span>
+<span id="cb5-10">                                 <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># pointwise: one planned batch</span></span></code></pre></div></div>
+<p>Those are the two questions from the start of this post, on real data. The time series sits under one cell, so it touches the 4 time chunks there: 4 round trips today, 1 with the hook. A 500-point track spread over the year touches all 16 chunks, and already arrives as a single request.</p>
+<p><code>air</code> is stored as int16 with a scale factor of 0.01. <code>altarr_zarr_v2()</code> applies the CF packing attributes from <code>.zattrs</code> (<code>scale_factor</code>, <code>add_offset</code>, <code>_FillValue</code>) inside <code>fetch</code>, so values arrive in kelvin and fill values become <code>NA</code>. Unpacking is a concern of the fetch, not of the ALTREP layer.</p>
+<p>This is also the point to resist building a Zarr engine. Remote I/O, Blosc, sharding, Zarr v3 codecs and their combinations are a never-ending road, and every step along it is a detour from the question here. The fetch contract exists so the engine can be someone else’s: GDAL as a converter in this example, and the natural next step is a <code>fetch</code> that calls GDAL’s multidimensional API, or object_store and the Rust codec crates, directly. The ALTREP layer only needs chunk coordinates in and values out.</p>
+</section>
+<section id="what-comes-for-free" class="level2">
+<h2 class="anchored" data-anchor-id="what-comes-for-free">What comes for free</h2>
+<p>Because the object is an ordinary vector to R, a lot of behaviour arrives without any code:</p>
+<ul>
+<li><strong>Shape is free.</strong> <code>dim()</code>, <code>length()</code> and <code>str()</code> read nothing.</li>
+<li><strong>Copy-on-modify works.</strong> <code>y &lt;- x; y[1, 1, 1] &lt;- 0</code> materializes <code>y</code> only; <code>x</code> stays lazy and unchanged.</li>
+<li><strong>R’s own wrapper keeps the planning.</strong> Changing an attribute on a shared object (<code>dimnames(y) &lt;- ...</code> after <code>y &lt;- x</code>) makes R wrap it in its internal <code>wrapper</code> ALTREP class. The wrapper forwards <code>Extract_subset</code>, so matrix indexing still arrives as one planned request.</li>
+<li><strong>Serialization stores the recipe, not the payload.</strong> ALTREP has a <code>Serialized_state</code> method, so <code>saveRDS()</code> of the 378-million-value array writes 1250 bytes: dim, chunk shape and fetch function. For the Zarr array it is 3.7 KB, and <code>readRDS()</code> in a fresh R session loads the package and returns a lazy array that reads from the store on first use.</li>
+<li><strong>The plan is a table.</strong> <code>altarr_plan(x, i, j, k)</code> returns the chunks a subscript would touch, one row per chunk, with 0-based chunk coordinates, starts and extents. The plan is a table, and the array is what assembling it gives you.</li>
+</ul>
+<p>That last point connects to an older thread. A chunk manifest (Icechunk’s, kerchunk’s, a COG’s tile index) is already a table of chunk keys to byte ranges. Chunk extents are min/max statistics for free, so filtering that table on coordinates is chunk pruning without anyone computing statistics.</p>
+</section>
+<section id="the-hook-r-could-add" class="level2">
+<h2 class="anchored" data-anchor-id="the-hook-r-could-add">The hook R could add</h2>
+<p><code>ExtractSubset</code> already does this for vectors: if the object is ALTREP, it offers the indices to the class’s <code>Extract_subset</code> method first, and falls back to the element loop only if the method returns <code>NULL</code>. The same pattern would fit in <code>ArraySubset</code> and <code>MatrixSubset</code>, just after the subscripts are normalized and bounds-checked:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode c code-with-copy"><code class="sourceCode c"><span id="cb6-1"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">(</span>ALTREP<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">(</span>x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">))</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span></span>
+<span id="cb6-2">    SEXP ans <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ALTVEC_EXTRACT_ARRAY_SUBSET<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">(</span>x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> s<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> call<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">);</span>  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/* s: per-dim subs */</span></span>
+<span id="cb6-3">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">(</span>ans <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!=</span> NULL<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">)</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span></span>
+<span id="cb6-4">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/* attach dim and dimnames exactly as the existing code does */</span></span>
+<span id="cb6-5">    <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span></span>
+<span id="cb6-6"><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span></span>
+<span id="cb6-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/* otherwise the element loop runs, as today */</span></span></code></pre></div></div>
+<p>The new method receives one normalized integer vector per dimension. Returning <code>NULL</code> keeps today’s behaviour, so nothing changes for any class that does not implement it.</p>
+<p><code>altarr_extract(x, i, j, k)</code> emulates this from package code: it normalizes each subscript with R’s own rules (by indexing a <code>seq_len()</code> of each dimension), plans the cartesian product of touched chunks, fetches once, and assembles. Its results are <code>identical()</code> to <code>x[i, j, k]</code> across negative, logical, character, <code>NA</code>, missing and zero-length subscripts, with and without <code>drop</code>.</p>
+<p>The argument for the hook is that it is general. It adds no data model and no new object type, and every lazy array in R benefits: arrow, gdalraster, Zarr readers, anything ALTREP-backed with a shape.</p>
+</section>
+<section id="prior-art-and-what-is-different" class="level2">
+<h2 class="anchored" data-anchor-id="prior-art-and-what-is-different">Prior art, and what is different</h2>
+<p>Out-of-memory arrays in R are not new, and some of the older work was remarkably capable:</p>
+<ul>
+<li><strong>ff</strong> gave R memory-mapped, chunked vectors and arrays long before most languages had anything comparable, with its own <code>[</code> methods doing the paging.</li>
+<li><strong>bigmemory</strong> offered shared and file-backed matrices for parallel work.</li>
+<li><strong>DelayedArray</strong> and <strong>HDF5Array</strong> in Bioconductor provide lazy, chunk-aware arrays with block processing and delayed operations, and are the most complete answer to lazy compute on arrays in R.</li>
+<li><strong>arrow</strong> and <strong>vroom</strong> use ALTREP to hand R vectors whose contents are not yet in R memory.</li>
+</ul>
+<p>The difference here is the class. Every one of the array packages above is an S3 or S4 object with methods: code has to know about the class, or the object gets converted. An ALTREP array with a <code>dim</code> and no class needs no method dispatch at all. Any function that indexes a numeric array, written in 1998 or yesterday, reads it lazily, and matrix indexing reads it in one planned batch.</p>
+<p>That is also the limit. Without a class there is nowhere to hang delayed arithmetic, which is where DelayedArray’s design earns its complexity. The two approaches fit together: lazy reads through base indexing underneath, lazy compute in a plan above.</p>
+</section>
+<section id="limits-and-what-next" class="level2">
+<h2 class="anchored" data-anchor-id="limits-and-what-next">Limits, and what next</h2>
+<p>This is a prototype, and the limits are real:</p>
+<ul>
+<li><strong>Lazy reads, not lazy compute.</strong> Anything that needs the data pointer (arithmetic, printing, most of <code>apply</code>) materializes the whole array. <code>altarr</code> refuses that above a size option rather than fetching 3 GB because someone typed <code>x + 1</code>.</li>
+<li><strong>The cache is unbounded.</strong> It holds one slot per chunk in the grid; it needs an LRU and a byte budget.</li>
+<li><strong>Fetch runs on R’s main thread.</strong> Concurrency belongs inside the fetch implementation (object_store in Rust, GDAL), never touching the R API off-thread. The fetch contract is where a Rust backend plugs in, without touching the ALTREP layer.</li>
+<li><strong>Coordinates are still dimnames, which must be character.</strong> ALTREP does not touch that; numeric coordinates are a separate question for base R.</li>
+</ul>
+<p>Next steps:</p>
+<ol type="1">
+<li>Build R-devel with the <code>ArraySubset</code> hook and show <code>x[i, j, k]</code> going from 192 round trips to 1, with no package-side method.</li>
+<li>A Rust fetch backend over object storage, so the demo reads a remote Zarr store rather than a local one.</li>
+<li>Ask the people who know ALTREP and R’s subscript code best whether the hook is sound.</li>
+</ol>
+<p>The code, tests and the measurement script are in the <code>altarr</code> package <!-- TODO: link the altarr repository -->. The tests check every path against base R with <code>identical()</code>.</p>
+</section>
+<section id="links" class="level2">
+<h2 class="anchored" data-anchor-id="links">Links</h2>
+<ul>
+<li>R’s subsetting code: <a href="https://github.com/wch/r-source/blob/trunk/src/main/subset.c"><code>src/main/subset.c</code></a> (GitHub mirror of the R sources)</li>
+<li>numpy indexing, including <code>np.ix_</code>: <a href="https://numpy.org/doc/stable/user/basics.indexing.html" class="uri">https://numpy.org/doc/stable/user/basics.indexing.html</a></li>
+<li>zarr-python: <a href="https://zarr.readthedocs.io/" class="uri">https://zarr.readthedocs.io/</a></li>
+<li>The <code>air_temperature</code> Zarr store: <a href="https://scottyhq.github.io/zarrdata/air_temperature.zarr/" class="uri">https://scottyhq.github.io/zarrdata/air_temperature.zarr/</a></li>
+<li>ff: <a href="https://cran.r-project.org/package=ff" class="uri">https://cran.r-project.org/package=ff</a></li>
+<li>DelayedArray: <a href="https://bioconductor.org/packages/DelayedArray/" class="uri">https://bioconductor.org/packages/DelayedArray/</a></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <category>code</category>
+  <category>news</category>
+  <category>zarr</category>
+  <category>altarr</category>
+  <category>r-packages</category>
+  <guid>https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/</guid>
+  <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Distance, perimeter and area in sf and terra: which number do you get?</title>
   <dc:creator>Michael Sumner</dc:creator>
@@ -16580,997 +17089,6 @@ loaded via a namespace (and not attached):
   <category>vaster</category>
   <guid>https://hypertidy.org/posts/2025-12-21_vaster-grid-logic/vaster-grid-logic.html</guid>
   <pubDate>Sun, 21 Dec 2025 00:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>Coordinates broken in NetCDF</title>
-  <dc:creator>Michael Sumner</dc:creator>
-  <link>https://hypertidy.org/posts/2025-09-04_broken-netcdf/</link>
-  <description><![CDATA[ 
-
-
-
-
-
-
-<section id="a-netcdf-file" class="level2">
-<h2 class="anchored" data-anchor-id="a-netcdf-file">A NetCDF file</h2>
-<p>There’s a NetCDF file at this URL:</p>
-<pre><code>"https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</code></pre>
-<p>It’s fairly straightforward:</p>
-<pre><code>netcdf CS2WFA_25km_201007 {
-dimensions:
-        y = 332 ;
-        x = 316 ;
-        time = 1 ;
-variables:
-        float time(time) ;
-                time:long_name = "time" ;
-                time:units = "months since 2000-01-01" ;
-                time:calendar = "360_day" ;
-        double lat(y, x) ;
-                lat:long_name = "latitude" ;
-                lat:units = "degrees_north" ;
-        double lon(y, x) ;
-                lon:long_name = "longitude" ;
-                lon:units = "degrees_east" ;
-...
-        double sea_ice_concentration(time, y, x) ;
-                sea_ice_concentration:least_significant_digit = 4LL ;
-                sea_ice_concentration:units = "1" ;
-                sea_ice_concentration:standard_name = "sea_ice_area_fraction" ;
-                sea_ice_concentration:description = "Mean sea ice concentration in grid cell, from Bootstrap V3 concentration algorithm (Comiso, 2017 https://doi.org/10.5067/7Q8HCCWS4I0R)" ;
-
-// global attributes:
-                :title = "Antarctic sea ice physical properties obtained from CryoSat-2 using the CS2WFA algorithm" ;
-                :institution = "NASA GSFC Cryospheric Sciences Laboratory and University of Maryland-College Park" ;
-                :history = "File created on November 15, 2022, 12:09:06" ;
-
-group: sea_ice_thickness {
-  ...
-group: density {
-  variables:
-        double ice_density(time, y, x) ;
-                ice_density:least_significant_digit = 4LL ;
- ...
-  } // group density
-}</code></pre>
-<p>There’s a root group with four variables defined in time,y,x and another two groups with further variables on that same grid.</p>
-<p>Each data array is 316x332x1 and we can tell that every lon,lat pair is stored explicitly. This fits a convention in NetCDF where time is “unlimited” and we’re only looking at a subset of an overall time series, that could well be continually generated day to day still now.</p>
-<p>Let’s investigate the coordinates. We’ll use GDAL via a commonly used wrapper in R, its ‘vsicurl’ protocol to stream from the internet, and declare the driver explicitly (lest we get the less sophisticated HDF5 interpretation).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">#dsn &lt;- "NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</span></span>
-<span id="cb3-2">dsn <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"NETCDF:../CS2WFA_25km_201007.nc"</span></span>
-<span id="cb3-3"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">library</span>(terra)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>terra 1.8.62</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">lon <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(dsn, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"lon"</span>)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
-help</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">lat <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(dsn, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"lat"</span>)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
-help</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(lon, lat))</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/coords-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>We get a message from terra about “cells not equally spaced”, which means that when reading an array the geospatial context in GDAL didn’t find anything specifying a compact representation of coordinates, but lon and lat <em>are the coordinates</em> <strong>as data</strong>, so we can safely ignore this message. (There’s another message about ncdf4, but ignore that too it’s terra try(ing) stuff. )</p>
-<p>We won’t pay attention to “time”, because our file only has one time step. We’re interested in these lon,lat coordinates. What does the data itself look like? Again we choose one of the 3D variables (with degenerate 3rd dimension ‘time’) by name.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1">ice <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(dsn, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"sea_ice_concentration"</span>)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: [rast] GDAL did not find an extent. installing the ncdf4 package may
-help</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(ice)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/data-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>That should look familiar, though notice that we don’t have any spatial information it’s just a matrix in its own index coordinates, 0,316 for x and 0,332 for y.</p>
-<p>Let’s plot the coordinates. Now we can see our data in a much more spatial-ish context.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1">xyz <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">values</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(lon, lat, ice))</span>
-<span id="cb13-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(xyz[,<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">:</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>], <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">pch =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"."</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">col =</span> palr<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">d_pal</span>(xyz[,<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3</span>]), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">asp =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>)</span>
-<span id="cb13-3">maps<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">map</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"world2"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/plot-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>We now don’t have a nice gridded dataset, it’s points in longitude latitude. What can we do to plot it in that nice polar aspect with proper spatial referencing?</p>
-<p>Let’s have a look at this dataset from a GDAL perspective. Now we use the API package <code>gdalraster</code> which gives a lot more control over GDAL itself. I’m going to skip over interrogating the syntax for a particular array, like we did with terra and ‘sea_ice_concentration’ above, I construct the subdataset syntax to open.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</span></span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "NETCDF:/vsicurl/https://zenodo.org/records/7327711/files/CS2WFA_25km_201007.nc?download=1"</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">sds <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"%s:sea_ice_concentration"</span>, dsn)</span>
-<span id="cb16-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">library</span>(gdalraster)</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>GDAL 3.12.0dev-4e2b27da8f (released 2025-08-26), GEOS 3.12.1, PROJ 9.3.1</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>
-Attaching package: 'gdalraster'</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>The following object is masked from 'package:terra':
-
-    rasterize</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1">ds <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">new</span>(GDALRaster, sds)</span>
-<span id="cb20-2">ds<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">$</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">info</span>()</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Driver: netCDF/Network Common Data Format
-Files: ../CS2WFA_25km_201007.nc
-Size is 316, 332
-Metadata:
-  NC_GLOBAL#history=File created on November 15, 2022, 12:09:06
-  NC_GLOBAL#institution=NASA GSFC Cryospheric Sciences Laboratory and University of Maryland-College Park
-  NC_GLOBAL#title=Antarctic sea ice physical properties obtained from CryoSat-2 using the CS2WFA algorithm
-  NETCDF_DIM_EXTRA={time}
-  NETCDF_DIM_time_DEF={1,5}
-  NETCDF_DIM_time_VALUES=126
-  sea_ice_concentration#description=Mean sea ice concentration in grid cell, from Bootstrap V3 concentration algorithm (Comiso, 2017 https://doi.org/10.5067/7Q8HCCWS4I0R)
-  sea_ice_concentration#least_significant_digit=4
-  sea_ice_concentration#standard_name=sea_ice_area_fraction
-  sea_ice_concentration#units=1
-  time#calendar=360_day
-  time#long_name=time
-  time#units=months since 2000-01-01
-Geolocation:
-  SRS=GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
-  X_DATASET=NETCDF:"../CS2WFA_25km_201007.nc":lon
-  X_BAND=1
-  Y_DATASET=NETCDF:"../CS2WFA_25km_201007.nc":lat
-  Y_BAND=1
-  PIXEL_OFFSET=0
-  PIXEL_STEP=1
-  LINE_OFFSET=0
-  LINE_STEP=1
-  GEOREFERENCING_CONVENTION=PIXEL_CENTER
-Corner Coordinates:
-Upper Left  (    0.0,    0.0)
-Lower Left  (    0.0,  332.0)
-Upper Right (  316.0,    0.0)
-Lower Right (  316.0,  332.0)
-Center      (  158.0,  166.0)
-Band 1 Block=316x332 Type=Float64, ColorInterp=Undefined
-  NoData Value=9.969209968386869e+36
-  Unit Type: 1
-  Metadata:
-    NETCDF_VARNAME=sea_ice_concentration
-    least_significant_digit=4
-    units=1
-    standard_name=sea_ice_area_fraction
-    description=Mean sea ice concentration in grid cell, from Bootstrap V3 concentration algorithm (Comiso, 2017 https://doi.org/10.5067/7Q8HCCWS4I0R)
-    NETCDF_DIM_time=126</code></pre>
-</div>
-</div>
-<p>The interesting part of that output is under “Geolocation:”. We can see that while GDAL doesn’t have spatial referencing for this array, it does seem to know that’s it’s possible because of the X_DATASET and Y_DATASET. These can be used by the GDAL warper API (warp means “reprojection” or “reshaping” for an image) in order to resolve to a <em>new</em> spatial gridded dataset … but also note, the same facilities used to “reproject” one regular grid to another are also the same that can be used to generate a regular grid from irregular geolocation coordinates (we have a point for every data point, but those coordinates might be less dense, or might be GCPs or RCPs, and no matter what coordinate system those latent coordinates are using, we can warp to whatever spatial grid we like). So let’s warp.</p>
-<p>We don’t have to specifying the geolocation arrays, we saw that GDAL already knows this. We’ll write our new gridded dataset conveniently to a temporary virtual “file” so we can avoid more cleanup.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:4326"</span>)</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(icegrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf))</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/warp-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1">icegrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 127, 902, 1  (nrow, ncol, nlyr)
-resolution  : 0.398722, 0.3987662  (x, y)
-extent      : 0.164645, 359.8119, -89.80441, -39.1611  (xmin, xmax, ymin, ymax)
-coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : filedb3943dea1d4.tif 
-name        : filedb3943dea1d4 </code></pre>
-</div>
-</div>
-<p>We indeed now have a spatial grid, a raster. But perhaps we don’t like the 0,360 convention. We can set the target extent, GDAL had to figure one out from the input geolocation arrays, and it will usually do a good job but it’s really our responsibility to specify what we want for reproducibility in later workflows.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:4326"</span>, </span>
-<span id="cb27-2">                 <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">cl_arg =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-te"</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">90</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">39</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-to"</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(icegrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf))</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/extent-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1">icegrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 194, 1371, 1  (nrow, ncol, nlyr)
-resolution  : 0.2625821, 0.2628866  (x, y)
-extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
-coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : filedb394444fc021.tif 
-name        : filedb394444fc021 </code></pre>
-</div>
-</div>
-<p>Another thing that is also our responsibility is the dimensions of the grid and the resolution, obviously this and extent (or bbox, bounding box) are all interlinked so we augment our bounding box / extent setting with a nice clean resolution.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:4326"</span>, </span>
-<span id="cb32-2">                 <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">cl_arg =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-te"</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">90</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">39</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-tr"</span>, <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0.25</span>, <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0.25</span>,</span>
-<span id="cb32-3">                            <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-to"</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(icegrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf))</span>
-<span id="cb34-2">maps<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">map</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/extent2-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1">icegrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 204, 1440, 1  (nrow, ncol, nlyr)
-resolution  : 0.25, 0.25  (x, y)
-extent      : -180, 180, -90, -39  (xmin, xmax, ymin, ymax)
-coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-source      : filedb39443fd3375.tif 
-name        : filedb39443fd3375 </code></pre>
-</div>
-</div>
-<p>That is all well and nice, and we’ve quietly demonstrated some of the key powers of GDAL:</p>
-<ul>
-<li>virtualization, streaming read, read a particular variable</li>
-<li>investigate GDAL logic (coordinates are linked to data via latent “geolocation” arrays)</li>
-<li>warping with heuristics to a CRS</li>
-<li>warping with a grid specification, and using geolocation arrays to guide the grid-resolving process</li>
-<li>setting grid specification with any of crs, extent(bbox), resolution, dimension, and allowing GDAL to internally wrap from 0,360 context to -180,180</li>
-</ul>
-<p>But, we still don’t have that nice polar aspect we saw from the raw array above. So we change CRS. ‘EPSG:3412’ is a Polar Stereographic map projection on the south pole, commonly used for standard sea ice products. As a grid this has nice properties, that don’t require edge-wrap for a matrix model, it’s true scale at approximately where the coastline of Antarctica is, and it preserves shape (this means not all cells are exactly the same size, but they’re close enough for where the sea ice is).</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:3412"</span>, </span>
-<span id="cb37-2">                <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">cl_arg =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-to"</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(polargrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf))</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/polargrid-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1">polargrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 348, 332, 1  (nrow, ncol, nlyr)
-resolution  : 24999.84, 24999.84  (x, y)
-extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
-coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : filedb39427e3e998.tif 
-name        : filedb39427e3e998 </code></pre>
-</div>
-</div>
-<p>To make sure let’s get some spatial data to plot with this.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1">v <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">vect</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsizip//vsicurl/https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/CGAZ/geoBoundariesCGAZ_ADM0.zip"</span>, </span>
-<span id="cb42-2">     <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">query =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"SELECT shapeGroup FROM geoBoundariesCGAZ_ADM0 WHERE shapeGroup IN ('ATA')"</span>)</span>
-<span id="cb42-3">v <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">crop</span>(v, <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ext</span>(<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">180</span>, <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">84</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0</span>)) <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## small hack to remove the pole seam</span></span>
-<span id="cb42-4">v <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">project</span>(v, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:3412"</span>)</span>
-<span id="cb42-5"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(polargrid)</span>
-<span id="cb42-6"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(v, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/spatial-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Looks good! We’ve plotted the original data in the correct polar aspect.</p>
-<p>But, the data aren’t exactly the same, we’ve added pixels in the heuristic used by GDAL to determine the grid specification from the extent and resolution of the geolocation array longitude and latitudes.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1">ice</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 332, 316, 1  (nrow, ncol, nlyr)
-resolution  : 1, 1  (x, y)
-extent      : 0, 316, 0, 332  (xmin, xmax, ymin, ymax)
-coord. ref. :  
-source      : CS2WFA_25km_201007.nc:sea_ice_concentration 
-varname     : sea_ice_concentration (sea_ice_area_fraction) 
-name        : sea_ice_concentration 
-unit        :                     1 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1">polargrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 348, 332, 1  (nrow, ncol, nlyr)
-resolution  : 24999.84, 24999.84  (x, y)
-extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
-coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : filedb39427e3e998.tif 
-name        : filedb39427e3e998 </code></pre>
-</div>
-</div>
-<p>So, let’s try to use the same grid.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:3412"</span>, </span>
-<span id="cb47-2">                <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">cl_arg =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-ts"</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">316</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">332</span>,</span>
-<span id="cb47-3">                           </span>
-<span id="cb47-4">                  <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-to"</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1">polargrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf)</span>
-<span id="cb49-2"></span>
-<span id="cb49-3">polargrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 332, 316, 1  (nrow, ncol, nlyr)
-resolution  : 26265.66, 26204.65  (x, y)
-extent      : -3950080, 4349868, -4337584, 4362361  (xmin, xmax, ymin, ymax)
-coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : filedb394ad7590c.tif 
-name        : filedb394ad7590c </code></pre>
-</div>
-</div>
-<p>We can’t do that without giving them the same extent, but we still don’t know what that is for the original data. So let’s calculate it.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1">xy <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">project</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">values</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(lon, lat)), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">to =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:3412"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">from =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:4326"</span>)</span>
-<span id="cb51-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">range</span>(xy[,<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>])</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] -3937527  4337533</code></pre>
-</div>
-</div>
-</section>
-<section id="throw-all-that-away-ignore-everything-above." class="level2">
-<h2 class="anchored" data-anchor-id="throw-all-that-away-ignore-everything-above.">Throw all that away, ignore everything above.</h2>
-<p>You should never ever do the above for a dataset that doesn’t need it. This is a major problem in array computation worlds, there’s a lowest common denominator that will work but why not be smart about it, and keep fidelity with the original scheme for a dataset.</p>
-<p>The problem here is that we can’t reconstruct the actual grid in the file, we have to treat it as points in geolocation arrays, and infer something about the grid. Here’s the answer:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1">ex <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">xmin =</span> <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3950000</span>,  <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">xmax =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3950000</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ymin  =</span> <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3950000</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">ymax =</span> <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">4350000</span>)</span>
-<span id="cb53-2"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">diff</span>(ex)[<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3</span>)] <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">/</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">316</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">332</span>)  <span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## look familiar?</span></span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code> xmax  ymax 
-25000 25000 </code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1">set_ext <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
-background-color: null;
-font-weight: bold;
-font-style: inherit;">function</span>(x, ex) {terra<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ext</span>(x) <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> ex; x}</span>
-<span id="cb55-2"></span>
-<span id="cb55-3"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">set_ext</span>(ice, <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ext</span>(ex)))</span>
-<span id="cb55-4"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(v, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> T)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/set_extent-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb56" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(polargrid); <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">plot</span>(v, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">add =</span> <span class="cn" style="color: #8f5902;
-background-color: null;
-font-style: inherit;">TRUE</span>)</span></code></pre></div></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="https://hypertidy.org/posts/2025-09-04_broken-netcdf/index_files/figure-html/set_extent-2.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Now finally, we get exactly the same answer.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1">gdalraster<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">warp</span>(sds,  tf <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">tempfile</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">fileext =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">".tif"</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">tmpdir =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"/vsimem"</span>), <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">t_srs =</span> <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"EPSG:3412"</span>, </span>
-<span id="cb57-2">                <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">cl_arg =</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-ts"</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">316</span>, <span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">332</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-te"</span>, ex[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">1</span>], ex[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">3</span>], ex[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">2</span>], ex[<span class="dv" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">4</span>],</span>
-<span id="cb57-3">                           </span>
-<span id="cb57-4">                  <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"-to"</span>, <span class="st" style="color: #20794D;
-background-color: null;
-font-style: inherit;">"GEOLOC_NORMALIZE_LONGITUDE_MINUS_180_PLUS_180=YES"</span>))</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>0...10...20...30...40...50...60...70...80...90...100 - done.</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1">polargrid <span class="ot" style="color: #003B4F;
-background-color: null;
-font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">rast</span>(tf)</span>
-<span id="cb59-2"></span>
-<span id="cb59-3">polargrid</span></code></pre></div></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 332, 316, 1  (nrow, ncol, nlyr)
-resolution  : 25000, 25000  (x, y)
-extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
-coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source      : filedb3946450fee3.tif 
-name        : filedb3946450fee3 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb61" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1">polargrid <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">-</span> <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">set_ext</span>(ice, <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">ext</span>(ex))</span></code></pre></div></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: [-] CRS do not match</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>class       : SpatRaster 
-size        : 332, 316, 1  (nrow, ncol, nlyr)
-resolution  : 25000, 25000  (x, y)
-extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)
-coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) 
-source(s)   : memory
-varname     : filedb3946450fee3 
-name        : filedb3946450fee3 
-min value   :                 0 
-max value   :                 0 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb64" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># class       : SpatRaster </span></span>
-<span id="cb64-2"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># size        : 332, 316, 1  (nrow, ncol, nlyr)</span></span>
-<span id="cb64-3"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># resolution  : 25000, 25000  (x, y)</span></span>
-<span id="cb64-4"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># extent      : -3950000, 3950000, -3950000, 4350000  (xmin, xmax, ymin, ymax)</span></span>
-<span id="cb64-5"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># coord. ref. : NSIDC Sea Ice Polar Stereographic South (EPSG:3412) </span></span>
-<span id="cb64-6"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># source(s)   : memory</span></span>
-<span id="cb64-7"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># varname     : fileb328ade0cec2 </span></span>
-<span id="cb64-8"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># name        : fileb328ade0cec2 </span></span>
-<span id="cb64-9"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># min value   :                0 </span></span>
-<span id="cb64-10"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;"># max value   :                0 </span></span></code></pre></div></div>
-</div>
-<p>But how did we do that? We plucked some magic numbers out of the air. We can’t obtain those four numbers from the lon lat arrays, we can’t find them in the file, they aren’t in the metadata or the website. We just know, because NSIDC sea ice products are standard on a 3412 grid at 25km resolution.</p>
-<p>These four numbers: -3950000, 3950000, -3950000, 4350000 are entirely cryptic in the data store itself, and require an expert to notice the problem. We can throw away 332 * 316 * 2 values <em>from every file</em>, replace them with these four values and we have a better and more faithful representation of the original data.</p>
-<p>This is an entropy problem.</p>
-<p>I refer to this kind of problem as “cryptic curvilinear”. The data present as an irregular grid with curvlinear coordinates, but they are entirely unnecessary, we can replace them with 4 values that anyone can remember and we have the following easy ways to fix, roughly in increasing difficulty and decreasing utility:</p>
-<ul>
-<li>set “-a_srs”, and -a_ullr” in gdal raster convert, or via “vrt://{dsn}?a_ullr=,,,” syntax</li>
-<li>OR set “-a_srs”, and “-a_gt” in gdal raster convert, or via “vrt://{dsn}?a_gt=,,,,,” syntax</li>
-<li>set extent with terra in R and set the crs</li>
-<li>open with rasterio and set geotransform and set spatial ref (same as set extent with R)</li>
-<li>modify the coordinates in xarray, and set the crs</li>
-</ul>
-</section>
-<section id="oh-but-sure-there-are-bad-files-out-there" class="level2">
-<h2 class="anchored" data-anchor-id="oh-but-sure-there-are-bad-files-out-there">Oh, but sure there are bad files out there</h2>
-<p>There are so many.</p>
-<ul>
-<li>GHRSST noisy, low precision degenerate rectilinear coordinates</li>
-<li>OISST and NSIDC, have degenerate rectilinear coordinates that don’t cause problems</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <category>netcdf</category>
-  <category>gdal</category>
-  <guid>https://hypertidy.org/posts/2025-09-04_broken-netcdf/</guid>
-  <pubDate>Thu, 04 Sep 2025 00:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>

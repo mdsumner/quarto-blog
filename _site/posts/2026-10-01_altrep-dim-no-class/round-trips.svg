@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Same chunks, 1 round trip instead of 192 or 287">
+<rect width="760" height="300" fill="#ffffff"/>
+<text x="20" y="30" font-size="16" fill="#1a1a1a">Same chunks, 1 round trip instead of 192 or 287</text>
+<text x="20" y="52" fill="#5f5f5f">Seconds to read, with 20 ms latency per fetch call</text>
+<text x="20" y="90" font-weight="bold" fill="#1a1a1a">Region 401 x 301 x 31</text>
+<text x="250" y="118" text-anchor="end" fill="#5f5f5f">x[i, j, k], element at a time</text>
+<rect x="260" y="104" width="225.9" height="20" fill="#c3c3b8"><title>Region 401 x 301 x 31, x[i, j, k], element at a time: 4.38 s, 192 fetch calls</title></rect>
+<text x="493.9" y="118" fill="#1a1a1a">4.38 s, 192 fetch calls</text>
+<text x="250" y="150" text-anchor="end" fill="#5f5f5f">altarr_extract(), planned</text>
+<rect x="260" y="136" width="10.8" height="20" fill="#2f6fdb"><title>Region 401 x 301 x 31, altarr_extract(), planned: 0.21 s, 1 fetch calls</title></rect>
+<text x="278.8" y="150" fill="#1a1a1a">0.21 s, 1 fetch call</text>
+<text x="20" y="200" font-weight="bold" fill="#1a1a1a">2000 scattered points</text>
+<text x="250" y="228" text-anchor="end" fill="#5f5f5f">loop of x[i, j, k]</text>
+<rect x="260" y="214" width="310.0" height="20" fill="#c3c3b8"><title>2000 scattered points, loop of x[i, j, k]: 6.01 s, 287 fetch calls</title></rect>
+<text x="578.0" y="228" fill="#1a1a1a">6.01 s, 287 fetch calls</text>
+<text x="250" y="260" text-anchor="end" fill="#5f5f5f">x[cbind(i, j, k)], planned</text>
+<rect x="260" y="246" width="7.7" height="20" fill="#2f6fdb"><title>2000 scattered points, x[cbind(i, j, k)], planned: 0.15 s, 1 fetch calls</title></rect>
+<text x="275.7" y="260" fill="#1a1a1a">0.15 s, 1 fetch call</text>
+<text x="20" y="288" fill="#5f5f5f">Both paths in each pair fetch the same chunks; only the number of round trips differs.</text>
+</svg>
