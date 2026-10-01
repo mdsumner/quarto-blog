@@ -2,8 +2,7 @@
 title: "A mapview for modern R: Arrow in, any CRS out"
 description: >
   A design sketch for a modern mapview: GeoArrow as the data plane, a
-  renderer-agnostic scene spec, and a path that starts on deck.gl without
-  marrying it.
+  renderer-agnostic scene spec, and a path that starts on deck.gl. 
 author: "Michael Sumner"
 date: "2026-09-30"
 categories: [mapview, arrow, deck.gl, spatial, R]
@@ -21,9 +20,17 @@ The short version:
 - Mercator is a basemap problem, not a GPU problem.
 - The core should be a protocol (data plane, scene spec, transport), not a widget.
 - Start on deck.gl, probe how far arbitrary CRS goes, and keep a clean seam so a capable team could own the renderer later.
+- Start on deck.gl, probe how far arbitrary CRS goes, and keep a clean seam so a capable team could own the renderer later.
+
+::: {.callout-note collapse="false"}
+## This is now a real, early-stage project
+
+The design below became **allonboard**: [aobview](https://allboa.github.io/aobview/) is the mapview-style `view(x)` front door, [aobcore](https://github.com/allboa/aobcore) is the core package and renderer, and [scenespec](https://github.com/allboa/scenespec) is the renderer-neutral scene spec described below. Decisions live in [design](https://github.com/allboa/design) and experiments in [spikes](https://github.com/allboa/spikes), all under the [allboa](https://github.com/allboa) GitHub organisation.
+
+It is early and in the open: names are placeholders, nothing is on CRAN, and the scene spec is pre-1.0. `view()` already works for sf/terra vectors and rasters, draws in any projected CRS (lon/lat data south of 40°S goes to EPSG:3031, north of 60°N to EPSG:3413), fetches remote COGs in tiles, and supports colour-by-attribute, legends and popups. The open problems are the ones this post anticipated: seams and the antimeridian in some projections, tile budgets for large rasters, and whether the renderer ends up sharing lonboard's JavaScript stack. Try it and [open an issue](https://github.com/allboa/aobview/issues) — feedback is the most useful thing right now.
+:::
 
 ## What Arrow actually changes
-
 Arrow does not share memory between R and the page; it ships bytes the GPU can use without parsing them. R and the browser are separate processes, so data always crosses a boundary. What matters is how much work happens on the far side.
 
 The classic mapview path was htmlwidgets. sf became GeoJSON text, the text was embedded in the page, and the browser parsed it into JS objects and then into Leaflet layers. Most of the cost was in that parse and in building millions of small objects. leafgl (WebGL drawing) and flatgeobuf attachments (binary, streamable) already moved away from it. GeoArrow is where that path was heading.
