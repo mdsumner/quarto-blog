@@ -1,0 +1,149 @@
+---
+title: "A mapview for modern R: Arrow in, any CRS out"
+description: >
+  A design sketch for a modern mapview: GeoArrow as the data plane, a
+  renderer-agnostic scene spec, and a path that starts on deck.gl without
+  marrying it.
+author: "Michael Sumner"
+date: "2026-09-30"
+categories: [mapview, arrow, deck.gl, spatial, R]
+execute:
+  eval: false
+---
+
+R can have a fast, CRS-honest interactive map viewer, and GeoArrow is what makes it cheap to build now. The prompt is [deckglgeoarrow](https://github.com/r-spatial/deckglgeoarrow), which landed on CRAN this year: it ships sf and wk data to the browser as GeoArrow and lets deck.gl draw it on the GPU, on a maplibre map built with mapgl.
+
+That package is a good answer to "show me a lot of features fast on a web map". This post asks a wider question. What would a mapview for modern R look like if it were not tied to one JavaScript library, and not tied to Web Mercator? And how should it be split between a lean core and the convenience layer that makes mapview so loved?
+
+The short version:
+
+- Arrow does not give R and the browser shared memory, but it removes the parse. That is the real win.
+- Mercator is a basemap problem, not a GPU problem.
+- The core should be a protocol (data plane, scene spec, transport), not a widget.
+- Start on deck.gl, probe how far arbitrary CRS goes, and keep a clean seam so a capable team could own the renderer later.
+
+## What Arrow actually changes
+
+Arrow does not share memory between R and the page; it ships bytes the GPU can use without parsing them. R and the browser are separate processes, so data always crosses a boundary. What matters is how much work happens on the far side.
+
+The classic mapview path was htmlwidgets. sf became GeoJSON text, the text was embedded in the page, and the browser parsed it into JS objects and then into Leaflet layers. Most of the cost was in that parse and in building millions of small objects. leafgl (WebGL drawing) and flatgeobuf attachments (binary, streamable) already moved away from it. GeoArrow is where that path was heading.
+
+With GeoArrow, an Arrow IPC buffer becomes JS typed arrays with no parse. deck.gl-geoarrow binds those coordinate buffers straight into GPU attributes. The format is still serialized, but the cost is close to a memory copy, not a parse-and-build.
+
+Two consequences follow:
+
+- **True shared memory exists in webR.** When R runs as wasm in the same page, Arrow buffers can be handed across without a copy. Designing around Arrow now keeps that door open.
+- **The browser can fetch the data itself.** deckglgeoarrow can already render remote GeoParquet and GeoArrow without reading it into R; only the styling is prepared in R ([CRAN reference](https://stat.ethz.ch/CRAN/web/packages/deckglgeoarrow/refman/deckglgeoarrow.html)). R sends a recipe, the browser pulls the bytes.
+
+One constraint shapes the core: only native GeoArrow geometry encoding renders, not WKB ([README](https://stat.ethz.ch/CRAN/web/packages/deckglgeoarrow/readme/README.html)). The data plane must emit native coordinate buffers. A wk handler writing geoarrow does that, and so does GDAL's OGR Arrow stream when asked for GeoArrow encoding, which keeps a gdalraster-to-browser path free of conversions.
+
+## Mercator is a basemap problem
+
+The GPU does not care about Web Mercator; the tiled basemap does. deck.gl has orthographic and cartesian views, so projected metres can go straight in and render in any CRS. deckglgeoarrow is Mercator-bound only because it sits on mapgl and maplibre.
+
+There is one numeric trap. GPUs work in float32, and projected coordinates in the millions of metres lose precision. The fix is to subtract a local origin before the data leaves R, and draw relative to it. deck.gl has a coordinate-origin mechanism for exactly this.
+
+The hard parts of "any CRS in the browser" are elsewhere:
+
+1. **Basemaps.** XYZ tiles are Mercator. Showing them in a polar or equal-area view means warping each tile on a reprojected mesh.
+2. **Rasters into a non-Mercator view.** [deck.gl-raster](https://developmentseed.org/deck.gl-raster/docs/intro/) already reprojects COG and Zarr on the GPU with an adaptive mesh, from most source projections into the web map, and has prototype globe support. What remains is drawing into a polar or equal-area view CRS, and the polar and antimeridian cases its docs say are not yet tested.
+
+So the gap is narrower than it looks. Source reprojection is solved upstream. The view CRS and polar robustness are the open work, and that is where Antarctic use cases can contribute rather than rebuild.
+
+## The design: a protocol, not a widget
+
+The core package should describe a scene and move data; drawing it is someone else's job. It has three parts:
+
+1. **Data plane.** Vectors travel as nanoarrow streams with native GeoArrow geometry. Rasters are not Arrow: they travel as a grid descriptor (extent, dimension, CRS) plus a typed buffer, or simply as a URL the browser reads itself. Styling is data too, so colours computed in R become an RGBA column.
+2. **Scene spec.** A small declarative JSON document: the view CRS, the view type (projected, orthographic, globe), layers that reference data by id, and legends. Being plain data, it is testable and can have more than one renderer.
+3. **Transport.** Pluggable: embedded in a standalone page, served from a local httpuv server for large or streaming data, updated over a websocket (with selections coming back to R as row ids), or handed over in-process under webR.
+
+*[Diagram placeholder: architecture - producers, core, transport, renderers]*
+
+The scene spec is the seam. Producers only need to emit standard inputs, and renderers only need to read the spec, so either side can change without touching the other.
+
+## Two packages: a lean core and a friendly front door
+
+The core should accept standard inputs rather than import spatial classes; the convenience package is where the opinions live.
+
+**The core** depends on nanoarrow, geoarrow, wk and htmltools, and little else. Its contract is: give me an ArrowArrayStream with native GeoArrow geometry, a grid descriptor with a buffer, or a URL. gdalraster sits in Suggests as the best-supported producer, because GDAL can already hand over Arrow streams and read everything else. Anything that can emit those inputs works, with no class-specific code in the core.
+
+**The convenience package** is the mapview role: `view(x)` for any spatial object, sensible colours, legends, popups, layer toggles. It carries the methods for sf and terra, and it is allowed to be heavy. Keeping it separate means the core stays small enough for other packages to depend on.
+
+The convenience layer should shrink over time. sf already reaches geoarrow via wk. Once terra can emit a GeoArrow stream for a SpatVector, and a grid descriptor plus source path for a SpatRaster, the adapters become thin and the package is mostly about the user experience. That is a good outcome, not a failure.
+
+## The renderer is where the work is
+
+Rasters are the easy half of a hand-built renderer; vectors are the long tail. A reprojected raster is one textured mesh per tile with a simple shader. Vectors need much more:
+
+- **Polygons:** triangulation with holes (earcut).
+- **Lines:** extrusion to screen-space width, joins, caps, antialiasing.
+- **Points:** instanced sprites with sizing.
+- **Picking:** an id framebuffer so a click resolves to a feature.
+- **Labels:** glyph atlases, placement, collision. This is the biggest time sink, and it is why maplibre is large.
+- **Styling:** attribute buffers and a data-driven style path.
+
+The same list faces any standalone COG viewer that wants vector overlays. So the R viewer and the web viewer should share one renderer, not build two.
+
+**Curvature is one problem in two places.** For rasters, mesh density absorbs the reprojection curvature. For vectors, a straight segment in the source CRS is not straight in the view CRS, so edges must be densified before projecting. It is the same sampling decision, applied to edges instead of a grid.
+
+**Most of the work can move out of the browser.** Triangulate, densify and project on the R or Rust side, then ship vertex, index and segment buffers as Arrow columns. The renderer shrinks to three draw calls: indexed triangles, extruded segments, instanced points. The trade-off is that the payload is tied to one view CRS. For globe or spinning views, project the densified vertices on the client instead, in a vertex shader or with PROJ compiled to wasm.
+
+## Strategy: deck.gl first, with a seam for going large
+
+Start on deck.gl in an orthographic view and find out how far the CRS game goes. "Hand the renderer to a capable team" is close behind, and the scene spec is what makes both possible without a rewrite.
+
+| Option | What it buys | Move on when |
+| --- | --- | --- |
+| deck.gl first | Vectors, picking and GeoArrow ingest from deck.gl-geoarrow; COG and Zarr reprojection from deck.gl-raster | A polar or equal-area view CRS fights deck.gl's view model |
+| Hybrid | Own mesh pipeline for non-Mercator views and basemaps; deck.gl for the rest, camera synced | Keeping two render loops in step costs more than it saves |
+| Go large | Share lonboard's JavaScript stack; R owns data, scene spec and transport | The scene spec is stable and has more than one consumer |
+
+The go-large option is realistic because the team largely exists. Development Seed's lonboard puts deck.gl and GeoArrow behind a Python notebook widget, and it is the product that deck.gl-geoarrow and deck.gl-raster move with: lonboard upgrades the deck.gl-raster family in lockstep with deck.gl ([lonboard #1272](https://github.com/developmentseed/lonboard/pull/1272)). If the scene spec is a neutral contract, an R front end can sit on the same JavaScript stack, and that renderer work becomes R's renderer too.
+
+The discipline that keeps the door open is simple: nothing deck.gl-specific in the scene spec. deck.gl is an implementation of the spec, not the spec.
+
+## Probe: a polar view on stock deck.gl
+
+A polar view works on stock deck.gl today, as long as rasters arrive as pre-projected meshes rather than as COGs. The [Polar view probe](https://claude.ai/artifact/UxP8NaiUE8Hc4c6R7YXCnj) draws EPSG:3031 metres in an orthographic view from 885 KiB of Arrow, decoded in about 20 ms.
+
+| Layer | Shipped as | Drawn with | Result |
+| --- | --- | --- | --- |
+| Land (50m) | geoarrow.polygon, exterior rings | SolidPolygonLayer, binary, cartesian | Works; the pole closure is harmless in a fill |
+| Coastline (50m) | geoarrow.linestring | PathLayer, binary, offsets bound directly | Works; must come from lines, not polygon rings |
+| Graticule | geoarrow.linestring plus an RGBA column | PathLayer, colour read from the column | Works; styling as data |
+| Raster | grid descriptor, values, projected mesh with uv | SimpleMeshLayer with a canvas texture | Works; pole and antimeridian need nothing special |
+
+Three things came out of it:
+
+- **Source-space meshes make the pole easy.** Each vertex of a lon/lat grid is projected once upstream. The pole row collapses to a point and the dateline is just a shared column edge.
+- **Topology depends on purpose.** Natural Earth land closes through the pole, which is fine for a fill but draws a false seam if its rings are stroked. The outline has to come from a line dataset.
+- **EPSG:3031 is kind to float32.** Its origin is the pole, so offsets stay under about 5000 km. Other projected CRSs still need a `coordinateOrigin` near the data.
+
+### Where lonboard and deck.gl-raster sit
+
+Neither can draw a tiled COG into a polar projected view yet. This is a review of the repos at their late-September 2026 state.
+
+- **deck.gl-raster** targets Web Mercator, plus a preliminary globe view since v0.8.0. Its tiled path (COGLayer, ZarrLayer) traverses tiles in Web Mercator and clamps the mesh at 85.05 degrees, so it cannot target EPSG:3031 in an orthographic view. The lower-level RasterLayer takes arbitrary reprojection functions, so a single untiled image might work, but that is untested. Its docs still list polar projections and the antimeridian as untested ([intro](https://github.com/developmentseed/deck.gl-raster/blob/main/docs/guides/intro.md), [globe PR](https://github.com/developmentseed/deck.gl-raster/pull/563)).
+- **lonboard** exposes orthographic, globe and other deck.gl views in `lonboard.experimental.view`, but it has no custom CRS: layers are reprojected to EPSG:4326. Its transport is Arrow written as Parquet over the anywidget comm ([view API](https://developmentseed.org/lonboard/latest/api/view/)).
+- **deck.gl-geoarrow** layers pass non-accessor props through to stock deck.gl layers, so cartesian coordinates should work. That is inferred from the source, not documented.
+
+The opening for R is clear. A polar view CRS, tiling that is not Web Mercator, and pole-covering rasters are unclaimed, and they are exactly the Antarctic cases. Upstream contributions to deck.gl-raster's tile traversal would serve both languages.
+
+## Open questions and next steps
+
+The first experiment is small: a polar-stereographic scene with a GeoArrow coastline and one COG, drawn by deck.gl in an orthographic view.
+
+- [ ] Draft the scene spec as a JSON schema: view CRS, view type, layers, data references, legends. The probe's spec is a starting point.
+- [x] Prototype the polar scene above and note where deck.gl pushes back.
+- [ ] Try deck.gl-raster's untiled RasterLayer with a 3031 reprojection function; scope a non-Mercator tile traversal upstream.
+- [ ] Test a basemap in a non-Mercator view: warp XYZ tiles on a mesh, or skip tiles and draw vector land in the view CRS.
+- [ ] Measure the float32 origin-offset approach on a projected CRS whose origin is far from the data.
+- [ ] Decide where triangulation and densification live: R, Rust, or the client.
+- [ ] Replace the probe's Python prep with R: gdalraster Arrow streams, wk, and a mesh builder.
+
+Open questions:
+
+- Should styling be data only (RGBA columns computed in R), or also allow accessor expressions evaluated in the browser?
+- What is the minimum grid descriptor for rasters: extent, dimension and CRS, or does it need overviews and nodata too?
+- Would the lonboard maintainers welcome a shared, language-neutral scene spec, so R and Python front ends drive one renderer?
