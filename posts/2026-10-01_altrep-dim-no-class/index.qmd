@@ -8,7 +8,7 @@ description: "Base R indexing can already drive planned reads of remote chunked 
 
 Base R can already read a remote, chunked, compressed array in planned batches, using nothing but its own indexing syntax. The object has no class and no methods: it is a double vector with a `dim` attribute. One of R's indexing forms reaches it as a single planned request today; another reaches it one element at a time; and a small change to R would close that gap.
 
-I wanted to know how far R's old and very rich array indexing could go as a query language for remote encoded chunks, without patching R. So I built `altarr`, a small ALTREP prototype, read through `src/main/subset.c` to see what each indexing form actually does, and measured it. Then I pointed it at a real Zarr store written by zarr-python.
+I wanted to know how far R's old and very rich array indexing could go as a query language for remote encoded chunks, without patching R. So I built [`altarr`](https://github.com/hypertidy/altarr), a small ALTREP prototype, read through `src/main/subset.c` to see what each indexing form actually does, and measured it. Then I pointed it at a real Zarr store written by zarr-python.
 
 The short version: `x[cbind(i, j, k)]` is already first-class. `x[i, j, k]` works, but serially. And the information R would need to fix that is already sitting in a local variable inside `ArraySubset`.
 
