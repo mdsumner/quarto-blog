@@ -1,0 +1,186 @@
+---
+title: "Small contracts, long lives: altarr and the shape of lazy arrays in R"
+description: >
+  One small fetch contract under R's own indexing ties together zaro,
+  tidync, ndr, gdalraster, GDAL7 and the browser tools. What that says about where
+  Python's array stack is heading, and about sustaining R itself.
+author: "Michael Sumner"
+date: "2026-10-05"
+categories: [altarr, zarr, gdal, r-packages, news]
+draft: true
+execute:
+  eval: false
+---
+
+<!-- DRAFT for review. Status notes for Michael are in HTML comments like this one; delete before publishing. -->
+
+A few days ago I wrote about [what R does today with an ALTREP that has a dim and no class](https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/). That post was about one mechanism: a lazy array, with no class and no methods, that base R indexing reads in planned batches. This post is about what happened next, which is that the mechanism turned out to be the missing piece in a handful of packages I had been building for years without quite knowing what they were waiting for.
+
+The short version:
+
+- R has had the right array semantics for decades. What it lacked was a way to put a remote, chunked store *behind* them without a class.
+- altarr supplies that with one function, `fetch(chunks)`. Everything else (Zarr, NetCDF, GDAL, HTTP, Rust) is somebody else's engine.
+- In a few days that contract went into zaro, tidync and ndr with no changes to altarr itself.
+- Python's cloud array stack is converging on the same shape: narrow interfaces over Rust and async engines. R can meet it there, cheaply, without rebuilding the engines.
+- The one change that would make this work for every lazy array in R is a small hook in R itself. That is a sustainability question as much as a technical one, and it is being asked at a good time.
+
+## The contract
+
+Here is the whole interface between an altarr and whatever holds the data:
+
+```r
+fetch(chunks)
+# chunks:  integer matrix, one row per chunk, 0-based chunk coordinates
+# returns: list of vectors, column-major, clipped at the array edge
+
+x <- altarr(dim, chunk, fetch, type = "double")
+```
+
+The array is a plain double (or integer, or logical) vector with a `dim`. `dim(x)` reads nothing, `x[cbind(i, j, k)]` arrives at the fetch as one batch of chunks, `saveRDS(x)` writes the recipe rather than the values, and `altarr_plan(x, i, j, k)` returns the chunks a subscript would touch as a table. The [previous post](https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/) measured the difference: 192 round trips down to 1 for a region, 287 down to 1 for scattered points.
+
+What matters for this post is not the speed but the size of the seam. One function, one matrix in, one list out. That is small enough that very different packages can each implement it in an afternoon, and small enough that it is unlikely to need changing.
+
+## A week of plugging things in
+
+
+**zaro** is my Zarr reader built on Arrow's filesystems and codecs, with Kerchunk and VirtualiZarr Parquet references. Its `fetch_chunk()` and `decode_chunk()` already were the altarr contract in all but name, so `zaro_array(store, path)`, now exported from zaro, is about thirty lines. Zarr's C-order shape is given to R reversed, so each decoded chunk lands in place with no `aperm()`. That is also faster than zaro's own eager `zaro_read()`, which transposes every chunk.
+
+**tidync** has always separated the plan (`hyper_filter()`) from the read (`hyper_array()`). An experimental branch adds `hyper_array(lazy = TRUE)`, which returns altarrs using the NetCDF chunk sizes, and lets a chunk span several source files. tidync users get lazy arrays without learning a new object.
+
+**ndr** is my named-dimension array package, an xarray-shaped layer with coordinates on axes. It had grown its own `LazyDataArray` class and a `collect()` step. With an altarr in `Variable@data`, that class goes away: `ds$var` costs nothing, `isel()` and `sel()` compose into a new lazy view, and reductions stream over chunk-aligned blocks. altarr's own stated limit is coordinates (dimnames must be character); ndr is a coordinate layer. They fill each other's gaps.
+
+**GDAL7** is the generated GDAL bindings package, and it is the broadest backend of all. `read_mdarray()` already returned dims reversed with nothing moved, so all it needed was the MDArray block size and `advise_read()`. Now `as_altarr()` takes an MDArray, a band (or an overview of one, via `get_overview()`), or a path and array name, and each fetch does one bounding read for the whole batch. So every GDAL multidimensional source (NetCDF, HDF5, GRIB, Zarr, Kerchunk Parquet, VRT, and soon Icechunk) is a plain R array. **adgl**, the plan-verbs layer over GDAL7, keeps its own overview-aware proxy for plotting, and gets its missing multidimensional story from ndr objects backed by GDAL7 altarrs.
+
+None of these needed a change to altarr. The ndr work produced two nice-to-haves (an exported chunk-shape accessor, and a way to compose a view from an existing array's recipe), and that is all.
+
+## The demo that made it real
+
+I have a virtual Zarr of BRAN2023, the Bluelink ocean reanalysis: daily ocean temperature as one int16 array of 5479 x 51 x 1500 x 3600 (time, depth, lat, lon), 2010 to 2024. It is not stored as Zarr at all. It is a Kerchunk Parquet reference store [on GitHub](https://github.com/mdsumner/virtualized/tree/main/remote) pointing at the monthly NetCDF files on NCI's THREDDS server.
+
+Extracting values along an animal track or a voyage is the classic job here: one value per (lon, lat, depth, time) position. With zaro opening the references and altarr presenting the array, the whole extraction is one line of base R:
+
+```r
+temp <- zaro_array(store, "temp")      # lazy, nothing read
+dim(temp)                              # 3600 1500 51 5479
+track$temp <- temp[cbind(i, j, k, l)]  # one planned batch
+```
+
+That one subscript becomes one call to `fetch`, which resolves the chunk references and issues the byte-range requests through a single curl pool capped at 8 connections, which is what the THREDDS server can bear. Here is a made-up 30-day track off eastern Tasmania, one point per day in March 2023, diving from 5 m to 200 m, run against the real server:
+
+```
+                time   lon    lat depth  temp    i   j  k    l
+ 2023-03-01 12:00:00 147.8 -43.50     5 16.86 1478 315  1 4808
+ 2023-03-02 12:00:00 148.0 -43.34     6 17.09 1480 317  2 4809
+ 2023-03-03 12:00:00 148.1 -43.19     7 17.78 1482 319  2 4810
+ ...
+ 2023-03-28 12:00:00 152.2 -39.31   198 12.86 1522 357 24 4835
+ 2023-03-29 12:00:00 152.3 -39.16   199 14.42 1524 359 24 4836
+ 2023-03-30 12:00:00 152.5 -39.00   200 13.76 1525 360 24 4837
+
+mode=real max_con=8
+metadata + coords + shard: 0.44 s
+chunks planned: 30, altarr fetch calls: 1
+byte-range requests to data server: 30 in 1 batch(es), 1954.6 KB, 0.52 s
+track extract wall time: 1.95 s
+```
+
+Thirty chunks, one fetch call, thirty range requests to THREDDS in one capped batch: about 2 MB and half a second for the data, under 2 seconds end to end from a cold start, out of an array of more than 1.5 trillion values. The metadata, coordinates and the one manifest shard this track needs come from GitHub; only the chunk bytes come from NCI.
+
+The thing to notice is where the politeness lives. The connection cap, the reference resolution and the HTTP are all inside the fetch. Base R's indexing never knows. I used [ff](https://cran.r-project.org/package=ff) to do this exact job, ocean model against elephant seal tracks, in my [thesis](https://figshare.utas.edu.au/ndownloader/files/40906604) fifteen-odd years ago, with local files and a lot of code. It is the same question, now asked of a remote archive with one subscript.
+
+## Lazy before altarr: gdalraster and terra
+
+None of this started with altarr. R has long had lazy access in practice, through database connections and the NetCDF APIs, but it was dbplyr and the tidyverse, and ALTREP after that, that gave laziness a name in R and got it widely developed. On the raster side, the foundation everything above stands on is GDAL access that holds a handle and reads only what is asked for.
+
+**gdalraster** (Chris Toney and contributors) is, today, the best-practice way to use GDAL from R, and the one I recommend. A `GDALRaster` object is an open dataset handle and nothing more: opening reads metadata, and `read()` takes a window and an output size, so GDAL picks the overview and reads only the blocks it needs. Its stated design leans "toward minimalism and the use of simple, lightweight objects for holding raw data". That is the same instinct as altarr: hold the handle, keep the plan cheap, and let the data be a plain vector when it arrives. gdalraster also already exposes GDAL's multidimensional API (`mdim_info()`, `mdim_translate()`), the VSI virtual filesystems and vector layers.
+
+**terra** (Robert Hijmans) works the same way for users: a `SpatRaster` points to file sources, and most operations run block by block in C++, writing to disk when a result will not fit in memory. Its laziness lives inside a C++ class with its own algebra, so the values surface as an R vector only when asked for.
+
+altarr does not replace either. It adds the piece neither aims to be: an array that *is* an R vector, so that base indexing and any function written for arrays read it lazily. The natural constructor is the same one GDAL7's `as_altarr()` uses for a band (chunk equals the band block size, fetch reads the bounding window and slices per block), and gdalraster is where that constructor would reach real users now. GDAL7 is the experimental, generated binding where I try out the whole API surface, including the multidimensional block size and `AdviseRead` calls the fetch wants; I have not settled how the two should share that work, and I would rather it be a conversation than a fork.
+
+## The same shape, four more times
+
+Looking back over the last year, altarr is the R-side instance of a pattern I keep landing on: separate the *plan* from the *read*, make the plan a small, inspectable table, and let the engine be swappable.
+
+- **[rwarp](https://github.com/hypertidy/rwarp)** is a Rust implementation of GDAL's warp pipeline, split into plan, read and warp stages. `collect_chunk_list` answers "which source blocks does each target chunk need" before any pixel is touched, and the read is the caller's job: a COG, a Zarr store, a Parquet byte-reference store. It builds for `wasm32` with a pure-Rust PROJ backend.
+- **[ortho-cog-viewer](https://github.com/mdsumner/ortho-cog-viewer)** ([live](https://mdsumner.github.io/ortho-cog-viewer/)) is a CRS-agnostic COG viewer: orthographic globes, polar stereographic, Goode homolosine, all reading COGs and tile servers straight from the browser. Its architecture puts a `RasterSource` with "fetch planning" on one side and a `LayerEngine` on the other, and the second engine is rwarp compiled to wasm: mesh reprojection while the view moves, a real warp once it settles.
+- **[rangefinder](https://hypertidy.github.io/rangefinder/)** is a static, server-free Sentinel-2 explorer that reads COGs by HTTP range request and composes imagery in the browser. Its design is four layers (space, time, pixels, render), where the first three are interfaces and only the fourth is the product. Its notes already list Zarr as "a different layer 3".
+- **[aatgrid](https://github.com/mdsumner/aatgrid)** is the space layer made explicit: a hierarchical tile grid for the Australian Antarctic Territory, aligned to Sentinel-2, with tile ids that resolve to UTM extents by arithmetic. It is an R package and a [static explorer](https://mdsumner.github.io/aatgrid/explorer/) that share the same grid logic, and rangefinder's design names it as a consumer of the same pixel library.
+
+The R-to-browser path is not only imagery. The [allboa](https://github.com/allboa) projects (aobview, aobcore, scenespec) are an early modern mapview where R sends a renderer-neutral scene spec and Arrow buffers, and the browser fetches remote COGs itself. R describes; the engine reads.
+
+An altarr fetch, an rwarp chunk list, an ortho-cog-viewer fetch plan and a rangefinder pixel source are the same idea at different layers: chunk coordinates in, values out, and a plan you can look at first. That is what makes the R packages and the browser tools one family rather than a pile of projects. A plan computed in R can be handed to the browser, or to Rust, and the bytes fetched wherever is cheapest.
+
+## Meanwhile, in Python
+
+The Python geospatial array world has moved fast in the last two years, and the direction is worth naming, because it is the same direction.
+
+- **Rust engines under thin Python.** Development Seed built [obstore](https://developmentseed.org/blog/2025-08-01-obstore/) over Rust's `object_store` crate, reporting 9x the throughput of fsspec for concurrent small requests, and zarr-python now uses it. [async-geotiff](https://developmentseed.org/async-geotiff/latest/blog/2026/02/03/introducing-async-geotiff/), on the Rust async-tiff core, exists because "by leveraging asynchronous I/O, we can speed up concurrent GeoTIFF data fetching", a gap they name in GDAL and rasterio.
+- **Zarr as the meeting point.** zarr-python 3, Development Seed's ["Zarr everywhere"](https://developmentseed.org/blog/2025-10-13-zarr/) work, and [zarrs](https://docs.rs/crate/zarrs/latest), a full Zarr v3 implementation in Rust from the ANU here in Australia, which also ships a codec pipeline for zarr-python.
+- **Virtual and versioned stores.** [VirtualiZarr 2.0](https://virtualizarr.readthedocs.io/en/stable/about/releases.html) (July 2025) added pluggable parsers and a `ManifestStore`, so archival NetCDF and HDF5 become Zarr without copying. [Icechunk](https://icechunk.io/en/latest/blog-posts/) reached 1.0 in July 2025 and 2.0 in April 2026, with variable-length (rectilinear) chunk grids following in May.
+- **Companies carrying the core.** Earthmover, founded by xarray and Zarr leads, raised a [$7.2M seed round](https://www.businesswire.com/news/home/20250919639500/en/) in September 2025 for Icechunk, Arraylake and Flux. Development Seed is a consultancy whose open-source work is funded project by project.
+
+The lesson I take is not "rewrite it in Rust". It is that the winning pieces are *narrow*: obstore has about a dozen methods; a Kerchunk or Icechunk manifest is a table of chunk keys and byte ranges; a VirtualiZarr parser is one protocol. xarray sits on top, and the engines underneath are interchangeable.
+
+R does not need to rebuild those engines. GDAL already reads Zarr v3, Kerchunk Parquet and, from 3.14, [Icechunk](https://hypertidy.org/posts/2026-06-26_icechunk-is-coming/). Rust crates are reachable through extendr. What R needed was the narrow piece on *its* side of the boundary: a way to make an engine's chunks look like an ordinary R array. That is altarr's job, and it is why it is small.
+
+## Other threads in R
+
+altarr is not the only lazy array story in R, and it should not try to be.
+
+- **DelayedArray** and HDF5Array in Bioconductor are the most complete answer to lazy *compute* on arrays in R, and Bioconductor now has [ZarrArray](https://bioconductor.org/packages/ZarrArray/) (Herv&eacute; Pag&egrave;s, April 2026), which brings Zarr in through Rarr as a DelayedArray. An altarr can be a DelayedArray seed, since `extract_array()` is `altarr_extract()`, and that gives altarr delayed operations for free.
+- The [zarr](https://cran.r-project.org/package=zarr) package from R-CF is a native, extensible Zarr v3 driver on CRAN. An altarr view over its arrays is a natural offer.
+- **arrow** and **vroom** proved ALTREP at scale for columns; **stars** proxies and **gdalcubes** have their own laziness inside their own classes, as terra does (above).
+
+The difference is still the class. Every package above is an object with methods, so code must know about it. An altarr has no class, so code written in 1998 reads it lazily. The approaches stack: lazy reads underneath, any of these for lazy compute above.
+
+## Sustaining R, one small hook at a time
+
+On 6 October the R Consortium hosts [Sustaining R: Investing in the People, Infrastructure, and Community Behind R](https://github.com/RConsortium/rconsortium_website/blob/main/webinars/sustaining-r-investing-in-the-people-infrastructure-and-community.qmd), with Simon Urbanek, Kurt Hornik and Heather Turner. The context is real money and real limits: the Sovereign Tech Fund put [$450,000 into the R Foundation](https://r-consortium.org/posts/sovereign-tech-fund-invests-450000-in-r-foundation-to-enhance-r-sustainability-and-security/) in October 2025 to modernize R's core infrastructure, and the Research Software Maintenance Fund [GBP 500,000 grant](https://blog.r-project.org/2025/12/17/rsmf-enabling-the-next-generation-of-contributors-to-r/) (December 2025) aims to grow the next generation of contributors to R itself, with R Core mentoring. Both are time-limited, and the R blog says plainly that "there is a continued need to raise funds for long-term sustainability".
+
+Python's array stack is carried by funded companies and large grant programs. R's is carried by a small core team, CRAN, and a long tail of people like me maintaining packages around a day job. That is not a complaint; it is the constraint, and it suggests a strategy.
+
+The strategy is small contracts. A language with a small core team lasts by keeping its interfaces few, stable and general, so that packages and engines can come and go around them without breaking users. R's indexing is exactly such an interface: `x[i, j, k]` and `x[cbind(i, j, k)]` mean what they meant in S. ALTREP is another. altarr adds one more at the package level, `fetch(chunks)`, and asks R for one more at the base level:
+
+```c
+/* in ArraySubset / MatrixSubset, after subscripts are normalized */
+if (ALTREP(x)) {
+    SEXP ans = ALTVEC_EXTRACT_ARRAY_SUBSET(x, subs, call);
+    if (ans != NULL) { /* attach dim and dimnames as today */ }
+}
+```
+
+That hook adds no data model and no new class. It would turn `x[i, j, k]` into one planned request for every ALTREP array in R, from arrow to gdalraster to whatever comes next, and it falls back to today's behaviour for every class that does not implement it. It is the kind of contribution to R itself that these programs are trying to make possible: small, measured (altarr is the test bed, and the tests check every path against base R with `identical()`), and useful far beyond the package that motivated it.
+
+I think that is a better model for sustaining R than trying to match Python feature for feature. Keep the base small and sound. Push engines out to GDAL, Rust and the browser, where others already maintain them. Spend scarce R effort on the thin layer where R's own semantics meet those engines, because that layer is what only R people can build, and it is what makes forty years of R code work on data that did not exist when it was written.
+
+## What next
+
+<!-- Trim to what you actually want to commit to publicly. -->
+
+1. Build R-devel with the `ArraySubset` hook and show `x[i, j, k]` going from 192 round trips to 1 with no package method, then take it to R-devel and the people who know `subset.c` best.
+2. Land the backends: zaro and tidync on CRAN-ready branches once altarr is on CRAN, ndr on altarr, a block-based altarr over a gdalraster `GDALRaster` (offered to gdalraster rather than forked), alongside GDAL7's `as_altarr()` for the multidimensional side.
+3. A concurrent fetch off the R thread (GDAL `AdviseRead`, or Rust `object_store`) so every backend gets it at once.
+4. The BRAN2023 track extraction as a worked example in zaro, with longer tracks and more variables.
+5. A Zarr pixel layer for rangefinder and ortho-cog-viewer, sharing the chunk plan with rwarp.
+
+If you maintain a lazy array package in R, or know `subset.c` well, I would very much like to hear from you.
+
+## Links
+
+- altarr: <https://github.com/hypertidy/altarr>
+- zaro: <https://github.com/hypertidy/zaro>, ndr: <https://github.com/mdsumner/ndr>, tidync: <https://github.com/ropensci/tidync>
+- GDAL7: <https://github.com/rgdal-dev/GDAL7>, adgl: <https://github.com/rgdal-dev/adgl>
+- rwarp: <https://github.com/hypertidy/rwarp>, rangefinder: <https://hypertidy.github.io/rangefinder/>
+- ortho-cog-viewer: <https://github.com/mdsumner/ortho-cog-viewer>, aatgrid: <https://github.com/mdsumner/aatgrid>, allboa: <https://github.com/allboa>
+- gdalraster: <https://firelab.github.io/gdalraster/>, terra: <https://rspatial.github.io/terra/>
+- BRAN2023 virtual store: <https://github.com/mdsumner/virtualized/tree/main/remote>
+- R Consortium, Sustaining R webinar (6 Oct 2026): <https://github.com/RConsortium/rconsortium_website/blob/main/webinars/sustaining-r-investing-in-the-people-infrastructure-and-community.qmd>
+- Sovereign Tech Fund investment in the R Foundation: <https://r-consortium.org/posts/sovereign-tech-fund-invests-450000-in-r-foundation-to-enhance-r-sustainability-and-security/>
+- RSMF, enabling the next generation of contributors to R: <https://blog.r-project.org/2025/12/17/rsmf-enabling-the-next-generation-of-contributors-to-r/>
+- obstore: <https://developmentseed.org/blog/2025-08-01-obstore/>; async-geotiff: <https://developmentseed.org/async-geotiff/latest/blog/2026/02/03/introducing-async-geotiff/>
+- Zarr everywhere (Development Seed): <https://developmentseed.org/blog/2025-10-13-zarr/>
+- VirtualiZarr releases: <https://virtualizarr.readthedocs.io/en/stable/about/releases.html>; Icechunk blog: <https://icechunk.io/en/latest/blog-posts/>
+- zarrs: <https://docs.rs/crate/zarrs/latest>
+- Earthmover seed round: <https://www.businesswire.com/news/home/20250919639500/en/>
+- ZarrArray (Bioconductor): <https://bioconductor.org/packages/ZarrArray/>
