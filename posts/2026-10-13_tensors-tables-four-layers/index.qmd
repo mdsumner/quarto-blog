@@ -1,0 +1,180 @@
+---
+title: "Where the line falls: tensors, tables and four layers"
+description: >
+  Arguments about tensors versus tables assume one line through the ecosystem.
+  Storage, indexing, topology and rendering each draw it in a different place,
+  so the same dataset is a tensor from one layer and a table from another.
+author: "Michael Sumner"
+date: "2026-10-13"
+categories: [zarr, arrays, tables, stac, news]
+execute:
+  eval: false
+---
+
+Arguments about geospatial and scientific data often come down to tensors versus tables: Zarr against Parquet, datacubes against feature collections, raster against vector. This essay argues that there is no single line between them. Storage, indexing, topology and rendering each draw the line in a different place, so the same dataset is a tensor from one layer and a table from another. Seeing the four lines separately makes several recurring design problems easier to name, and suggests that the two sides need each other more than they compete.
+
+## One model underneath
+
+Almost every dataset in this field can be described the same way: a set of values over an index space, plus a map from each index to a place. A sea surface temperature grid has an index of (row, column, time) and a map that turns a row and column into a longitude and latitude. A table of ship positions has an index of row numbers and a map that is simply two of its columns.
+
+The map comes in two kinds.
+
+- **Implicit.** The map is a recipe: an origin and a cell size, an affine geotransform, a start and a step, a rule that turns a HEALPix cell id into a cell on the sphere. Nothing per cell is stored; any cell's place can be computed.
+- **Explicit.** The map is stored: arrays of longitude and latitude, a column of geometries, a table of vertices and the triangles that connect them.
+
+Tensors and tables are the two ends of this scale. A **tensor** is a table whose key is implicit. Its index is complete and cartesian, so every combination of row, column and time exists and its coordinates follow from the recipe. A **table** is a one-dimensional tensor whose key is explicit. Its rows are indexed by number, the meaningful coordinates are ordinary columns, and nothing is implied about rows that are absent.
+
+The interesting data sits between the ends. A curvilinear ocean model grid has a complete index but no recipe for its coordinates, so they are stored. A table of satellite granules can have a column whose every value is itself an array: a "dimensional column". A ragged collection of float profiles is a table of profiles, each holding a short tensor.
+
+None of this is new. Visualization software settled the same taxonomy in the 1990s. VTK's dataset types run from fully implicit to fully explicit: `ImageData` (an origin and spacing), `RectilinearGrid` (one coordinate vector per axis), `StructuredGrid` (explicit coordinates on a complete index), `UnstructuredGrid` (explicit points and cells) and `PolyData` (points, lines and polygons). Geographic software split along the same scale into raster and vector, and for a long time treated the two halves as separate worlds with separate tools.
+
+## Four layers, four lines
+
+A data system has at least four layers, and each has its own version of the tensor and table split. Communities tend to see the whole ecosystem divided along the line their own layer draws.
+
+| Layer | Tensor side | Table side | What the line really is |
+| --- | --- | --- | --- |
+| Storage | Zarr, Icechunk, netCDF and HDF5, COG | Parquet, Iceberg, Arrow, GeoPackage | Chunked by index space, or by rows |
+| Index | Implicit maps: affine transforms, ranges, HEALPix ids | Explicit maps: coordinate columns, geometry columns, spatial trees over stored shapes | Whether a place is computed or looked up |
+| Topology | Structured: neighbours implied by the index | Unstructured: neighbours recorded as vertices, edges and faces | Whether connectivity is implied or stored |
+| Rendering | Warp: an image is moved to the view as a whole | Cell: each cell or feature becomes geometry and is drawn | When the map is applied: late, on the GPU, or early, as geometry |
+
+**Storage** is where the argument is usually held, and it is the least fundamental of the four. Zarr chunks values by blocks of index space; Parquet chunks them by groups of rows. Either can carry the other three layers. UGRID mesh connectivity is routinely stored as integer arrays in netCDF or Zarr, and the index of a collection of raster files is routinely stored as a table.
+
+**Index** is the layer that decides how a coordinate becomes a position, and back. It is where the implicit and explicit maps live. Xarray's recent work on pluggable indexes makes this layer explicit in code: since version 2025.6 an index is a replaceable component, and a `CoordinateTransformIndex` computes coordinates from a function rather than storing them.
+
+**Topology** is about neighbours. In a regular grid the neighbours of a cell follow from its index; in a triangular mesh they have to be recorded. A HEALPix grid is structured in this sense even though it is not rectangular.
+
+**Rendering** is where the two kinds of map meet the screen. A warp-based viewer keeps an image whole and moves it into the view's projection, applying the map as late as possible. A cell-based viewer derives a geometry for each cell or feature and draws those, applying the map early. Both draw the same data, and in practice both are converging on the same datasets.
+
+## Objects that change sides
+
+Because each layer draws its own line, the same object is a tensor from one layer and a table from another. This is why debates about the split rarely settle: the participants are standing in different layers.
+
+| Object | As a tensor | As a table |
+| --- | --- | --- |
+| Triangular mesh (UGRID) | Connectivity arrays and values over a face dimension, in netCDF or Zarr | Tables of vertices, edges and triangles |
+| Ocean float profiles | Contiguous ragged arrays (CF conventions) | One row per observation, or per profile with an array column |
+| HEALPix field | A one-dimensional array over cell ids, with an implicit map | A sorted table of cell id and value, possibly sparse |
+| Mosaic of COG files | Tiles of one large implicit grid | A tile index with one row per file and its footprint |
+| Chunk byte references | The chunk grid of a Zarr array | Rows of path, offset and length (kerchunk's Parquet references) |
+| Vector data cube | An n-D array with one dimension indexed by geometries | A feature table with a time dimension per feature |
+| Curvilinear model grid | Values on a complete (i, j) index | One stored longitude and latitude per cell, with no recipe |
+
+Two of these deserve a closer look.
+
+A **mesh** is arrays to the model that writes it and tables to the software that edits it. Neither view is wrong. They are the same relations with the joins either implied by array position or written out as keys.
+
+**Byte references** are a table whose only purpose is to describe a tensor. Each row says where one chunk of an array lives in some file. It is the clearest case of the two sides needing each other, and it comes back in the cases below.
+
+## Case: catalogs are tables in disguise
+
+STAC, the SpatioTemporal Asset Catalog, is written as a tree of JSON documents. Normalized, it is three or four tables, joined by keys that the JSON leaves implicit in its nesting:
+
+| Table | Key | What a row holds |
+| --- | --- | --- |
+| Collections | collection id | Extent, license, summaries |
+| Items | item id, collection id | Datetime, footprint geometry, properties |
+| Assets | asset key, item id | Link, media type, roles; with the projection extension, `proj:shape` and `proj:transform` |
+| Bands | band index, asset | Scale, offset, nodata, statistics (`raster:bands`, `eo:bands`) |
+
+The tree form makes this structure hard to see in four ways.
+
+- **Joins become position.** An asset belongs to whatever item encloses it. There is no column to join on until the tree is flattened.
+- **One viewpoint is built in.** The tree is item-centric. "Every red-band asset sharing this transform" is a natural query on a long assets table and an awkward walk through documents.
+- **The schema is per document.** Extensions may add fields anywhere, so there is no table-wide schema to normalize against.
+- **Identity becomes addresses.** Links are URLs rather than keys.
+
+stac-geoparquet goes a long way: one row per item, in a columnar format that query engines read directly. Assets are typically kept as a nested column keyed by asset name, so the tree survives one level down and the schema varies from collection to collection.
+
+Once normalized, an asset row with `proj:shape` and `proj:transform` is an array descriptor: a shape plus an implicit map from index to place. Add a table of byte references keyed by asset and chunk, and the catalog and a virtual array store turn out to share one relational schema, viewed from opposite ends.
+
+| Catalog relation | Array-store relation |
+| --- | --- |
+| Collection | Repository, or a top-level group |
+| Item | A group per scene |
+| Asset, band | An array |
+| Byte references | A chunk manifest |
+
+This matters for a live design question: how to store Level 2 data, the per-scene products that do not share a grid. A talk at CNG Forum 2026 (its slides and their source are linked under Sources) proposes keeping many scenes, of any shape and projection, as separate groups in one Icechunk repository, alongside a STAC-like metadata table, so that catalog and data change in one atomic commit. The motivation is real and well argued: when a catalog and its files live in separate systems, a failed job can leave files no search will find, and a reprocessing run can leave catalog entries pointing at deleted files. The talk shows two prototypes for the table, one storing columns as one-dimensional Zarr arrays read through DataFusion, and one placing an Apache Iceberg table's pointer in the repository's commit metadata. It also reports that virtualizing the full Harmonized Landsat Sentinel-2 archive this way implies about 7.7 billion repository nodes, with commit cost currently growing with node count, and that the fix is in progress.
+
+Seen through the layers, this design records the scene-to-array relation twice: once as the repository's hierarchy, and once in the catalog table. The normalized view above suggests an alternative worth exploring alongside it, in which the catalog, the array descriptors and the byte references are all ordinary tables, and arrays are what their rows point to. Which side should hold the transaction is an open question, and both approaches are likely to teach something.
+
+## Case: self-indexing formats and references
+
+A recent DuckDB post describes a database file with no data in it: only view definitions that query Parquet files elsewhere, on object storage or over HTTPS. The file stays a few hundred kilobytes however large the data grows, and acts as a shareable catalog. Each view's reference is the text of a query, such as `read_parquet('s3://...')` over a file pattern. There are no byte ranges in it.
+
+That works because Parquet indexes itself. A Parquet file's footer records where every row group and column chunk sits, with minimum and maximum statistics. A reader that knows only the file can still fetch just the bytes a query needs. References at the granularity of whole files are enough.
+
+Many array formats are not like this. In HDF5, and so in netCDF-4, locating a chunk means walking internal B-trees, which costs many small reads before any data arrives. That is why byte-reference harvesting exists: kerchunk, VirtualiZarr, Icechunk's virtual chunks, and tools that ask GDAL's multidimensional API for chunk locations all build, ahead of time, the table of path, offset and length that the format does not offer cheaply. Read that way, a harvested reference table is the footer those formats are missing.
+
+The idea is older than any of these. A GDAL VRT is a small file of references and transforms over data that lives elsewhere, and has been since the early 2000s. The line runs from VRT through kerchunk to DuckDB views: a catalog that describes data instead of holding it.
+
+All of these share one requirement that is easy to forget: **the referenced data must not change.** A view over a file pattern silently returns different results when files are added or rewritten. A byte reference into a file that has been replaced points at the wrong bytes. References are safe when what they point to is pinned: a versioned object, a snapshot, a content-addressed chunk, or a fixed list of immutable files.
+
+## Least power, with an upgrade path
+
+The case for transactional array stores rests on a specific mechanism. Object stores now support conditional writes: write this object only if it does not already exist, or only if it has not changed since it was read. A store can commit by swapping one small pointer to its latest snapshot with such a write. When two writers race, one wins and the other retries, with no database or catalog service anywhere. That mechanism is a large part of why such stores keep their own metadata formats rather than wrapping a table format. Their chunk manifests must be split and rewritten incrementally at the scale of billions of references, and finding one chunk's bytes is a point lookup, where table formats are built for scans.
+
+That is a strong argument, and it settles where the transaction lives when one is needed. The question it leaves open is when one is needed.
+
+| Regime | What it needs | Natural form |
+| --- | --- | --- |
+| One writer, pinned sources | Immutability, and references any engine can read | Plain tables of references over immutable files, with one small pointer moved by the one writer |
+| Several writers, or writes racing reprocessing | Serverless atomic commits over split metadata | A transactional array store |
+
+The deciding question is the number of writers, not the rate of change. A store updated by one pipeline has no race: each update writes new immutable files and a new reference table, then moves one small pointer, and nothing can collide. Much scientific data is published exactly this way, by one pipeline on a schedule.
+
+There is an older version of the same lesson. netCDF can hold any n-dimensional array with arbitrary coordinates, and that freedom is what lets a perfectly regular grid be stored as explicit coordinate arrays, or curvilinear coordinates be stored with no way to tell what they mean. GeoTIFF's constraint, an affine transform and a CRS, forces the map from index to place to be stated once, implicitly, so every reader agrees. netCDF is the right tool when the data needs its generality; GeoTIFF is the better one when it does not. The W3C calls this the rule of least power: choose the least powerful form that does the job, because less powerful forms can be read and reused in more ways.
+
+Stores follow the same rule. A transactional store is the right tool when there are many writers. When there is one writer and the sources are pinned, plain reference tables are generic, work across platforms, and stay readable by tools that do not exist yet. The design goal is then a cheap path from the simple form to the powerful one: reference tables that can be ingested into a transactional store when a store comes alive, so nobody pays for transactions before they need them, and nobody is stuck when they do.
+
+## Case: what to do with a swath
+
+A satellite swath is the hardest case for the tensor side. Each granule has its own footprint, often in the sensor's own geometry, with a stored longitude and latitude for every pixel. Granules overlap, and no two share a grid. There are three honest ways to hold a collection of them.
+
+1. **One group per granule, plus a catalog.** Every granule keeps its own arrays and its own explicit coordinates, and a table indexes them. Nothing is lost or resampled. The granules never become one array, and any cross-granule view has to be assembled when it is requested.
+2. **Resample to a common grid.** Every granule is binned or interpolated onto one grid, producing a cube. This is how Level 3 products are made. It answers many questions well, but it is a different product: the original observations, and their individual footprints, are gone.
+3. **A global implicit index.** Assign every observation the id of the discrete global grid cell it falls in (HEALPix, S2, H3 or similar), and store rows of (cell, time, value), with whatever per-observation detail is needed. The map from index to place is implicit and shared by every granule. Observations are not resampled. Overlaps simply become several rows for one cell. The result is a table and a sparse tensor over a global cell dimension at the same time.
+
+The third option sits squarely between the two sides, which is why neither side tends to propose it. It also fits the idea of dimensional columns: one row per granule or scan line, carrying its footprint, time and geolocation recipe as ordinary columns, with arrays as the payload of each row.
+
+## Who works on which layer
+
+Most projects cover one layer well, some two. A partial and certainly incomplete map:
+
+| Layer | Python | Rust and TypeScript | R and others |
+| --- | --- | --- | --- |
+| Storage | zarr-python, Icechunk, VirtualiZarr, kerchunk | Icechunk core, icechunk-js, async-tiff, obstore | GDAL multidimensional API, gdalraster, ncdf4, Rarr; hypertidy's blocklist and altarr |
+| Index | xarray pluggable indexes: rasterix, xproj, xvec, xdggs | geoarrow-rs | stars; hypertidy's vaster and grout |
+| Topology | UXarray, xugrid, meshio | spade, CDT (C++) | MDAL, CGAL; sf and wk for features; hypertidy's meshcore, silicate and trianglewins |
+| Rendering | GeoVista (on PyVista and VTK), lonboard | deck.gl-raster, gridlook | mapview, tmap |
+
+The xarray index work is the closest anyone has come to writing the index layer down as code. Meshes are the next frontier there: UXarray and xugrid treat a mesh as a grid object beside xarray rather than as an index within it, and whether a mesh can be an index is open. On the rendering side, GeoVista carries VTK's dataset taxonomy into earth science directly, and is perhaps the clearest statement of the model in this essay from the visualization end.
+
+## Open questions
+
+These are questions, not conclusions. Each could be answered by building something small.
+
+1. **Should references be open tables?** If byte references were ordinary Parquet or Iceberg tables, every query engine could read them, and a reference table could double as the catalog. What would be lost relative to references held inside an array store?
+2. **Where should the transaction live, and when is one needed?** When several writers commit, a transactional array store built on conditional writes is the natural home. When one pipeline writes pinned data, plain tables may be enough. Where exactly is the boundary between the two regimes, and how cheap can the move across it be made?
+3. **Can a mesh be an index?** If a mesh could be an index in the way an affine transform now is in xarray, meshes and rasters would share selection, alignment and concatenation.
+4. **What is the smallest shared index contract across languages?** Python now has one in xarray. R has no pluggable equivalent: the map from index to place is tied to the classes of individual packages. A small contract for computed coordinates would let packages interoperate without sharing classes.
+5. **How should pinning be expressed?** Every reference system depends on immutable sources, but there is no common way to state that a reference is pinned, or to check it.
+6. **Is the swath problem a table problem?** If collections of granules are tables first, with arrays as the payload of rows, how much of the Level 2 difficulty goes away, and what new difficulty appears?
+
+## Sources
+
+- [Xarray blog: flexible indexing (September 2025)](https://xarray.dev/pt/blog/flexible-indexing)
+- [Announcing rasterix.RasterIndex](https://discourse.pangeo.io/t/announcing-rasterix-rasterindex/5228)
+- [Gallery of xarray custom indexes](https://xarray-indexes.readthedocs.io/)
+- [UXarray: supported models and grid formats](https://uxarray.readthedocs.io/en/stable/user-guide/grid-formats.html)
+- [xugrid](https://pypi.org/project/xugrid/)
+- [GeoVista](https://github.com/bjlittle/geovista)
+- [xvec: introduction to vector data cubes](https://xvec.readthedocs.io/en/latest/intro.html)
+- [Level 2 Data Collections in Zarr, CNG Forum 2026 (slides)](https://slides.earthmover.io/main/cng-forum-2026-level2-datacollections/) and [slide source](https://github.com/earth-mover/datacollections_cng_2026)
+- [zarr-datafusion-search](https://github.com/developmentseed/zarr-datafusion-search)
+- [Icechest](https://github.com/developmentseed/icechest)
+- [Icechunk issue 2449: commit memory and total nodes](https://github.com/earth-mover/icechunk/issues/2449)
+- [DuckDB: a database with no data in it (October 2026)](https://duckdb.org/2026/10/07/view-only-mode)
+- [W3C TAG: The Rule of Least Power](https://www.w3.org/2001/tag/doc/leastPower.html)
