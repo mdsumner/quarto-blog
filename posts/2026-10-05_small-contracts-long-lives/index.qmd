@@ -7,12 +7,10 @@ description: >
 author: "Michael Sumner"
 date: "2026-10-05"
 categories: [altarr, zarr, gdal, r-packages, news]
-draft: true
 execute:
   eval: false
 ---
 
-<!-- DRAFT for review. Status notes for Michael are in HTML comments like this one; delete before publishing. -->
 
 A few days ago I wrote about [what R does today with an ALTREP that has a dim and no class](https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/). That post was about one mechanism: a lazy array, with no class and no methods, that base R indexing reads in planned batches. This post is about what happened next, which is that the mechanism turned out to be the missing piece in a handful of packages I had been building for years without quite knowing what they were waiting for.
 
@@ -155,9 +153,6 @@ That hook adds no data model and no new class. It would turn `x[i, j, k]` into o
 I think that is a better model for sustaining R than trying to match Python feature for feature. Keep the base small and sound. Push engines out to GDAL, Rust and the browser, where others already maintain them. Spend scarce R effort on the thin layer where R's own semantics meet those engines, because that layer is what only R people can build, and it is what makes forty years of R code work on data that did not exist when it was written.
 
 ## What next
-
-<!-- Trim to what you actually want to commit to publicly. -->
-
 1. Build R-devel with the `ArraySubset` hook and show `x[i, j, k]` going from 192 round trips to 1 with no package method, then take it to R-devel and the people who know `subset.c` best.
 2. Land the backends: zaro and tidync on CRAN-ready branches once altarr is on CRAN, ndr on altarr, a block-based altarr over a gdalraster `GDALRaster` (offered to gdalraster rather than forked), alongside GDAL7's `as_altarr()` for the multidimensional side.
 3. A concurrent fetch off the R thread (GDAL `AdviseRead`, or Rust `object_store`) so every backend gets it at once.

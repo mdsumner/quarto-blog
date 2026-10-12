@@ -1,0 +1,15 @@
+---
+title: "Where the line falls: tensors, tables and four layers"
+author: "Michael Sumner"
+date: "2026-10-12"
+categories:
+  - code
+  - news
+  - raster
+  - spatial
+  - zarr
+  - arrow
+  - tables
+---
+
+
