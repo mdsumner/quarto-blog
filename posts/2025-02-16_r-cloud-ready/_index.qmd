@@ -6,7 +6,6 @@ date: 2025-02-16
 editor: visual
 editor_options: 
   chunk_output_type: console
-draft: true
 ---
 
 ## raadtools and bowerbird
