@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+<meta name="dcterms.date" content="2026-09-30">
+<meta name="description" content="A design sketch for a modern mapview: GeoArrow as the data plane, a renderer-agnostic scene spec, and a path that starts on deck.gl.">
+
+<title>A mapview for modern R: Arrow in, any CRS out – hypertidy</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-0dc93e23f26d1aa7cf91094d91e141a9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-b2d350c9eaa6090cde1c6cf70dedfb0b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-0dc93e23f26d1aa7cf91094d91e141a9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="A mapview for modern R: Arrow in, any CRS out – hypertidy">
+<meta property="og:description" content="A design sketch for a modern mapview: GeoArrow as the data plane, a renderer-agnostic scene spec, and a path that starts on deck.gl.">
+<meta property="og:site_name" content="hypertidy">
+<meta name="twitter:title" content="A mapview for modern R: Arrow in, any CRS out – hypertidy">
+<meta name="twitter:description" content="A design sketch for a modern mapview: GeoArrow as the data plane, a renderer-agnostic scene spec, and a path that starts on deck.gl.">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-fixed fullcontent quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">hypertidy</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../packages.html"> 
+<span class="menu-text">Packages</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../projects.html"> 
+<span class="menu-text">Projects</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">A mapview for modern R: Arrow in, any CRS out</h1>
+                  <div>
+        <div class="description">
+          <p>A design sketch for a modern mapview: GeoArrow as the data plane, a renderer-agnostic scene spec, and a path that starts on deck.gl.</p>
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">mapview</div>
+                <div class="quarto-category">arrow</div>
+                <div class="quarto-category">deck.gl</div>
+                <div class="quarto-category">spatial</div>
+                <div class="quarto-category">R</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">September 30, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+
+<p>R can have a fast, CRS-honest interactive map viewer, and GeoArrow is what makes it cheap to build now. The prompt is <a href="https://github.com/r-spatial/deckglgeoarrow">deckglgeoarrow</a>, which landed on CRAN this year: it ships sf and wk data to the browser as GeoArrow and lets deck.gl draw it on the GPU, on a maplibre map built with mapgl.</p>
+<p>That package is a good answer to “show me a lot of features fast on a web map”. This post asks a wider question. What would a mapview for modern R look like if it were not tied to one JavaScript library, and not tied to Web Mercator? And how should it be split between a lean core and the convenience layer that makes mapview so loved?</p>
+<p>The short version:</p>
+<ul>
+<li>Arrow does not give R and the browser shared memory, but it removes the parse. That is the real win.</li>
+<li>Mercator is a basemap problem, not a GPU problem.</li>
+<li>The core should be a protocol (data plane, scene spec, transport), not a widget.</li>
+<li>Start on deck.gl, probe how far arbitrary CRS goes, and keep a clean seam so a capable team could own the renderer later.</li>
+<li>Start on deck.gl, probe how far arbitrary CRS goes, and keep a clean seam so a capable team could own the renderer later.</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="true" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>This is now a real, early-stage project
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse show">
+<div class="callout-body-container callout-body">
+<p>The design below became <strong>allonboard</strong>: <a href="https://allboa.github.io/aobview/">aobview</a> is the mapview-style <code>view(x)</code> front door, <a href="https://github.com/allboa/aobcore">aobcore</a> is the core package and renderer, and <a href="https://github.com/allboa/scenespec">scenespec</a> is the renderer-neutral scene spec described below. Decisions live in <a href="https://github.com/allboa/design">design</a> and experiments in <a href="https://github.com/allboa/spikes">spikes</a>, all under the <a href="https://github.com/allboa">allboa</a> GitHub organisation.</p>
+<p>It is early and in the open: names are placeholders, nothing is on CRAN, and the scene spec is pre-1.0. <code>view()</code> already works for sf/terra vectors and rasters, draws in any projected CRS (lon/lat data south of 40°S goes to EPSG:3031, north of 60°N to EPSG:3413), fetches remote COGs in tiles, and supports colour-by-attribute, legends and popups. The open problems are the ones this post anticipated: seams and the antimeridian in some projections, tile budgets for large rasters, and whether the renderer ends up sharing lonboard’s JavaScript stack. Try it and <a href="https://github.com/allboa/aobview/issues">open an issue</a> — feedback is the most useful thing right now.</p>
+</div>
+</div>
+</div>
+<section id="what-arrow-actually-changes" class="level2">
+<h2 class="anchored" data-anchor-id="what-arrow-actually-changes">What Arrow actually changes</h2>
+<p>Arrow does not share memory between R and the page; it ships bytes the GPU can use without parsing them. R and the browser are separate processes, so data always crosses a boundary. What matters is how much work happens on the far side.</p>
+<p>The classic mapview path was htmlwidgets. sf became GeoJSON text, the text was embedded in the page, and the browser parsed it into JS objects and then into Leaflet layers. Most of the cost was in that parse and in building millions of small objects. leafgl (WebGL drawing) and flatgeobuf attachments (binary, streamable) already moved away from it. GeoArrow is where that path was heading.</p>
+<p>With GeoArrow, an Arrow IPC buffer becomes JS typed arrays with no parse. deck.gl-geoarrow binds those coordinate buffers straight into GPU attributes. The format is still serialized, but the cost is close to a memory copy, not a parse-and-build.</p>
+<p>Two consequences follow:</p>
+<ul>
+<li><strong>True shared memory exists in webR.</strong> When R runs as wasm in the same page, Arrow buffers can be handed across without a copy. Designing around Arrow now keeps that door open.</li>
+<li><strong>The browser can fetch the data itself.</strong> deckglgeoarrow can already render remote GeoParquet and GeoArrow without reading it into R; only the styling is prepared in R (<a href="https://stat.ethz.ch/CRAN/web/packages/deckglgeoarrow/refman/deckglgeoarrow.html">CRAN reference</a>). R sends a recipe, the browser pulls the bytes.</li>
+</ul>
+<p>One constraint shapes the core: only native GeoArrow geometry encoding renders, not WKB (<a href="https://stat.ethz.ch/CRAN/web/packages/deckglgeoarrow/readme/README.html">README</a>). The data plane must emit native coordinate buffers. A wk handler writing geoarrow does that, and so does GDAL’s OGR Arrow stream when asked for GeoArrow encoding, which keeps a gdalraster-to-browser path free of conversions.</p>
+</section>
+<section id="mercator-is-a-basemap-problem" class="level2">
+<h2 class="anchored" data-anchor-id="mercator-is-a-basemap-problem">Mercator is a basemap problem</h2>
+<p>The GPU does not care about Web Mercator; the tiled basemap does. deck.gl has orthographic and cartesian views, so projected metres can go straight in and render in any CRS. deckglgeoarrow is Mercator-bound only because it sits on mapgl and maplibre.</p>
+<p>There is one numeric trap. GPUs work in float32, and projected coordinates in the millions of metres lose precision. The fix is to subtract a local origin before the data leaves R, and draw relative to it. deck.gl has a coordinate-origin mechanism for exactly this.</p>
+<p>The hard parts of “any CRS in the browser” are elsewhere:</p>
+<ol type="1">
+<li><strong>Basemaps.</strong> XYZ tiles are Mercator. Showing them in a polar or equal-area view means warping each tile on a reprojected mesh.</li>
+<li><strong>Rasters into a non-Mercator view.</strong> <a href="https://developmentseed.org/deck.gl-raster/docs/intro/">deck.gl-raster</a> already reprojects COG and Zarr on the GPU with an adaptive mesh, from most source projections into the web map, and has prototype globe support. What remains is drawing into a polar or equal-area view CRS, and the polar and antimeridian cases its docs say are not yet tested.</li>
+</ol>
+<p>So the gap is narrower than it looks. Source reprojection is solved upstream. The view CRS and polar robustness are the open work, and that is where Antarctic use cases can contribute rather than rebuild.</p>
+</section>
+<section id="the-design-a-protocol-not-a-widget" class="level2">
+<h2 class="anchored" data-anchor-id="the-design-a-protocol-not-a-widget">The design: a protocol, not a widget</h2>
+<p>The core package should describe a scene and move data; drawing it is someone else’s job. It has three parts:</p>
+<ol type="1">
+<li><strong>Data plane.</strong> Vectors travel as nanoarrow streams with native GeoArrow geometry. Rasters are not Arrow: they travel as a grid descriptor (extent, dimension, CRS) plus a typed buffer, or simply as a URL the browser reads itself. Styling is data too, so colours computed in R become an RGBA column.</li>
+<li><strong>Scene spec.</strong> A small declarative JSON document: the view CRS, the view type (projected, orthographic, globe), layers that reference data by id, and legends. Being plain data, it is testable and can have more than one renderer.</li>
+<li><strong>Transport.</strong> Pluggable: embedded in a standalone page, served from a local httpuv server for large or streaming data, updated over a websocket (with selections coming back to R as row ids), or handed over in-process under webR.</li>
+</ol>
+<p><em>[Diagram placeholder: architecture - producers, core, transport, renderers]</em></p>
+<p>The scene spec is the seam. Producers only need to emit standard inputs, and renderers only need to read the spec, so either side can change without touching the other.</p>
+</section>
+<section id="two-packages-a-lean-core-and-a-friendly-front-door" class="level2">
+<h2 class="anchored" data-anchor-id="two-packages-a-lean-core-and-a-friendly-front-door">Two packages: a lean core and a friendly front door</h2>
+<p>The core should accept standard inputs rather than import spatial classes; the convenience package is where the opinions live.</p>
+<p><strong>The core</strong> depends on nanoarrow, geoarrow, wk and htmltools, and little else. Its contract is: give me an ArrowArrayStream with native GeoArrow geometry, a grid descriptor with a buffer, or a URL. gdalraster sits in Suggests as the best-supported producer, because GDAL can already hand over Arrow streams and read everything else. Anything that can emit those inputs works, with no class-specific code in the core.</p>
+<p><strong>The convenience package</strong> is the mapview role: <code>view(x)</code> for any spatial object, sensible colours, legends, popups, layer toggles. It carries the methods for sf and terra, and it is allowed to be heavy. Keeping it separate means the core stays small enough for other packages to depend on.</p>
+<p>The convenience layer should shrink over time. sf already reaches geoarrow via wk. Once terra can emit a GeoArrow stream for a SpatVector, and a grid descriptor plus source path for a SpatRaster, the adapters become thin and the package is mostly about the user experience. That is a good outcome, not a failure.</p>
+</section>
+<section id="the-renderer-is-where-the-work-is" class="level2">
+<h2 class="anchored" data-anchor-id="the-renderer-is-where-the-work-is">The renderer is where the work is</h2>
+<p>Rasters are the easy half of a hand-built renderer; vectors are the long tail. A reprojected raster is one textured mesh per tile with a simple shader. Vectors need much more:</p>
+<ul>
+<li><strong>Polygons:</strong> triangulation with holes (earcut).</li>
+<li><strong>Lines:</strong> extrusion to screen-space width, joins, caps, antialiasing.</li>
+<li><strong>Points:</strong> instanced sprites with sizing.</li>
+<li><strong>Picking:</strong> an id framebuffer so a click resolves to a feature.</li>
+<li><strong>Labels:</strong> glyph atlases, placement, collision. This is the biggest time sink, and it is why maplibre is large.</li>
+<li><strong>Styling:</strong> attribute buffers and a data-driven style path.</li>
+</ul>
+<p>The same list faces any standalone COG viewer that wants vector overlays. So the R viewer and the web viewer should share one renderer, not build two.</p>
+<p><strong>Curvature is one problem in two places.</strong> For rasters, mesh density absorbs the reprojection curvature. For vectors, a straight segment in the source CRS is not straight in the view CRS, so edges must be densified before projecting. It is the same sampling decision, applied to edges instead of a grid.</p>
+<p><strong>Most of the work can move out of the browser.</strong> Triangulate, densify and project on the R or Rust side, then ship vertex, index and segment buffers as Arrow columns. The renderer shrinks to three draw calls: indexed triangles, extruded segments, instanced points. The trade-off is that the payload is tied to one view CRS. For globe or spinning views, project the densified vertices on the client instead, in a vertex shader or with PROJ compiled to wasm.</p>
+</section>
+<section id="strategy-deck.gl-first-with-a-seam-for-going-large" class="level2">
+<h2 class="anchored" data-anchor-id="strategy-deck.gl-first-with-a-seam-for-going-large">Strategy: deck.gl first, with a seam for going large</h2>
+<p>Start on deck.gl in an orthographic view and find out how far the CRS game goes. “Hand the renderer to a capable team” is close behind, and the scene spec is what makes both possible without a rewrite.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Option</th>
+<th>What it buys</th>
+<th>Move on when</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>deck.gl first</td>
+<td>Vectors, picking and GeoArrow ingest from deck.gl-geoarrow; COG and Zarr reprojection from deck.gl-raster</td>
+<td>A polar or equal-area view CRS fights deck.gl’s view model</td>
+</tr>
+<tr class="even">
+<td>Hybrid</td>
+<td>Own mesh pipeline for non-Mercator views and basemaps; deck.gl for the rest, camera synced</td>
+<td>Keeping two render loops in step costs more than it saves</td>
+</tr>
+<tr class="odd">
+<td>Go large</td>
+<td>Share lonboard’s JavaScript stack; R owns data, scene spec and transport</td>
+<td>The scene spec is stable and has more than one consumer</td>
+</tr>
+</tbody>
+</table>
+<p>The go-large option is realistic because the team largely exists. Development Seed’s lonboard puts deck.gl and GeoArrow behind a Python notebook widget, and it is the product that deck.gl-geoarrow and deck.gl-raster move with: lonboard upgrades the deck.gl-raster family in lockstep with deck.gl (<a href="https://github.com/developmentseed/lonboard/pull/1272">lonboard #1272</a>). If the scene spec is a neutral contract, an R front end can sit on the same JavaScript stack, and that renderer work becomes R’s renderer too.</p>
+<p>The discipline that keeps the door open is simple: nothing deck.gl-specific in the scene spec. deck.gl is an implementation of the spec, not the spec.</p>
+</section>
+<section id="probe-a-polar-view-on-stock-deck.gl" class="level2">
+<h2 class="anchored" data-anchor-id="probe-a-polar-view-on-stock-deck.gl">Probe: a polar view on stock deck.gl</h2>
+<p>A polar view works on stock deck.gl today, as long as rasters arrive as pre-projected meshes rather than as COGs. The <a href="https://claude.ai/artifact/UxP8NaiUE8Hc4c6R7YXCnj">Polar view probe</a> draws EPSG:3031 metres in an orthographic view from 885 KiB of Arrow, decoded in about 20 ms.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Layer</th>
+<th>Shipped as</th>
+<th>Drawn with</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Land (50m)</td>
+<td>geoarrow.polygon, exterior rings</td>
+<td>SolidPolygonLayer, binary, cartesian</td>
+<td>Works; the pole closure is harmless in a fill</td>
+</tr>
+<tr class="even">
+<td>Coastline (50m)</td>
+<td>geoarrow.linestring</td>
+<td>PathLayer, binary, offsets bound directly</td>
+<td>Works; must come from lines, not polygon rings</td>
+</tr>
+<tr class="odd">
+<td>Graticule</td>
+<td>geoarrow.linestring plus an RGBA column</td>
+<td>PathLayer, colour read from the column</td>
+<td>Works; styling as data</td>
+</tr>
+<tr class="even">
+<td>Raster</td>
+<td>grid descriptor, values, projected mesh with uv</td>
+<td>SimpleMeshLayer with a canvas texture</td>
+<td>Works; pole and antimeridian need nothing special</td>
+</tr>
+</tbody>
+</table>
+<p>Three things came out of it:</p>
+<ul>
+<li><strong>Source-space meshes make the pole easy.</strong> Each vertex of a lon/lat grid is projected once upstream. The pole row collapses to a point and the dateline is just a shared column edge.</li>
+<li><strong>Topology depends on purpose.</strong> Natural Earth land closes through the pole, which is fine for a fill but draws a false seam if its rings are stroked. The outline has to come from a line dataset.</li>
+<li><strong>EPSG:3031 is kind to float32.</strong> Its origin is the pole, so offsets stay under about 5000 km. Other projected CRSs still need a <code>coordinateOrigin</code> near the data.</li>
+</ul>
+<section id="where-lonboard-and-deck.gl-raster-sit" class="level3">
+<h3 class="anchored" data-anchor-id="where-lonboard-and-deck.gl-raster-sit">Where lonboard and deck.gl-raster sit</h3>
+<p>Neither can draw a tiled COG into a polar projected view yet. This is a review of the repos at their late-September 2026 state.</p>
+<ul>
+<li><strong>deck.gl-raster</strong> targets Web Mercator, plus a preliminary globe view since v0.8.0. Its tiled path (COGLayer, ZarrLayer) traverses tiles in Web Mercator and clamps the mesh at 85.05 degrees, so it cannot target EPSG:3031 in an orthographic view. The lower-level RasterLayer takes arbitrary reprojection functions, so a single untiled image might work, but that is untested. Its docs still list polar projections and the antimeridian as untested (<a href="https://github.com/developmentseed/deck.gl-raster/blob/main/docs/guides/intro.md">intro</a>, <a href="https://github.com/developmentseed/deck.gl-raster/pull/563">globe PR</a>).</li>
+<li><strong>lonboard</strong> exposes orthographic, globe and other deck.gl views in <code>lonboard.experimental.view</code>, but it has no custom CRS: layers are reprojected to EPSG:4326. Its transport is Arrow written as Parquet over the anywidget comm (<a href="https://developmentseed.org/lonboard/latest/api/view/">view API</a>).</li>
+<li><strong>deck.gl-geoarrow</strong> layers pass non-accessor props through to stock deck.gl layers, so cartesian coordinates should work. That is inferred from the source, not documented.</li>
+</ul>
+<p>The opening for R is clear. A polar view CRS, tiling that is not Web Mercator, and pole-covering rasters are unclaimed, and they are exactly the Antarctic cases. Upstream contributions to deck.gl-raster’s tile traversal would serve both languages.</p>
+</section>
+</section>
+<section id="open-questions-and-next-steps" class="level2">
+<h2 class="anchored" data-anchor-id="open-questions-and-next-steps">Open questions and next steps</h2>
+<p>The first experiment is small: a polar-stereographic scene with a GeoArrow coastline and one COG, drawn by deck.gl in an orthographic view.</p>
+<ul class="task-list">
+<li><label><input type="checkbox">Draft the scene spec as a JSON schema: view CRS, view type, layers, data references, legends. The probe’s spec is a starting point.</label></li>
+<li><label><input type="checkbox" checked="">Prototype the polar scene above and note where deck.gl pushes back.</label></li>
+<li><label><input type="checkbox">Try deck.gl-raster’s untiled RasterLayer with a 3031 reprojection function; scope a non-Mercator tile traversal upstream.</label></li>
+<li><label><input type="checkbox">Test a basemap in a non-Mercator view: warp XYZ tiles on a mesh, or skip tiles and draw vector land in the view CRS.</label></li>
+<li><label><input type="checkbox">Measure the float32 origin-offset approach on a projected CRS whose origin is far from the data.</label></li>
+<li><label><input type="checkbox">Decide where triangulation and densification live: R, Rust, or the client.</label></li>
+<li><label><input type="checkbox">Replace the probe’s Python prep with R: gdalraster Arrow streams, wk, and a mesh builder.</label></li>
+</ul>
+<p>Open questions:</p>
+<ul>
+<li>Should styling be data only (RGBA columns computed in R), or also allow accessor expressions evaluated in the browser?</li>
+<li>What is the minimum grid descriptor for rasters: extent, dimension and CRS, or does it need overviews and nodata too?</li>
+<li>Would the lonboard maintainers welcome a shared, language-neutral scene spec, so R and Python front ends drive one renderer?</li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hypertidy\.org");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

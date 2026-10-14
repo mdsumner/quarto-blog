@@ -402,7 +402,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Base R can already read a remote, chunked, compressed array in planned batches, using nothing but its own indexing syntax. The object has no class and no methods: it is a double vector with a <code>dim</code> attribute. One of R’s indexing forms reaches it as a single planned request today; another reaches it one element at a time; and a small change to R would close that gap.</p>
-<p>I wanted to know how far R’s old and very rich array indexing could go as a query language for remote encoded chunks, without patching R. So I built <code>altarr</code>, a small ALTREP prototype, read through <code>src/main/subset.c</code> to see what each indexing form actually does, and measured it. Then I pointed it at a real Zarr store written by zarr-python.</p>
+<p>I wanted to know how far R’s old and very rich array indexing could go as a query language for remote encoded chunks, without patching R. So I built <a href="https://github.com/hypertidy/altarr"><code>altarr</code></a>, a small ALTREP prototype, read through <code>src/main/subset.c</code> to see what each indexing form actually does, and measured it. Then I pointed it at a real Zarr store written by zarr-python.</p>
 <p>The short version: <code>x[cbind(i, j, k)]</code> is already first-class. <code>x[i, j, k]</code> works, but serially. And the information R would need to fix that is already sitting in a local variable inside <code>ArraySubset</code>.</p>
 <section id="two-kinds-of-array-question" class="level2">
 <h2 class="anchored" data-anchor-id="two-kinds-of-array-question">Two kinds of array question</h2>
@@ -597,7 +597,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="prior-art-and-what-is-different">Prior art, and what is different</h2>
 <p>Out-of-memory arrays in R are not new, and some of the older work was remarkably capable:</p>
 <ul>
-<li><strong>ff</strong> gave R memory-mapped, chunked vectors and arrays long before most languages had anything comparable, with its own <code>[</code> methods doing the paging.</li>
+<li><strong>ff</strong> gave R memory-mapped, chunked vectors and arrays long before most languages had anything comparable, with its own <code>[</code> methods doing the paging. (I used ff heavily in my own <a href="https://figshare.utas.edu.au/ndownloader/files/40906604">thesis, chapter 6</a> to map 4D ocean model to diving elephant seal movement estimates).</li>
 <li><strong>bigmemory</strong> offered shared and file-backed matrices for parallel work.</li>
 <li><strong>DelayedArray</strong> and <strong>HDF5Array</strong> in Bioconductor provide lazy, chunk-aware arrays with block processing and delayed operations, and are the most complete answer to lazy compute on arrays in R.</li>
 <li><strong>arrow</strong> and <strong>vroom</strong> use ALTREP to hand R vectors whose contents are not yet in R memory.</li>

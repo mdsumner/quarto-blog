@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michael Sumner">
+<meta name="dcterms.date" content="2026-10-05">
+<meta name="description" content="One small fetch contract under R’s own indexing ties together zaro, tidync, ndr, gdalraster, GDAL7 and the browser tools. What that says about where Python’s array stack is heading, and about sustaining R itself.">
+
+<title>Small contracts, long lives: altarr and the shape of lazy arrays in R – hypertidy</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-0dc93e23f26d1aa7cf91094d91e141a9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-b2d350c9eaa6090cde1c6cf70dedfb0b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-0dc93e23f26d1aa7cf91094d91e141a9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="Small contracts, long lives: altarr and the shape of lazy arrays in R – hypertidy">
+<meta property="og:description" content="One small fetch contract under R’s own indexing ties together zaro, tidync, ndr, gdalraster, GDAL7 and the browser tools. What that says about where Python’s array stack is heading, and about sustaining R itself.">
+<meta property="og:site_name" content="hypertidy">
+<meta name="twitter:title" content="Small contracts, long lives: altarr and the shape of lazy arrays in R – hypertidy">
+<meta name="twitter:description" content="One small fetch contract under R’s own indexing ties together zaro, tidync, ndr, gdalraster, GDAL7 and the browser tools. What that says about where Python’s array stack is heading, and about sustaining R itself.">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-fixed fullcontent quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">hypertidy</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../packages.html"> 
+<span class="menu-text">Packages</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../projects.html"> 
+<span class="menu-text">Projects</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/mdsumner"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://rstats.me/@mdsumner"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Small contracts, long lives: altarr and the shape of lazy arrays in R</h1>
+                  <div>
+        <div class="description">
+          <p>One small fetch contract under R’s own indexing ties together zaro, tidync, ndr, gdalraster, GDAL7 and the browser tools. What that says about where Python’s array stack is heading, and about sustaining R itself.</p>
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">altarr</div>
+                <div class="quarto-category">zarr</div>
+                <div class="quarto-category">gdal</div>
+                <div class="quarto-category">r-packages</div>
+                <div class="quarto-category">news</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Michael Sumner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">October 5, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+
+<p>A few days ago I wrote about <a href="https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/">what R does today with an ALTREP that has a dim and no class</a>. That post was about one mechanism: a lazy array, with no class and no methods, that base R indexing reads in planned batches. This post is about what happened next, which is that the mechanism turned out to be the missing piece in a handful of packages I had been building for years without quite knowing what they were waiting for.</p>
+<p>The short version:</p>
+<ul>
+<li>R has had the right array semantics for decades. What it lacked was a way to put a remote, chunked store <em>behind</em> them without a class.</li>
+<li>altarr supplies that with one function, <code>fetch(chunks)</code>. Everything else (Zarr, NetCDF, GDAL, HTTP, Rust) is somebody else’s engine.</li>
+<li>In a few days that contract went into zaro, tidync and ndr with no changes to altarr itself.</li>
+<li>Python’s cloud array stack is converging on the same shape: narrow interfaces over Rust and async engines. R can meet it there, cheaply, without rebuilding the engines.</li>
+<li>The one change that would make this work for every lazy array in R is a small hook in R itself. That is a sustainability question as much as a technical one, and it is being asked at a good time.</li>
+</ul>
+<section id="the-contract" class="level2">
+<h2 class="anchored" data-anchor-id="the-contract">The contract</h2>
+<p>Here is the whole interface between an altarr and whatever holds the data:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">fetch</span>(chunks)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># chunks:  integer matrix, one row per chunk, 0-based chunk coordinates</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># returns: list of vectors, column-major, clipped at the array edge</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">altarr</span>(dim, chunk, fetch, <span class="at">type =</span> <span class="st">"double"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The array is a plain double (or integer, or logical) vector with a <code>dim</code>. <code>dim(x)</code> reads nothing, <code>x[cbind(i, j, k)]</code> arrives at the fetch as one batch of chunks, <code>saveRDS(x)</code> writes the recipe rather than the values, and <code>altarr_plan(x, i, j, k)</code> returns the chunks a subscript would touch as a table. The <a href="https://hypertidy.org/posts/2026-10-01_altrep-dim-no-class/">previous post</a> measured the difference: 192 round trips down to 1 for a region, 287 down to 1 for scattered points.</p>
+<p>What matters for this post is not the speed but the size of the seam. One function, one matrix in, one list out. That is small enough that very different packages can each implement it in an afternoon, and small enough that it is unlikely to need changing.</p>
+</section>
+<section id="a-week-of-plugging-things-in" class="level2">
+<h2 class="anchored" data-anchor-id="a-week-of-plugging-things-in">A week of plugging things in</h2>
+<p><strong>zaro</strong> is my Zarr reader built on Arrow’s filesystems and codecs, with Kerchunk and VirtualiZarr Parquet references. Its <code>fetch_chunk()</code> and <code>decode_chunk()</code> already were the altarr contract in all but name, so <code>zaro_array(store, path)</code>, now exported from zaro, is about thirty lines. Zarr’s C-order shape is given to R reversed, so each decoded chunk lands in place with no <code>aperm()</code>. That is also faster than zaro’s own eager <code>zaro_read()</code>, which transposes every chunk.</p>
+<p><strong>tidync</strong> has always separated the plan (<code>hyper_filter()</code>) from the read (<code>hyper_array()</code>). An experimental branch adds <code>hyper_array(lazy = TRUE)</code>, which returns altarrs using the NetCDF chunk sizes, and lets a chunk span several source files. tidync users get lazy arrays without learning a new object.</p>
+<p><strong>ndr</strong> is my named-dimension array package, an xarray-shaped layer with coordinates on axes. It had grown its own <code>LazyDataArray</code> class and a <code>collect()</code> step. With an altarr in <code>Variable@data</code>, that class goes away: <code>ds$var</code> costs nothing, <code>isel()</code> and <code>sel()</code> compose into a new lazy view, and reductions stream over chunk-aligned blocks. altarr’s own stated limit is coordinates (dimnames must be character); ndr is a coordinate layer. They fill each other’s gaps.</p>
+<p><strong>GDAL7</strong> is the generated GDAL bindings package, and it is the broadest backend of all. <code>read_mdarray()</code> already returned dims reversed with nothing moved, so all it needed was the MDArray block size and <code>advise_read()</code>. Now <code>as_altarr()</code> takes an MDArray, a band (or an overview of one, via <code>get_overview()</code>), or a path and array name, and each fetch does one bounding read for the whole batch. So every GDAL multidimensional source (NetCDF, HDF5, GRIB, Zarr, Kerchunk Parquet, VRT, and soon Icechunk) is a plain R array. <strong>adgl</strong>, the plan-verbs layer over GDAL7, keeps its own overview-aware proxy for plotting, and gets its missing multidimensional story from ndr objects backed by GDAL7 altarrs.</p>
+<p>None of these needed a change to altarr. The ndr work produced two nice-to-haves (an exported chunk-shape accessor, and a way to compose a view from an existing array’s recipe), and that is all.</p>
+</section>
+<section id="the-demo-that-made-it-real" class="level2">
+<h2 class="anchored" data-anchor-id="the-demo-that-made-it-real">The demo that made it real</h2>
+<p>I have a virtual Zarr of BRAN2023, the Bluelink ocean reanalysis: daily ocean temperature as one int16 array of 5479 x 51 x 1500 x 3600 (time, depth, lat, lon), 2010 to 2024. It is not stored as Zarr at all. It is a Kerchunk Parquet reference store <a href="https://github.com/mdsumner/virtualized/tree/main/remote">on GitHub</a> pointing at the monthly NetCDF files on NCI’s THREDDS server.</p>
+<p>Extracting values along an animal track or a voyage is the classic job here: one value per (lon, lat, depth, time) position. With zaro opening the references and altarr presenting the array, the whole extraction is one line of base R:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>temp <span class="ot">&lt;-</span> <span class="fu">zaro_array</span>(store, <span class="st">"temp"</span>)      <span class="co"># lazy, nothing read</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(temp)                              <span class="co"># 3600 1500 51 5479</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>track<span class="sc">$</span>temp <span class="ot">&lt;-</span> temp[<span class="fu">cbind</span>(i, j, k, l)]  <span class="co"># one planned batch</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That one subscript becomes one call to <code>fetch</code>, which resolves the chunk references and issues the byte-range requests through a single curl pool capped at 8 connections, which is what the THREDDS server can bear. Here is a made-up 30-day track off eastern Tasmania, one point per day in March 2023, diving from 5 m to 200 m, run against the real server:</p>
+<pre><code>                time   lon    lat depth  temp    i   j  k    l
+ 2023-03-01 12:00:00 147.8 -43.50     5 16.86 1478 315  1 4808
+ 2023-03-02 12:00:00 148.0 -43.34     6 17.09 1480 317  2 4809
+ 2023-03-03 12:00:00 148.1 -43.19     7 17.78 1482 319  2 4810
+ ...
+ 2023-03-28 12:00:00 152.2 -39.31   198 12.86 1522 357 24 4835
+ 2023-03-29 12:00:00 152.3 -39.16   199 14.42 1524 359 24 4836
+ 2023-03-30 12:00:00 152.5 -39.00   200 13.76 1525 360 24 4837
+
+mode=real max_con=8
+metadata + coords + shard: 0.44 s
+chunks planned: 30, altarr fetch calls: 1
+byte-range requests to data server: 30 in 1 batch(es), 1954.6 KB, 0.52 s
+track extract wall time: 1.95 s</code></pre>
+<p>Thirty chunks, one fetch call, thirty range requests to THREDDS in one capped batch: about 2 MB and half a second for the data, under 2 seconds end to end from a cold start, out of an array of more than 1.5 trillion values. The metadata, coordinates and the one manifest shard this track needs come from GitHub; only the chunk bytes come from NCI.</p>
+<p>The thing to notice is where the politeness lives. The connection cap, the reference resolution and the HTTP are all inside the fetch. Base R’s indexing never knows. I used <a href="https://cran.r-project.org/package=ff">ff</a> to do this exact job, ocean model against elephant seal tracks, in my <a href="https://figshare.utas.edu.au/ndownloader/files/40906604">thesis</a> fifteen-odd years ago, with local files and a lot of code. It is the same question, now asked of a remote archive with one subscript.</p>
+</section>
+<section id="lazy-before-altarr-gdalraster-and-terra" class="level2">
+<h2 class="anchored" data-anchor-id="lazy-before-altarr-gdalraster-and-terra">Lazy before altarr: gdalraster and terra</h2>
+<p>None of this started with altarr. R has long had lazy access in practice, through database connections and the NetCDF APIs, but it was dbplyr and the tidyverse, and ALTREP after that, that gave laziness a name in R and got it widely developed. On the raster side, the foundation everything above stands on is GDAL access that holds a handle and reads only what is asked for.</p>
+<p><strong>gdalraster</strong> (Chris Toney and contributors) is, today, the best-practice way to use GDAL from R, and the one I recommend. A <code>GDALRaster</code> object is an open dataset handle and nothing more: opening reads metadata, and <code>read()</code> takes a window and an output size, so GDAL picks the overview and reads only the blocks it needs. Its stated design leans “toward minimalism and the use of simple, lightweight objects for holding raw data”. That is the same instinct as altarr: hold the handle, keep the plan cheap, and let the data be a plain vector when it arrives. gdalraster also already exposes GDAL’s multidimensional API (<code>mdim_info()</code>, <code>mdim_translate()</code>), the VSI virtual filesystems and vector layers.</p>
+<p><strong>terra</strong> (Robert Hijmans) works the same way for users: a <code>SpatRaster</code> points to file sources, and most operations run block by block in C++, writing to disk when a result will not fit in memory. Its laziness lives inside a C++ class with its own algebra, so the values surface as an R vector only when asked for.</p>
+<p>altarr does not replace either. It adds the piece neither aims to be: an array that <em>is</em> an R vector, so that base indexing and any function written for arrays read it lazily. The natural constructor is the same one GDAL7’s <code>as_altarr()</code> uses for a band (chunk equals the band block size, fetch reads the bounding window and slices per block), and gdalraster is where that constructor would reach real users now. GDAL7 is the experimental, generated binding where I try out the whole API surface, including the multidimensional block size and <code>AdviseRead</code> calls the fetch wants; I have not settled how the two should share that work, and I would rather it be a conversation than a fork.</p>
+</section>
+<section id="the-same-shape-four-more-times" class="level2">
+<h2 class="anchored" data-anchor-id="the-same-shape-four-more-times">The same shape, four more times</h2>
+<p>Looking back over the last year, altarr is the R-side instance of a pattern I keep landing on: separate the <em>plan</em> from the <em>read</em>, make the plan a small, inspectable table, and let the engine be swappable.</p>
+<ul>
+<li><strong><a href="https://github.com/hypertidy/rwarp">rwarp</a></strong> is a Rust implementation of GDAL’s warp pipeline, split into plan, read and warp stages. <code>collect_chunk_list</code> answers “which source blocks does each target chunk need” before any pixel is touched, and the read is the caller’s job: a COG, a Zarr store, a Parquet byte-reference store. It builds for <code>wasm32</code> with a pure-Rust PROJ backend.</li>
+<li><strong><a href="https://github.com/mdsumner/ortho-cog-viewer">ortho-cog-viewer</a></strong> (<a href="https://mdsumner.github.io/ortho-cog-viewer/">live</a>) is a CRS-agnostic COG viewer: orthographic globes, polar stereographic, Goode homolosine, all reading COGs and tile servers straight from the browser. Its architecture puts a <code>RasterSource</code> with “fetch planning” on one side and a <code>LayerEngine</code> on the other, and the second engine is rwarp compiled to wasm: mesh reprojection while the view moves, a real warp once it settles.</li>
+<li><strong><a href="https://hypertidy.github.io/rangefinder/">rangefinder</a></strong> is a static, server-free Sentinel-2 explorer that reads COGs by HTTP range request and composes imagery in the browser. Its design is four layers (space, time, pixels, render), where the first three are interfaces and only the fourth is the product. Its notes already list Zarr as “a different layer 3”.</li>
+<li><strong><a href="https://github.com/mdsumner/aatgrid">aatgrid</a></strong> is the space layer made explicit: a hierarchical tile grid for the Australian Antarctic Territory, aligned to Sentinel-2, with tile ids that resolve to UTM extents by arithmetic. It is an R package and a <a href="https://mdsumner.github.io/aatgrid/explorer/">static explorer</a> that share the same grid logic, and rangefinder’s design names it as a consumer of the same pixel library.</li>
+</ul>
+<p>The R-to-browser path is not only imagery. The <a href="https://github.com/allboa">allboa</a> projects (aobview, aobcore, scenespec) are an early modern mapview where R sends a renderer-neutral scene spec and Arrow buffers, and the browser fetches remote COGs itself. R describes; the engine reads.</p>
+<p>An altarr fetch, an rwarp chunk list, an ortho-cog-viewer fetch plan and a rangefinder pixel source are the same idea at different layers: chunk coordinates in, values out, and a plan you can look at first. That is what makes the R packages and the browser tools one family rather than a pile of projects. A plan computed in R can be handed to the browser, or to Rust, and the bytes fetched wherever is cheapest.</p>
+</section>
+<section id="meanwhile-in-python" class="level2">
+<h2 class="anchored" data-anchor-id="meanwhile-in-python">Meanwhile, in Python</h2>
+<p>The Python geospatial array world has moved fast in the last two years, and the direction is worth naming, because it is the same direction.</p>
+<ul>
+<li><strong>Rust engines under thin Python.</strong> Development Seed built <a href="https://developmentseed.org/blog/2025-08-01-obstore/">obstore</a> over Rust’s <code>object_store</code> crate, reporting 9x the throughput of fsspec for concurrent small requests, and zarr-python now uses it. <a href="https://developmentseed.org/async-geotiff/latest/blog/2026/02/03/introducing-async-geotiff/">async-geotiff</a>, on the Rust async-tiff core, exists because “by leveraging asynchronous I/O, we can speed up concurrent GeoTIFF data fetching”, a gap they name in GDAL and rasterio.</li>
+<li><strong>Zarr as the meeting point.</strong> zarr-python 3, Development Seed’s <a href="https://developmentseed.org/blog/2025-10-13-zarr/">“Zarr everywhere”</a> work, and <a href="https://docs.rs/crate/zarrs/latest">zarrs</a>, a full Zarr v3 implementation in Rust from the ANU here in Australia, which also ships a codec pipeline for zarr-python.</li>
+<li><strong>Virtual and versioned stores.</strong> <a href="https://virtualizarr.readthedocs.io/en/stable/about/releases.html">VirtualiZarr 2.0</a> (July 2025) added pluggable parsers and a <code>ManifestStore</code>, so archival NetCDF and HDF5 become Zarr without copying. <a href="https://icechunk.io/en/latest/blog-posts/">Icechunk</a> reached 1.0 in July 2025 and 2.0 in April 2026, with variable-length (rectilinear) chunk grids following in May.</li>
+<li><strong>Companies carrying the core.</strong> Earthmover, founded by xarray and Zarr leads, raised a <a href="https://www.businesswire.com/news/home/20250919639500/en/">$7.2M seed round</a> in September 2025 for Icechunk, Arraylake and Flux. Development Seed is a consultancy whose open-source work is funded project by project.</li>
+</ul>
+<p>The lesson I take is not “rewrite it in Rust”. It is that the winning pieces are <em>narrow</em>: obstore has about a dozen methods; a Kerchunk or Icechunk manifest is a table of chunk keys and byte ranges; a VirtualiZarr parser is one protocol. xarray sits on top, and the engines underneath are interchangeable.</p>
+<p>R does not need to rebuild those engines. GDAL already reads Zarr v3, Kerchunk Parquet and, from 3.14, <a href="https://hypertidy.org/posts/2026-06-26_icechunk-is-coming/">Icechunk</a>. Rust crates are reachable through extendr. What R needed was the narrow piece on <em>its</em> side of the boundary: a way to make an engine’s chunks look like an ordinary R array. That is altarr’s job, and it is why it is small.</p>
+</section>
+<section id="other-threads-in-r" class="level2">
+<h2 class="anchored" data-anchor-id="other-threads-in-r">Other threads in R</h2>
+<p>altarr is not the only lazy array story in R, and it should not try to be.</p>
+<ul>
+<li><strong>DelayedArray</strong> and HDF5Array in Bioconductor are the most complete answer to lazy <em>compute</em> on arrays in R, and Bioconductor now has <a href="https://bioconductor.org/packages/ZarrArray/">ZarrArray</a> (Hervé Pagès, April 2026), which brings Zarr in through Rarr as a DelayedArray. An altarr can be a DelayedArray seed, since <code>extract_array()</code> is <code>altarr_extract()</code>, and that gives altarr delayed operations for free.</li>
+<li>The <a href="https://cran.r-project.org/package=zarr">zarr</a> package from R-CF is a native, extensible Zarr v3 driver on CRAN. An altarr view over its arrays is a natural offer.</li>
+<li><strong>arrow</strong> and <strong>vroom</strong> proved ALTREP at scale for columns; <strong>stars</strong> proxies and <strong>gdalcubes</strong> have their own laziness inside their own classes, as terra does (above).</li>
+</ul>
+<p>The difference is still the class. Every package above is an object with methods, so code must know about it. An altarr has no class, so code written in 1998 reads it lazily. The approaches stack: lazy reads underneath, any of these for lazy compute above.</p>
+</section>
+<section id="sustaining-r-one-small-hook-at-a-time" class="level2">
+<h2 class="anchored" data-anchor-id="sustaining-r-one-small-hook-at-a-time">Sustaining R, one small hook at a time</h2>
+<p>On 6 October the R Consortium hosts <a href="https://github.com/RConsortium/rconsortium_website/blob/main/webinars/sustaining-r-investing-in-the-people-infrastructure-and-community.qmd">Sustaining R: Investing in the People, Infrastructure, and Community Behind R</a>, with Simon Urbanek, Kurt Hornik and Heather Turner. The context is real money and real limits: the Sovereign Tech Fund put <a href="https://r-consortium.org/posts/sovereign-tech-fund-invests-450000-in-r-foundation-to-enhance-r-sustainability-and-security/">$450,000 into the R Foundation</a> in October 2025 to modernize R’s core infrastructure, and the Research Software Maintenance Fund <a href="https://blog.r-project.org/2025/12/17/rsmf-enabling-the-next-generation-of-contributors-to-r/">GBP 500,000 grant</a> (December 2025) aims to grow the next generation of contributors to R itself, with R Core mentoring. Both are time-limited, and the R blog says plainly that “there is a continued need to raise funds for long-term sustainability”.</p>
+<p>Python’s array stack is carried by funded companies and large grant programs. R’s is carried by a small core team, CRAN, and a long tail of people like me maintaining packages around a day job. That is not a complaint; it is the constraint, and it suggests a strategy.</p>
+<p>The strategy is small contracts. A language with a small core team lasts by keeping its interfaces few, stable and general, so that packages and engines can come and go around them without breaking users. R’s indexing is exactly such an interface: <code>x[i, j, k]</code> and <code>x[cbind(i, j, k)]</code> mean what they meant in S. ALTREP is another. altarr adds one more at the package level, <code>fetch(chunks)</code>, and asks R for one more at the base level:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode c code-with-copy"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">/* in ArraySubset / MatrixSubset, after subscripts are normalized */</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ALTREP<span class="op">(</span>x<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    SEXP ans <span class="op">=</span> ALTVEC_EXTRACT_ARRAY_SUBSET<span class="op">(</span>x<span class="op">,</span> subs<span class="op">,</span> call<span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ans <span class="op">!=</span> NULL<span class="op">)</span> <span class="op">{</span> <span class="co">/* attach dim and dimnames as today */</span> <span class="op">}</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That hook adds no data model and no new class. It would turn <code>x[i, j, k]</code> into one planned request for every ALTREP array in R, from arrow to gdalraster to whatever comes next, and it falls back to today’s behaviour for every class that does not implement it. It is the kind of contribution to R itself that these programs are trying to make possible: small, measured (altarr is the test bed, and the tests check every path against base R with <code>identical()</code>), and useful far beyond the package that motivated it.</p>
+<p>I think that is a better model for sustaining R than trying to match Python feature for feature. Keep the base small and sound. Push engines out to GDAL, Rust and the browser, where others already maintain them. Spend scarce R effort on the thin layer where R’s own semantics meet those engines, because that layer is what only R people can build, and it is what makes forty years of R code work on data that did not exist when it was written.</p>
+</section>
+<section id="what-next" class="level2">
+<h2 class="anchored" data-anchor-id="what-next">What next</h2>
+<ol type="1">
+<li>Build R-devel with the <code>ArraySubset</code> hook and show <code>x[i, j, k]</code> going from 192 round trips to 1 with no package method, then take it to R-devel and the people who know <code>subset.c</code> best.</li>
+<li>Land the backends: zaro and tidync on CRAN-ready branches once altarr is on CRAN, ndr on altarr, a block-based altarr over a gdalraster <code>GDALRaster</code> (offered to gdalraster rather than forked), alongside GDAL7’s <code>as_altarr()</code> for the multidimensional side.</li>
+<li>A concurrent fetch off the R thread (GDAL <code>AdviseRead</code>, or Rust <code>object_store</code>) so every backend gets it at once.</li>
+<li>The BRAN2023 track extraction as a worked example in zaro, with longer tracks and more variables.</li>
+<li>A Zarr pixel layer for rangefinder and ortho-cog-viewer, sharing the chunk plan with rwarp.</li>
+</ol>
+<p>If you maintain a lazy array package in R, or know <code>subset.c</code> well, I would very much like to hear from you.</p>
+</section>
+<section id="links" class="level2">
+<h2 class="anchored" data-anchor-id="links">Links</h2>
+<ul>
+<li>altarr: <a href="https://github.com/hypertidy/altarr" class="uri">https://github.com/hypertidy/altarr</a></li>
+<li>zaro: <a href="https://github.com/hypertidy/zaro" class="uri">https://github.com/hypertidy/zaro</a>, ndr: <a href="https://github.com/mdsumner/ndr" class="uri">https://github.com/mdsumner/ndr</a>, tidync: <a href="https://github.com/ropensci/tidync" class="uri">https://github.com/ropensci/tidync</a></li>
+<li>GDAL7: <a href="https://github.com/rgdal-dev/GDAL7" class="uri">https://github.com/rgdal-dev/GDAL7</a>, adgl: <a href="https://github.com/rgdal-dev/adgl" class="uri">https://github.com/rgdal-dev/adgl</a></li>
+<li>rwarp: <a href="https://github.com/hypertidy/rwarp" class="uri">https://github.com/hypertidy/rwarp</a>, rangefinder: <a href="https://hypertidy.github.io/rangefinder/" class="uri">https://hypertidy.github.io/rangefinder/</a></li>
+<li>ortho-cog-viewer: <a href="https://github.com/mdsumner/ortho-cog-viewer" class="uri">https://github.com/mdsumner/ortho-cog-viewer</a>, aatgrid: <a href="https://github.com/mdsumner/aatgrid" class="uri">https://github.com/mdsumner/aatgrid</a>, allboa: <a href="https://github.com/allboa" class="uri">https://github.com/allboa</a></li>
+<li>gdalraster: <a href="https://firelab.github.io/gdalraster/" class="uri">https://firelab.github.io/gdalraster/</a>, terra: <a href="https://rspatial.github.io/terra/" class="uri">https://rspatial.github.io/terra/</a></li>
+<li>BRAN2023 virtual store: <a href="https://github.com/mdsumner/virtualized/tree/main/remote" class="uri">https://github.com/mdsumner/virtualized/tree/main/remote</a></li>
+<li>R Consortium, Sustaining R webinar (6 Oct 2026): <a href="https://github.com/RConsortium/rconsortium_website/blob/main/webinars/sustaining-r-investing-in-the-people-infrastructure-and-community.qmd" class="uri">https://github.com/RConsortium/rconsortium_website/blob/main/webinars/sustaining-r-investing-in-the-people-infrastructure-and-community.qmd</a></li>
+<li>Sovereign Tech Fund investment in the R Foundation: <a href="https://r-consortium.org/posts/sovereign-tech-fund-invests-450000-in-r-foundation-to-enhance-r-sustainability-and-security/" class="uri">https://r-consortium.org/posts/sovereign-tech-fund-invests-450000-in-r-foundation-to-enhance-r-sustainability-and-security/</a></li>
+<li>RSMF, enabling the next generation of contributors to R: <a href="https://blog.r-project.org/2025/12/17/rsmf-enabling-the-next-generation-of-contributors-to-r/" class="uri">https://blog.r-project.org/2025/12/17/rsmf-enabling-the-next-generation-of-contributors-to-r/</a></li>
+<li>obstore: <a href="https://developmentseed.org/blog/2025-08-01-obstore/" class="uri">https://developmentseed.org/blog/2025-08-01-obstore/</a>; async-geotiff: <a href="https://developmentseed.org/async-geotiff/latest/blog/2026/02/03/introducing-async-geotiff/" class="uri">https://developmentseed.org/async-geotiff/latest/blog/2026/02/03/introducing-async-geotiff/</a></li>
+<li>Zarr everywhere (Development Seed): <a href="https://developmentseed.org/blog/2025-10-13-zarr/" class="uri">https://developmentseed.org/blog/2025-10-13-zarr/</a></li>
+<li>VirtualiZarr releases: <a href="https://virtualizarr.readthedocs.io/en/stable/about/releases.html" class="uri">https://virtualizarr.readthedocs.io/en/stable/about/releases.html</a>; Icechunk blog: <a href="https://icechunk.io/en/latest/blog-posts/" class="uri">https://icechunk.io/en/latest/blog-posts/</a></li>
+<li>zarrs: <a href="https://docs.rs/crate/zarrs/latest" class="uri">https://docs.rs/crate/zarrs/latest</a></li>
+<li>Earthmover seed round: <a href="https://www.businesswire.com/news/home/20250919639500/en/" class="uri">https://www.businesswire.com/news/home/20250919639500/en/</a></li>
+<li>ZarrArray (Bioconductor): <a href="https://bioconductor.org/packages/ZarrArray/" class="uri">https://bioconductor.org/packages/ZarrArray/</a></li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hypertidy\.org");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
