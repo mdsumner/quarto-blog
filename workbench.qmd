@@ -1,0 +1,21 @@
+---
+title: "Workbench"
+description: "Seeds and drafts in progress."
+listing:
+  id: workbench
+  contents: catalogue.yml
+  type: table
+  sort: "date desc"
+  fields: [date, title, description, family, status]
+  field-display-names:
+    family: "Family"
+    status: "Status"
+  date-format: "YYYY-MM"
+  include:
+    status: "{seed,drafting}"
+---
+
+Work in progress, not linked from the navbar.
+
+::: {#workbench}
+:::

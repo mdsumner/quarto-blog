@@ -1,0 +1,143 @@
+---
+title: "Families"
+description: "Project families: writing, packages and pilots that belong together."
+listing:
+  - id: grids
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "grids"
+    exclude:
+      status: "{seed,drafting}"
+  - id: projections
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "projections"
+    exclude:
+      status: "{seed,drafting}"
+  - id: mesh
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "mesh"
+    exclude:
+      status: "{seed,drafting}"
+  - id: virtual-arrays
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "virtual-arrays"
+    exclude:
+      status: "{seed,drafting}"
+  - id: allonboard
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "allonboard"
+    exclude:
+      status: "{seed,drafting}"
+  - id: tracking
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "tracking"
+    exclude:
+      status: "{seed,drafting}"
+  - id: software-development
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "software-development"
+    exclude:
+      status: "{seed,drafting}"
+  - id: teaching
+    contents: catalogue.yml
+    type: table
+    sort: "date desc"
+    fields: [date, title, description, kind]
+    date-format: "YYYY-MM"
+    include:
+      family: "teaching"
+    exclude:
+      status: "{seed,drafting}"
+---
+
+Drafts in each family are on the [workbench](/workbench.html).
+
+## Grids
+
+Regular, rectilinear and curvilinear grids, coordinates and their alignment.
+
+::: {#grids}
+:::
+
+## Projections
+
+How map projections are built, drawn and taught.
+
+::: {#projections}
+:::
+
+## Mesh
+
+Triangulation and meshes for geospatial data.
+
+::: {#mesh}
+:::
+
+## Virtual arrays
+
+Virtual Zarr, Icechunk, GDAL multidim and browser-native grids.
+
+::: {#virtual-arrays}
+:::
+
+## allonboard
+
+Map scenes in their own coordinate reference system.
+
+::: {#allonboard}
+:::
+
+## Tracking
+
+Animal tracking data and estimation.
+
+::: {#tracking}
+:::
+
+## Software development
+
+Bindings and libraries in development: wxylib, mailib, GDAL7, agdl.
+
+::: {#software-development}
+:::
+
+## Teaching and talks
+
+Courses, tutorials and talks.
+
+::: {#teaching}
+:::

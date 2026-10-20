@@ -12,6 +12,8 @@ website:
     right:
       - href: index.qmd
         text: Home
+      - href: writing.qmd
+        text: Writing
       - href: packages.qmd
         text: Packages
       - href: projects.qmd
