@@ -88,6 +88,16 @@
   categories: [mesh, teaching]
 
 ## virtual-arrays
+- title: "SedonaDB and GDAL multidim"
+  path: https://github.com/mdsumner/sedonadb-lab
+  source: https://github.com/mdsumner/sedonadb-lab
+  description: "Development pathway: chunk-relation plans connecting sedona-db, GDAL multidim and byte-reference virtual datasets, with working kits (sedonadb-lab)"
+  family: virtual-arrays
+  kind: design
+  status: active
+  date: 2026-10-20
+  categories: [virtual-arrays, design]
+
 - title: "sidebyside"
   path: https://mdsumner.github.io/sidebyside/
   source: https://github.com/mdsumner/sidebyside
