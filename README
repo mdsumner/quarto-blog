@@ -1,0 +1,31 @@
+Title: Macquarie Island AIRSAR DEM (Digital Elevation Model)
+
+Authors:
+  - HENK BROLSMA (INVESTIGATOR, TECHNICAL CONTACT, DIF AUTHOR)
+
+Owner: Commonwealth of Australia
+
+Citation: Brolsma, H. (2006) Macquarie Island AIRSAR DEM (Digital Elevation Model), Ver. 2,  <em>Australian Antarctic Data Centre</em> - <a href="https://data.aad.gov.au/metadata/records/macca_dem_gis">https://data.aad.gov.au/metadata/records/macca_dem_gis</a>, Accessed: 2020-07-02
+
+Revision Date: 2019-01-22
+
+Metadata URL: https://data.aad.gov.au/metadata/records/macca_dem_gis
+
+Dataset API URL: https://data.aad.gov.au/s3/api/bucket/datasets/gis/maccais/macca_dem2_e00?export=json
+
+Abstract: A digital elevation Model (DEM) of Macquarie Island with a five metre grid interval, and held in UTM Zone 57 , WGS 84 coordinates. Heights are referenced to mean sea level. 5 metre contours to the 5 metre level were derived.
+
+This metadata record is related to the metadata record Macquarie Island and adjacent islands 1:50000 Coastline GIS Dataset. 
+
+The DEM was improved by Dr Michael Roach, Lecturer in Geophysics, School of Earth Sciences - CODES, University of Tasmania, Hobart, Tasmania, Australia and a copy provided to the Australian Antarctic Data Centre in January 2006.  This improved version is the dataset available for download.
+
+Details about the processing done by Dr Roach are available from the link below.
+
+Use Constraints: This data set conforms to the CCBY Attribution License
+(http://creativecommons.org/licenses/by/4.0/).
+
+Please follow instructions listed in the citation reference provided at http://data.aad.gov.au/aadc/metadata/citation.cfm?entry_id=macca_dem_gis when using these data.
+
+ID: 1377
+Metadata ID: macca_dem_gis
+UUID: 6BBE0999-B0A5-46F2-AD7B-284C7E5AE93B
