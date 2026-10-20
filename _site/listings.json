@@ -44,5 +44,17 @@
       "/posts/2015-12-28_gis3d/index.html",
       "/posts/2014-04-17_r-matrices-and-image/index.html"
     ]
+  },
+  {
+    "listing": "/families.html",
+    "items": []
+  },
+  {
+    "listing": "/workbench.html",
+    "items": []
+  },
+  {
+    "listing": "/writing.html",
+    "items": []
   }
 ]

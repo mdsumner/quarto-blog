@@ -1,0 +1,26 @@
+---
+title: "Writing"
+description: "Books, surveys, essays and interactive pieces, wherever they live."
+listing:
+  id: writing
+  contents: catalogue.yml
+  type: table
+  sort: "date desc"
+  fields: [date, title, description, family, kind]
+  field-display-names:
+    family: "Family"
+    kind: "Kind"
+  date-format: "YYYY-MM"
+  categories: true
+  sort-ui: true
+  filter-ui: true
+  exclude:
+    status: "{seed,drafting}"
+---
+
+Longer pieces and project families gathered in one place. Each entry links to
+where the work lives; the blog posts are on the [home page](/index.html).
+See also [families](/families.html).
+
+::: {#writing}
+:::

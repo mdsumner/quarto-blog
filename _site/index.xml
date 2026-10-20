@@ -22,8 +22,8 @@
 
 
 
-<p>A 3 MB text file makes 5800 cloud-optimised GeoTIFFs behave like one dataset at every scale, from a whole continent at 1 km down to a single valley at 2 m. GDAL has been able to read such a file for years. What is new is that a web page can read it too, the same way, with no server in between, and keep an honest account of what every view costs.</p>
-<p>I built a REMA explorer to prove that point. Building it taught me something bigger: most of what we want from a viewer is already possible, and the hard question is not what can be done but how the pieces should be grouped and packaged.</p>
+<p>A 3 MB text file makes 5800 cloud-optimized GeoTIFFs behave like one dataset at every scale, from a whole continent at 1 km down to a single valley at 2 m. GDAL has been able to read such a file for years. What is new is that a web page can read it too, the same way, with no server in between, and keep an honest account of what every view costs.</p>
+<p>I built (with llm) a REMA explorer to expose what I’d been doing to read REMA at any scale, mostly in R. Building it shows: most of what we want from a viewer is already possible, and the hard question is not what can be done but how the pieces should be grouped and packaged.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="https://hypertidy.org/posts/2026-10-14_recipe-is-the-dataset/images/continent.jpg" class="img-fluid figure-img" alt="The whole Antarctic ice sheet in polar stereographic, colour and hillshade"></p>
@@ -32,7 +32,7 @@
 </div>
 <section id="every-tile-streams-the-continent-does-not" class="level2">
 <h2 class="anchored" data-anchor-id="every-tile-streams-the-continent-does-not">Every tile streams, the continent does not</h2>
-<p>The Polar Geospatial Center publishes REMA v2 as tiles: 5800 COGs at 2 m, each about 50 km across, and 1523 each at 10 m and 32 m, 100 km across. Every one of them is a well-made COG. It has internal overviews, so reading a 50 km tile at low resolution is cheap.</p>
+<p>The <a href="https://www.pgc.umn.edu/data/rema/">Polar Geospatial Center</a> publishes REMA v2 as tiles: 5800 COGs at 2 m, each about 50 km across, and 1523 each at 10 m and 32 m, 100 km across. Every one of them is a well-made COG. It has internal overviews, so reading a 50 km tile at low resolution is cheap.</p>
 <p>But the overviews stop at the tile edge. A view of a 500 km glacier basin touches hundreds of files; a view of the continent touches all 5800, and each one costs at least a header read. The whole-continent mosaics at 100 m, 500 m and 1 km exist, but only inside tarballs. There is no single thing you can point a reader at and ask for “Antarctica at 1 km”.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -48,7 +48,7 @@
 <h2 class="anchored" data-anchor-id="the-browser-can-be-the-warper">The browser can be the warper</h2>
 <p>The explorer fetches that same VRT and does what the warper does, per screen tile, in five steps:</p>
 <ol type="1">
-<li><strong>Pick a level.</strong> The display grid is EPSG:3031 with 256 px tiles at 8192 / 2^z m, the same origin as NASA’s polar GIBS tiles. For a tile at resolution R, take the coarsest level whose pixel is no larger than 1.5 R.</li>
+<li><strong>Pick a level.</strong> The display grid is EPSG:3031 with 256 px tiles at 8192 / 2^z m, the same origin as NASA’s <a href="https://nasa-gibs.github.io/gibs-api-docs/">polar GIBS</a> tiles. For a tile at resolution R, take the coarsest level whose pixel is no larger than 1.5 R.</li>
 <li><strong>Find the files.</strong> For a VRT level, a bucket index over the <code>DstRect</code> footprints gives the files that touch the tile.</li>
 <li><strong>Pick an image inside each file.</strong> Same rule again: full resolution or one of its internal overviews.</li>
 <li><strong>Read only the window.</strong> Compute the pixel window and ask geotiff.js for those blocks. Single-range requests need no CORS preflight.</li>
@@ -123,10 +123,10 @@
 <section id="same-technology-different-gears" class="level2">
 <h2 class="anchored" data-anchor-id="same-technology-different-gears">Same technology, different gears</h2>
 <p>Every community in this space uses the same parts: COGs, HTTP range requests, GDAL and PROJ. What differs is the gear they work in, and each gear makes different things easy.</p>
-<p>The R spatial community works close to GDAL. A DSN string, the warper and a VRT are everyday tools, and packages like vapour, gdalraster, terra and stars expose the warper and the target grid directly. “This extent at this size” is one call, and <code>target_dim = c(1024, 0)</code> lets GDAL work out the other side. That habit is why a recipe like this VRT feels ordinary there rather than clever.</p>
-<p>The cloud-native trend in Python works a gear up, on chunked arrays: xarray over Zarr, byte references harvested into kerchunk or VirtualiZarr, Icechunk for versioned stores, and tile services such as TiTiler for the web. odc-geo’s GeoBox is the same grid idea under another name. In JavaScript, geotiff.js, OpenLayers and deck.gl move reading and rendering into the client. These gears are strong for analysis at scale and for services with many users.</p>
-<p>The gears differ most at the seams. REMA’s 2 m tiles overlap their neighbours by 100 px (200 m), and the 10 m tiles by 20 px. To a VRT, and to this page, that is harmless: the shared pixels are painted twice with the same value, a no-op. To a Zarr store the same overlap is real work. A regular chunk grid cannot describe tiles that start 25000 px apart but are 25100 px wide, and the 512 px blocks inside them do not line up from one tile to the next. Virtualising it means trimming the overlaps and adopting a rectilinear (variable-size) chunk grid, which Zarr is still standardising.</p>
-<p>Multiscale is the same story. Geospatial Zarr is still converging on how to describe a pyramid, through GeoZarr and the multiscales conventions that follow the microscopy world’s OME-NGFF precedent, and each level has to be written as its own array. A VRT has had this for years: an <code>&lt;Overview&gt;</code> entry points at any other dataset, a file or another VRT, and a mosaic can even mix sources at different resolutions, because each source carries its own scaling from source to destination pixels. That is not a criticism of the Zarr work, which is solving real problems for analysis at scale. It is a reminder that some of what is being engineered as a new paradigm already exists, quietly, one gear down, and that the two can meet: a byte-reference index over these same COGs is just another recipe.</p>
+<p>The R spatial community works close to GDAL. A DSN string, the warper and a VRT are everyday tools, and packages like <a href="https://hypertidy.github.io/vapour/">vapour</a>, <a href="https://firelab.github.io/gdalraster/">gdalraster</a>, <a href="https://rspatial.github.io/terra/">terra</a> and <a href="https://r-spatial.github.io/stars/">stars</a> expose the warper and the target grid directly. “This extent at this size” is one call, and <code>target_dim = c(1024, 0)</code> lets GDAL work out the other side. That habit is why a recipe like this VRT feels ordinary there rather than clever.</p>
+<p>The cloud-native trend in Python works a gear up, on chunked arrays: <a href="https://xarray.dev">xarray</a> over <a href="https://zarr.dev">Zarr</a>, byte references harvested into <a href="https://fsspec.github.io/kerchunk/">kerchunk</a> or <a href="https://github.com/zarr-developers/VirtualiZarr">VirtualiZarr</a>, <a href="https://icechunk.io">Icechunk</a> for versioned stores, and tile services such as <a href="https://developmentseed.org/titiler/">TiTiler</a> for the web. <a href="https://github.com/opendatacube/odc-geo">odc-geo</a>’s GeoBox is the same grid idea under another name. In JavaScript, <a href="https://geotiffjs.github.io/">geotiff.js</a>, <a href="https://openlayers.org">OpenLayers</a> and <a href="https://deck.gl">deck.gl</a> move reading and rendering into the client. These gears are strong for analysis at scale and for services with many users.</p>
+<p>The gears differ most at the seams. REMA’s 2 m tiles overlap their neighbours by 100 px (200 m), and the 10 m tiles by 20 px. To a VRT, and to this page, that is harmless: the shared pixels are painted twice with the same value, a no-op. To a Zarr store the same overlap is real work. A regular chunk grid cannot describe tiles that start 25000 px apart but are 25100 px wide, and the 512 px blocks inside them do not line up from one tile to the next. Virtualizing it means trimming the overlaps and adopting a rectilinear (variable-size) chunk grid, which Zarr is still standardizing.</p>
+<p>Multiscale is the same story. Geospatial Zarr is still converging on how to describe a pyramid, through <a href="https://github.com/zarr-developers/geozarr-spec">GeoZarr</a> and the multiscales conventions that follow the microscopy world’s <a href="https://ngff.openmicroscopy.org">OME-NGFF</a> precedent, and each level has to be written as its own array. A VRT has had this for years: an <code>&lt;Overview&gt;</code> entry points at any other dataset, a file or another VRT, and a mosaic can even mix sources at different resolutions, because each source carries its own scaling from source to destination pixels. That is not a criticism of the Zarr work, which is solving real problems for analysis at scale. It is a reminder that some of what is being engineered as a new paradigm already exists, quietly, one gear down, and that the two can meet: a byte-reference index over these same COGs is just another recipe.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="https://hypertidy.org/posts/2026-10-14_recipe-is-the-dataset/images/swipe.jpg" class="img-fluid figure-img" alt="A swipe comparison of a glacier: sharp 100 m detail on the left, blocky 1 km pixels on the right"></p>
@@ -166,7 +166,7 @@
 <ul>
 <li><strong>Products with no pyramid.</strong> PGC also publishes per-pixel count, MAD and min/max date beside every tile. They exist only at 2 m, 10 m and 32 m, so a continent view would mean touching every file. The explorer draws them when you zoom in and says no when you zoom out. That refusal is the argument for building their overviews too.</li>
 <li><strong>Storage type shows through.</strong> The Int16 100 m overview terraces in 1 m steps, and on flat ice a hillshade at high exaggeration makes that visible. The coarse Float32 overviews with LZW compression are larger than they need to be, and the ledger shows it.</li>
-<li><strong>Vertical datums collide.</strong> The globe cutaway along the 44 km line from Little Dome C (Beyond EPICA) to Dome C North (the AAD Million Year Ice Core site) drops a wall from the REMA surface to the Bedmap2 bed: about 3 km of ice. But Bedmap2 heights are relative to a geoid and REMA’s to the ellipsoid, so the thickness carries an offset of tens of metres. The picture makes you notice; a pipeline would not.</li>
+<li><strong>Vertical datums collide.</strong> The globe cutaway along the 44 km line from Little Dome C (<a href="https://www.beyondepica.eu/en/">Beyond EPICA</a>) to Dome C North (the AAD <a href="https://www.antarctica.gov.au/science/climate-processes-and-change/antarctic-palaeoclimate/million-year-ice-core/">Million Year Ice Core</a> site) drops a wall from the REMA surface to the <a href="https://doi.org/10.5194/tc-7-375-2013">Bedmap2</a> bed: about 3 km of ice. But Bedmap2 heights are relative to a geoid and REMA’s to the ellipsoid, so the thickness carries an offset of tens of metres. The picture makes you notice; a pipeline would not.</li>
 <li><strong>Hosting is part of the design.</strong> The fine levels only work in a browser if their bucket sends CORS headers. GitHub LFS serves the coarse levels with them, and GitHub release assets do not. Every byte read through LFS counts against a bandwidth quota. These are not footnotes; they decide what a page can see.</li>
 </ul>
 <div class="quarto-figure quarto-figure-center">
@@ -192,7 +192,7 @@
 <figcaption>A box is a grid. The page reads it, then writes it back as a request any GDAL tool can repeat: <code>-ts 405 0</code>.</figcaption>
 </figure>
 </div>
-<p>What comes next follows from the layers. Move storage to a bucket and keep the index in git. Build the missing pyramids for the sibling products. Swap Bedmap2 for Bedmap3 on the same vertical datum, then the cutaway shows true thickness. And let the display CRS be a choice rather than a given, which is where reprojection belongs: in rendering, never in storage.</p>
+<p>What comes next follows from the layers. Move storage to a bucket and keep the index in git. Build the missing pyramids for the sibling products. Swap Bedmap2 for <a href="https://doi.org/10.1038/s41597-025-04672-y">Bedmap3</a> on the same vertical datum, then the cutaway shows true thickness. And let the display CRS be a choice rather than a given, which is where reprojection belongs: in rendering, never in storage.</p>
 </section>
 <section id="grouping-not-capability" class="level2">
 <h2 class="anchored" data-anchor-id="grouping-not-capability">Grouping, not capability</h2>
@@ -200,7 +200,7 @@
 <p>The recipe is the dataset. Keep it small, keep it readable by every tool, and the ways of seeing it can keep multiplying without anyone copying the data again.</p>
 <ul>
 <li>Explorer: <a href="https://mdsumner.github.io/rema-ovr/">mdsumner.github.io/rema-ovr</a>, source in <a href="https://github.com/mdsumner/rema-ovr">mdsumner/rema-ovr</a></li>
-<li>REMA: Howat et al.&nbsp;2019, Polar Geospatial Center</li>
+<li>Howat, I., Porter, C., Smith, B. E., Noh, M.-J., and Morin, P.: <a href="https://doi.org/10.5194/tc-13-665-2019"><em>The Reference Elevation Model of Antarctica</em></a>, The Cryosphere, 13(2), 665–674, 2019. Data from the <a href="https://www.pgc.umn.edu/data/rema/">Polar Geospatial Center</a></li>
 </ul>
 <p>Earlier pieces this draws on, each one a single idea from the list above:</p>
 <ul>
