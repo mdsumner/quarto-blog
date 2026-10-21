@@ -11,6 +11,8 @@ execute:
   eval: false
 ---
 
+*Update, 21 October 2026: two of the open questions at the end now have answers built at full size. See [Byte tables at size](../2026-10-21_byte-tables/).*
+
 Arguments about geospatial and scientific data often come down to tensors versus tables: Zarr against Parquet, datacubes against feature collections, raster against vector. This essay argues that there is no single line between them. Storage, indexing, topology and rendering each draw the line in a different place, so the same dataset is a tensor from one layer and a table from another. Seeing the four lines separately makes several recurring design problems easier to name, and suggests that the two sides need each other more than they compete.
 
 ## One model underneath
@@ -41,7 +43,7 @@ A data system has at least four layers, and each has its own version of the tens
 
 **Storage** is where the argument is usually held, and it is the least fundamental of the four. Zarr chunks values by blocks of index space; Parquet chunks them by groups of rows. Either can carry the other three layers. UGRID mesh connectivity is routinely stored as integer arrays in netCDF or Zarr, and the index of a collection of raster files is routinely stored as a table.
 
-**Index** is the layer that decides how a coordinate becomes a position, and back. It is where the implicit and explicit maps live. Xarray's recent work on pluggable indexes makes this layer explicit in code: since version 2025.6 an index is a replaceable component, and a `CoordinateTransformIndex` computes coordinates from a function rather than storing them.
+**Index** is the layer that decides how a coordinate becomes a position, and back. It is where the implicit and explicit maps live. Xarray's work on pluggable indexes makes this layer explicit in code: since version 2022.09 a custom index can replace the default one, and since 2025.07 a `CoordinateTransformIndex` computes coordinates from a function rather than storing them.
 
 **Topology** is about neighbours. In a regular grid the neighbours of a cell follow from its index; in a triangular mesh they have to be recorded. A HEALPix grid is structured in this sense even though it is not rectangular.
 
@@ -165,7 +167,7 @@ These are questions, not conclusions. Each could be answered by building somethi
 
 ## Sources
 
-- [Xarray blog: flexible indexing (September 2025)](https://xarray.dev/pt/blog/flexible-indexing)
+- [Xarray blog: flexible indexing (September 2025)](https://xarray.dev/blog/flexible-indexing)
 - [Announcing rasterix.RasterIndex](https://discourse.pangeo.io/t/announcing-rasterix-rasterindex/5228)
 - [Gallery of xarray custom indexes](https://xarray-indexes.readthedocs.io/)
 - [UXarray: supported models and grid formats](https://uxarray.readthedocs.io/en/stable/user-guide/grid-formats.html)
