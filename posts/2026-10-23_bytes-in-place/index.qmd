@@ -3,581 +3,466 @@ title: "Bytes in place"
 description: >
   A virtual store is not a format. It is a table of byte ranges plus a plan,
   and every format is a projection of that table. A position on virtual
-  stores, catalogs and the path from research data to production.
+  stores, catalogs and the path from research data to production, with a
+  snapshot of where the work stands in October 2026.
 author: "Michael Sumner"
 date: "2026-10-23"
 categories: [virtualization, zarr, tables, gdal, news]
+llm: co-written
 execute:
   eval: false
 ---
 
-A position on virtual stores, catalogs and the path from research data to
-production, first drafted on 17 October 2026 and updated on 23 October.
+Earth observation and ocean model archives are mostly not cloud-native, and
+they will not be rewritten. They do not need to be. Every chunk of every
+array already sits at a known byte range in a file that someone is already
+serving. Record those ranges once, in a plain table, beside a concatenation
+plan that GDAL already understands, and the archive can be published as
+whatever its readers want: a GDAL VRT for R and GIS users, a Parquet table
+for query engines and browsers, kerchunk for xarray, an Icechunk repository
+for versioned pipelines. No copies, no new format, and no single pathway
+that everyone must adopt.
 
-It sits beside three other pieces, and borrows their habit of stating one
-stance and arguing it throughout:
+This post sets out that position, how I arrived at it, and where the work
+stands as of October 2026. It sits beside three other pieces that each
+state one stance and argue it throughout:
+[sidebyside](https://mdsumner.github.io/sidebyside/) (warp and cell: two
+stances on viewing gridded data),
+[regular-in-what](https://hypertidy.github.io/regular-in-what/) (a grid is
+regular *in a frame*) and
+[trianglewins](https://mdsumner.github.io/trianglewins/) (one input
+contract, many backends, judged by code that belongs to none of them).
 
-- sidebyside (warp and cell: two stances on viewing gridded data),
-- regular-in-what (a grid is regular *in a frame*),
-- trianglewins (one input contract, many backends, judged by code that
-  belongs to none of them).
-
-Two uses. As a **reminder**: section 9 is the list to read before starting
-something new. As a **cold drop-in**: sections 1, 5 and 10 stand alone.
-
----
-
-## 1. The stance
+## The stance
 
 > **A virtual store is not a format. It is a table of byte ranges plus a
 > plan, and every format is a projection of that table.**
 
-Every array dataset is granules (netCDF, HDF5, GeoTIFF, GRIB) in which each
-chunk of each array occupies a byte range. Kerchunk, VirtualiZarr,
-Icechunk, a GDAL multidimensional VRT, DMR++ and a COG's tile index all
-reduce to knowing those ranges and pointing a reader at them. The tools
-disagree about where that knowledge lives: in memory, in a bespoke
-manifest, in a transactional repository. This work puts it in one durable,
-queryable, language-neutral table and treats each format as a rendering.
+Every array dataset is a set of granules (netCDF, HDF5, GeoTIFF, GRIB) in
+which each chunk of each array occupies a byte range. Kerchunk,
+VirtualiZarr, Icechunk, a GDAL multidimensional VRT, DMR++ and a COG's tile
+index all reduce to knowing those ranges and pointing a reader at them. The
+tools disagree about where that knowledge lives: in memory, in a bespoke
+manifest, in a transactional repository. I put it in one durable,
+queryable, language-neutral table and treat each format as a rendering of
+it.
 
-Four corollaries follow, and the rest of the piece is them worked out.
+Four corollaries follow, and the rest of the post works them out.
 
 1. **Separate what VirtualiZarr fuses.** The concatenation plan (a
    `gdal mdim mosaic` VRT), the byte references (a flat table) and the file
-   addressing (source plus remap rules) are three things, held once each.
+   addressing (source plus remap rules) are three things, each held once.
 2. **Endpoints are staged and complementary, not competing.** The mdim VRT,
    a flat Parquet table, kerchunk Parquet and Icechunk each serve a
    different reader and usage model. None is "the" answer and none is
    derived from another; all come from the table.
 3. **The catalog points at published forms; it never holds bytes.**
-   bowerbird knows how to get non-FAIR data, sds knows the string that opens
-   it now, and the byte-ref table sits between them.
+   bowerbird knows how to get data that is not FAIR, sds knows the string
+   that opens it now, and the byte-reference table sits between them.
 4. **Scan once, where it is cheap; reference where it is durable.** Chunk
-   offsets are invariant under byte-identical copies, so a scan of a local
-   HPC mirror can produce references to a public URL. That is what makes a
-   research mirror into a publishing pipeline.
+   offsets do not change when a file is copied byte for byte, so a scan of
+   a local HPC mirror can produce references to a public URL. That is what
+   turns a research mirror into a publishing pipeline.
 
----
+## How the idea arrived
 
-## 2. Where it came from: cogcache through blocklist
-
-The idea arrived in pieces, mostly by building something and finding the
-same table underneath it. Dates are last commits on each repo's default
-branch unless noted.
+It came in pieces, mostly by building something and finding the same table
+underneath it.
 
 | When | Piece | What it showed |
 |---|---|---|
-| May 2025 | mdsumner/zarrquet | VirtualiZarr's kerchunk Parquet is a table of (path, offset, size, raw); "the array key indexes should be in that table as well" |
-| Feb 2026 | mdsumner/idea-nci-thredds | the only working VirtualiZarr -> Icechunk on Pawsey; a gotchas guide |
-| Mar 2026 | rgdal-dev/cogcache (vwarp vision) | COG tiles fetched by range, decoded in Rust, catalogued in DuckDB; warp as `target_chunk_spec -> {source_chunk_refs} -> read -> warp -> write`, bit-identical to GDAL. "reproject(data, crs) is a mistake." The ref table is already here, as a cache key |
-| Mar 2026 | mdsumner/parq2ice | kerchunk Parquet -> Icechunk in Rust; hit flatbuffers ~2 GB on a 16.7M-chunk BRAN array |
-| Apr 2026 | mdsumner/pawsey-aad | the Nectar -> Pawsey migration: bowerbird sync into Acacia object storage, COG conversion, VirtualiZarr Parquet, curated listings, all on cron in Singularity |
-| Jun 2026 | mdsumner/virtualized | BRAN2023 built twice (blocklist/GDAL and VirtualiZarr), compared |
-| Jul 2026 | zarr-icechunk-assure, rema-icechunk, tiny-zlib-oisst-repo | Icechunk 2.1 from tables: OISST in three access cells; 5,800 REMA COGs, ~19.5M refs from rustycogs IFDs |
-| Jul 2026 | mdsumner/raad.virtualize | "one central store of byte references, published forms are projections"; 16,387 OISST files scanned in ~20 min into SQLite |
-| Jul 2026 | hypertidy/blocklist | the clean split: VRT for logic, rhdf5 chunk walk for physics, kerchunk Parquet out; `access` vs `public` |
-| Aug 2026 | mdsumner/aad-filelist | bowerbird dry-run listings as Parquet; a richer SQLite ref schema (arrays, inline, affine) |
-| Oct 2026 | mdim-refs/0.2 | the two SQLite stores merged, column names from GDAL block-info; three readers agree byte for byte on OISST |
-| Oct 2026 | wxylib m02, m05 | the table read by Rust into Icechunk (56 tests); then the table as a cache, with held bytes and lineage |
+| May 2025 | zarrquet | VirtualiZarr's kerchunk Parquet is a table of (path, offset, size, raw), and the array's chunk keys belong in that table too |
+| Feb 2026 | idea-nci-thredds | VirtualiZarr to Icechunk working on Pawsey, and the gotchas along the way |
+| Mar 2026 | cogcache | COG tiles fetched by range, decoded in Rust, catalogued in DuckDB; warp as `target chunk -> source chunk refs -> read -> warp -> write`, bit-identical to GDAL. The reference table is already here, as a cache key |
+| Mar 2026 | parq2ice | kerchunk Parquet to Icechunk in Rust; hit a ~2 GB manifest limit on a 16.7M-chunk BRAN array |
+| Apr 2026 | pawsey-aad | bowerbird sync into Pawsey object storage, COG conversion, VirtualiZarr Parquet and curated listings, all scheduled |
+| Jun 2026 | virtualized | BRAN2023 built twice, by GDAL and by VirtualiZarr, and compared |
+| Jul 2026 | Icechunk pilots | Icechunk 2.1 built from tables: OISST in three access patterns; 5,800 REMA COGs as ~19.5M refs from TIFF IFDs |
+| Jul 2026 | raad.virtualize | one central store of byte references, with published forms as projections; 16,387 OISST files scanned in ~20 minutes into SQLite |
+| Jul 2026 | blocklist | the clean split: VRT for the logic, a chunk walk for the physics, kerchunk Parquet out; an `access` location versus a `public` one |
+| Aug 2026 | aad-filelist | bowerbird listings as Parquet, and a richer reference schema (arrays, inline bytes, affine) |
+| Oct 2026 | mdim-refs/0.2 | the two SQLite stores merged, with column names from GDAL's block info; three readers agree byte for byte on OISST |
+| Oct 2026 | wxylib | the table read in Rust and written to Icechunk; then the table as a cache, with held bytes and lineage |
 
-The arc closes on itself: cogcache started as a tile cache keyed by byte
-range, and wxylib's m05 design ends as a byte-range cache described by the
-same rows. That is evidence for the stance, not a coincidence.
+The arc closes on itself. cogcache began as a tile cache keyed by byte
+range, and the latest cache design ends as a byte-range cache described by
+the same rows. I take that as evidence for the stance rather than a
+coincidence.
 
-Probably related and not yet read in: vrtconcat, virtual-cog-pilot,
-rema-ovr, gdal-mdim-summary, sooty, rustycogs' tiff_refs in detail,
-hypertidy/rangefinder's Icechunk reader.
+## Why a table
 
----
+The case for rows over objects:
 
-## 3. Why a table: tabular generality
-
-The case for rows over objects, collected from blocklist, zarrquet,
-raad.virtualize and the wxylib cache design.
-
-- **Rows compute without shared state.** Scan per source, in parallel,
-  rbind. No live lazy-array graph to serialise between workers; mirai or a
-  Slurm array is `map -> rows -> rbind`.
-- **Rows are queryable.** With explicit chunk keys (`dim_0..dim_n`) a table
-  answers "which chunks touch this box and these days" by predicate
+- **Rows compute without shared state.** Scan each source in parallel and
+  bind the results. There is no live lazy-array graph to serialise between
+  workers; a Slurm array or a mirai pool is just `map -> rows -> rbind`.
+- **Rows are queryable.** With explicit chunk keys (`dim_0 .. dim_n`) a
+  table answers "which chunks touch this box and these days" by predicate
   pushdown before any byte is read. kerchunk's positional index cannot.
-- **Rows carry anything.** A per-chunk codec string, a checksum, an mtime,
-  inline bytes, a held copy, a spatial bbox, a lineage pointer from a target
-  chunk back to its sources. The format does not change when a column is
-  added.
-- **Rows are language-neutral.** SQLite and Parquet open in R (DBI, arrow,
-  duckdb), Python, Rust, GDAL's vector drivers and DuckDB with no shared
-  library.
+- **Rows carry anything.** A per-chunk codec, a checksum, a modification
+  time, inline bytes, a held copy, a spatial extent, a lineage pointer from
+  a derived chunk back to its sources. Adding a column does not change the
+  format.
+- **Rows are language-neutral.** SQLite and Parquet open in R, Python,
+  Rust, GDAL's vector drivers and DuckDB with no shared library.
 - **Rows make a cache honest.** bowerbird mirrors whole files eagerly; a
-  range cache mirrors what was looked at; the same rows describe both, with
-  a `held` state (`ref`, `inline`, `copy`, `link`).
+  range cache mirrors only what was looked at. The same rows describe both,
+  with a `held` state (`ref`, `inline`, `copy`, `link`).
 
-The convergent core, found independently in five existing schemas:
+Five existing schemas, built independently, converge on the same core:
 
 ```
 array, chunk key (explicit), location, offset, length, present
 + array metadata held once (dims, shape, chunks, dtype, fill, codec, attrs)
 ```
 
-Settled choices in mdim-refs/0.2: explicit keys; chunk rows keyed
-*within source* so a rescan is an upsert and the global index is a view;
-locations verbatim at scan time with `remap` rules applied at publish;
-`size` (block-info) over `length`; byte columns BIGINT; one codec per
-array, so a codec change ends an array (eras).
+The mdim-refs/0.2 schema settles the remaining choices: explicit keys;
+chunk rows keyed *within their source*, so a rescan is an upsert and the
+global index is a view; locations recorded verbatim at scan time, with
+remap rules applied at publish; 64-bit byte columns; and one codec per
+array, so a change of codec ends one array and starts another (an era).
 
 The wider argument is in [Where the line falls: tensors, tables and four
-layers](../2026-10-13_tensors-tables-four-layers/).
-Its frame: every dataset is values over an index space plus a map from
-index to place, implicit (a recipe) or explicit (stored values); a tensor
-is a table whose key is implicit, a table is a tensor whose key is
-explicit. "Tensors versus tables" is drawn in a different place by each
-of four layers (storage, index, topology, rendering), and storage is the
-least fundamental of them. Its closing gap is this piece's thesis in one
-line: **byte references are a table that describes a tensor**, the
-clearest case of the two sides needing each other rather than competing.
+layers](../2026-10-13_tensors-tables-four-layers/). Every dataset is values
+over an index space plus a map from index to place, either implicit (a
+recipe) or explicit (stored values). A tensor is a table whose key is
+implicit; a table is a tensor whose key is explicit. Byte references are
+the clearest case of the two needing each other: **a table that describes a
+tensor**.
 
----
-
-## 4. The model
+## The model
 
 ```
-discover   bowerbird / blueant / cmrlifecycle / starc / THREDDS -> sources (access, public, mtime)
-plan    A  gdal mdim mosaic                                  -> mdim VRT (Source, SourceSlab, DestSlab)
-physical   block-info (GetRawBlockInfo) | rhdf5 walk | DMR++ | TIFF IFDs -> per-source chunk rows
-table   B  mdim-refs: sources, arrays, chunk rows, placements, remap -> view refs_<array>
-emit       C Icechunk   D kerchunk Parquet   flat Parquet export   OGR layer
-publish    Pawsey object storage (truth) -> source.coop, GitHub releases
-register   sds row per published form
-read       GDAL (Zarr, multidim), gdalraster, GDAL7, ndr, zaro, altarr, robstore, xarray, wxylib
+discover   bowerbird, blueant, CMR, STAC, THREDDS          -> sources (access, public, mtime)
+plan       gdal mdim mosaic                                -> mdim VRT
+physical   GDAL block info | HDF5 chunk walk | DMR++ | TIFF IFDs -> chunk rows per source
+table      mdim-refs: sources, arrays, chunk rows, placements, remap -> refs_<array> view
+emit       Icechunk | kerchunk Parquet | flat Parquet | OGR layer
+publish    object storage (the truth) -> public mirrors
+register   one sds row per published form
+read       GDAL, gdalraster, xarray, zaro, wxylib, DuckDB, ...
 ```
 
-Three layers in the table, each held once:
+The table has three layers, each held once:
 
 1. **Physical.** For each source and array, the byte range of every chunk,
-   keyed by position inside the source. No time, no dataset, no remapping.
+   keyed by its position inside the source. No time axis, no dataset, no
+   remapping.
 2. **Plan.** Where each source's slab sits in the global array, copied from
-   the mosaic VRT so the table stands alone outside GDAL.
-3. **View.** The global chunk index, `refs_<array>`, exactly the rows
-   block-info would emit if run on the mosaic as one array.
+   the mosaic VRT so that the table stands alone outside GDAL.
+3. **View.** The global chunk index, `refs_<array>`: exactly the rows that
+   GDAL's block info would emit if run on the mosaic as one array.
 
-The view formula: `dim_i(global) = dim_i(source) - src_offset_i / c_i +
-dest_i / c_i`, restricted to chunk-aligned placements. If the mosaic has no
+The view is a simple formula over the key,
+`dim_i(global) = dim_i(source) - src_offset_i / c_i + dest_i / c_i`, valid
+when every placement is aligned to chunk boundaries. If a mosaic has no
 single regular chunk grid it cannot be virtualised, and the table says so
 rather than writing a wrong store.
 
-Spec: [mdim-refs/0.2](https://github.com/wxylib/design/blob/main/specs/mdim-refs-0.2.md).
+The full specification is
+[mdim-refs/0.2](https://github.com/wxylib/design/blob/main/specs/mdim-refs-0.2.md).
 
----
-
-## 5. The endpoints, staged and complementary
+## The endpoints, staged and complementary
 
 Each endpoint earns its place by serving a reader the others do not.
 
-| Endpoint | Who reads it | Usage model | Strength | Limit | State (Oct 2026) |
-|---|---|---|---|---|---|
-| **mdim VRT** | GDAL CLI and API (gdalraster, GDAL7, osgeo.gdal, gdalxarray, ndr) | open one string, GDAL does the rest; also the build plan for the table | day-one R access; inspectable XML; no new format; daily-updated OISST VRT already on Pawsey | serial by source to build; drops some CF attrs (time units); reads go through source files | works; OISST, BRAN, MUR examples |
-| **flat Parquet** ("parquet-zarr-lite", see note) | zaro, wxylib, DuckDB, arrow; any range fetcher (robstore) | query the table, fetch only the ranges you need; the cache lives here | pushdown, no codec registry, wasm-friendly, append-only fragments | not a standard; every reader is ours | mdim-refs export read by wxylib; zaro reads the SQLite form (`mdimrefs://`); no flat zarrs reader yet |
-| **kerchunk Parquet** | xarray/fsspec, GDAL Zarr driver (`ZARR:"/vsikerchunk_parquet_ref/..."`) | interop with the Python stack and with GDAL as Zarr | widest existing reader base; GDAL reads it today | positional keys; fsspec layout not read by zaro; full rewrite on update | written by blocklist and from mdim-refs; verified on OISST |
-| **Icechunk** | xarray/icechunk-python, zarrs, icechunk-js | transactional history: bulk-load once, append days as commits, snapshots in URLs | versioning, checksums against prelim/final churn, browser readers | format moves fast (v1 -> v2 -> v2.1 in a year); ~2 GB manifest limit hit on BRAN (Icechunk 0.3); manifests split on 2.x, and a daily-appended repo must split by day (wxylib m16); GDAL reads it only via /vsiicechunk/ in recent builds (to be confirmed) | written by wxylib from the table; four older loaders outside R |
-| **SQLite store / OGR layer** | DBI, GDAL vector drivers | the canonical store; inspect with ogrinfo | one file per dataset, no server, publishable read-only | not a reader format | mdim-refs/0.2, OISST 16,387 sources in 14 MB |
+| Endpoint | Who reads it | Usage | Strength | Limit |
+|---|---|---|---|---|
+| **mdim VRT** | GDAL and everything on it (gdalraster, osgeo.gdal, R and Python bindings) | open one string, GDAL does the rest; also the build plan for the table | R access on day one; inspectable XML; no new format | slow to build for many sources; drops some CF attributes; reads go through the source files |
+| **flat Parquet** | DuckDB, arrow, zaro, wxylib, any range fetcher | query the table, fetch only the ranges needed; the natural home of a cache | pushdown, no codec registry, browser-friendly, append-only | not a standard; every reader is ours |
+| **kerchunk Parquet** | xarray and fsspec; GDAL's Zarr driver via `/vsikerchunk_parquet_ref/` | interoperate with the Python stack, and with GDAL as Zarr | widest existing reader base | positional keys; full rewrite on update |
+| **Icechunk** | icechunk-python, zarrs, icechunk-js | transactional history: bulk load once, append days as commits | versioning, checksums, browser readers | fast-moving format; manifest layout needs care for daily appends |
+| **SQLite / OGR layer** | DBI, GDAL vector drivers | the canonical store, inspected with ogrinfo | one file per dataset, no server | not a reader format |
 
-Order of building: A and B are the heart; D first among emitters because
-blocklist already writes it and GDAL reads it (so R users get it); C as a
-sink where versioning matters; the flat Parquet as the place for queries
-and cache. C and D may feed back into A as GDAL sources.
+The VRT and the table are the heart. kerchunk comes first among the
+emitters because GDAL reads it, so R users get it. Icechunk is a sink where
+versioning matters. The flat Parquet export is a middle stage rather than a
+peer of the renders: harvest and collate into it, render from it, and keep
+the cache there. Its file layout is not fixed yet; a single
+self-describing file with Parquet key-value metadata is the likely end.
 
-Note: "parquet-zarr-lite" (19 Oct 2026) is **the flat refs
-store between byte-ref harvesting plus metadata collation, and the
-virtual-index render** (Zarr or otherwise). It is a middle stage, not a
-peer of the renders: harvest and collate into it, render from it. Today
-it is the mdim-refs Parquet export (`refs_<array>.parquet` +
-`arrays.json`), read directly by wxylib's `wxy-refs` (stage S3c, core
-9b486a6, OISST matching GDAL); zaro's enriched-parquet-refs is the same
-idea. Its file layout is not fixed yet (one self-describing file with
-Parquet key-value metadata is the likely end), and the export still lacks
-the `sources` table that cache validation wants.
+## What Icechunk does, as table operations
 
-### Icechunk features as table operations (23 Oct 2026)
+A suspicion worth testing: much of Icechunk's machinery is a view, or a
+simple operation, over a byte-reference table. The people building it
+frame it in similar terms. Tom Nicholas and Sebastian Galkin describe
+virtual chunks as playing ["a similar role that an 'external table' does in
+more traditional
+databases"](https://tom-nicholas.com/blog/2026/secure-virtual-chunks/), and
+Nicholas's [ESIP
+talk](https://speakerdeck.com/tomnicholas/virtual-chunks-at-earthmover-from-theory-to-production)
+treats the manifest as an abstraction layer in which physical and logical
+layout change independently. Earthmover's recent posts set Icechunk beside
+Iceberg ("Iceberg is tabular, while Icechunk is tensor-based") and put
+tables and tensors side by side in one platform.
 
-The suspicion: much of Icechunk's machinery is a SQL view, or a
-simple operation, over a byte-ref table. Checked against the Icechunk 2.x
-spec and changelog. The suspicion holds for the *addressing and layout*
-features. It does not hold for the *versioning* features, which need real
-storage semantics (atomic, conditional writes on object storage); a table
-gets those only from a table format that has them.
-
-What the Earthmover side has said on this theme (no direct "it is just a
-view" statement found; social posts were not searchable):
-
-- Tom Nicholas and Sebastian Galkin, "Virtual chunks that just work - but
-  securely" (10 Jun 2026): virtual chunks "play a similar role that an
-  'external table' does in more traditional databases."
-  https://tom-nicholas.com/blog/2026/secure-virtual-chunks/
-- Tom Nicholas, "Virtual Chunks at Earthmover: From Theory to Production"
-  (ESIP Cloud Computing Cluster, 15 May 2026): "The manifest is an
-  abstraction layer: you can change the physical layout or the logical
-  layout independently of one another", and the logical layer allows cheap
-  manipulations like `.shift_array(offset, axis)` or `.move(old, new)`. Its
-  format-comparison slide classes LanceDB manifests as *tabular*, with
-  transactions and versioning, beside Icechunk, kerchunk and DMR++.
-  https://speakerdeck.com/tomnicholas/virtual-chunks-at-earthmover-from-theory-to-production
-- Tom Nicholas, GOES-16 post (2 Jun 2026): Icechunk is a "serverless
-  transactional cloud-native database for storing chunks."
-  https://tom-nicholas.com/blog/2026/virtual-zarr/
-- Ryan Abernathey, "Icechunk vs. Iceberg Head-to-Head" (1 Oct 2026):
-  Icechunk "borrows the ideas that made Iceberg successful": snapshots,
-  transactions, a manifest layer; "Iceberg is tabular, while Icechunk is
-  tensor-based." Joe Hamman and Matt Iannucci, "Science data comes in
-  tables and tensors" (23 Sep 2026), puts Iceberg tables beside Icechunk
-  repos in Arraylake; Zax SQL (15 Sep 2026) maps tensors to relational
-  semantics. The [tensors and tables post](../2026-10-13_tensors-tables-four-layers/) (12 Oct) answers this framing.
-
-The mapping. "View" means a pure function of rows the mdim-refs table
-already holds; "layout" means a physical choice about storing the same
-rows; "storage" means it needs atomic writes no view can supply.
+Checked against the Icechunk 2.x specification, the suspicion holds for the
+*addressing and layout* features. It does not hold for the *versioning*
+features, which need real storage semantics: atomic, conditional writes on
+object storage. "View" below means a pure function of rows the table
+already holds; "layout" means a physical choice about storing those rows;
+"storage" means it needs atomic writes that no view can supply.
 
 | Icechunk feature | Table equivalent | Kind |
 |---|---|---|
-| Virtual chunk container `url_prefix`; 2.0 named containers, refs as `vcc://name/path`; "assets can be relocated ... by just changing the VCCs" | `remap(target, prefix, replacement)` joined at read: longest-prefix match. Icechunk binds late (read), mdim-refs binds at publish | view |
-| VCC credentials and read-time authorization | none: a per-prefix access policy, closer to row-level security than to a view | policy |
-| `shift_array`, `reindex_array` (regular grids only) | `dim_i + k` over the chunk key: the section 4 placement formula, with the same chunk-aligned restriction | view |
-| `session.move` (metadata-only) | update one row of `arrays` (path) | view / one-row update |
-| `ChunkRef` (index, location, offset, length), inline, native | `refs_<array>` columns: `dim_*`, `path`, `offset`, `size`, `data`, `present` | same rows |
-| Chunk refs sorted by index, binary search | clustered primary key (SQLite `WITHOUT ROWID`) | layout |
-| `location_dictionary`, compressed locations | dictionary encoding of `path` (Parquet does it natively) | layout |
-| Manifest splitting: non-overlapping `extents` per manifest | partition by `floor(dim_0 / n)`; extents are partition / row-group min-max stats used for pruning | layout |
-| `checksum_etag`, `checksum_last_modified`, refuse stale bytes | `sources.mtime` (and an etag column) plus a reader-side check | column + reader policy |
+| Virtual chunk containers; 2.0 named containers, so assets relocate by changing the container | a remap table (prefix, replacement) joined at read by longest-prefix match | view |
+| Container credentials and read-time authorization | a per-prefix access policy, closer to row-level security | policy |
+| `shift_array`, `reindex_array` (regular grids only) | `dim_i + k` over the chunk key: the placement formula above, with the same alignment restriction | view |
+| `move` (metadata only) | update one row of `arrays` | one-row update |
+| Chunk references (index, location, offset, length), inline, native | the `refs_<array>` columns | same rows |
+| References sorted by index, binary search | a clustered primary key | layout |
+| Location dictionary | dictionary encoding of the path column | layout |
+| Manifest splitting by extent | partitioning by `floor(dim_0 / n)`, with min-max statistics for pruning | layout |
+| Checksums by etag or modification time | an etag or mtime column plus a reader-side check | column + reader policy |
 | Diff between commits | `EXCEPT` of two snapshot row sets | view, given snapshots |
-| Snapshots, branches, tags, amend | append-only rows with valid-from/valid-to, view "as of"; but publishing that atomically is the hard part | storage |
-| Transactions, conflict detection, rebase | the conflict test is set intersection of changed chunk keys per node (the transaction log stores exactly those), a join; the atomic commit is a conditional PUT on the repo ref | storage |
-| Expiration, GC | anti-join of reachable vs listed objects; operational, over object storage | storage ops |
+| Snapshots, branches, tags | append-only rows with validity intervals and an "as of" view; publishing that atomically is the hard part | storage |
+| Transactions and conflict detection | the conflict test is an intersection of changed chunk keys, a join; the commit itself is a conditional write | storage |
+| Expiration and garbage collection | an anti-join of reachable against listed objects | storage operations |
 
-Readings, skeptical both ways:
+Four readings follow, each skeptical in both directions.
 
-- **Remap is the clearest case, and Icechunk has now built it.** Icechunk
-  2.0 named containers are a two-column prefix table resolved at read.
-  raad.virtualize `py/render_icechunk.py` resolves remap rules to absolute
-  URLs and registers unnamed containers, so a relocation means a re-render.
-  Writing `vcc://<target>/<rest>` with one named container per remap row
-  would make the Icechunk repo carry the remap table itself, late-bound.
-  Small, worth a try; needs Icechunk 2.x on the reader side.
-- **Layout features are not free just because they are views.** Splitting,
-  sorting and dictionary-coding are where Icechunk spends its engineering
-  (flatbuffers, concurrent manifest fetch, binary search across manifests).
-  A Parquet table gets the equivalents from Parquet and DuckDB, but only
-  for readers that are ours. The ~2 GB BRAN manifest limit was an Icechunk
-  layout limit (one manifest), not a table limit; splitting is now in
-  render_icechunk (`--split`).
-- **Versioning is not a view.** Snapshots-as-views are easy to write and
-  wrong without atomic publication: a reader must see one consistent
-  snapshot across all arrays, and two writers must not both win. Icechunk
-  does this with conditional writes and no server; Iceberg needs a catalog;
-  Lance and DuckLake are the table-side options. If the byte-ref table ever
-  needs history, borrow a table format with transactions; do not grow one.
-  Tom Nicholas (recalled, source not located): "the only other
-  system in the world that uses the same serverless transactional
-  mechanism as Icechunk is Lance." Close to true: Lance commits by
-  put-if-not-exists of `_versions/{n}.manifest` with optimistic retry, no
-  catalog, as Icechunk does with conditional writes. Overstated in one
-  respect: Delta Lake's log commit is also put-if-absent and runs serverless
-  wherever the store supports it (Azure, GCS, and S3 since conditional
-  writes in Aug 2024), though most Delta deployments use a catalog or
-  DynamoDB anyway. Iceberg and DuckLake need a catalog. So Lance is the
-  natural table-side twin of Icechunk for a versioned byte-ref table.
-- **Most of what we version is already a column.** Prelim versus final is
-  two sources (section 9); a daily append is new rows keyed by source;
-  "which granules did this dataset use on date X" is a plan question. That
-  covers most of the need Icechunk versioning answers for virtual data, and
-  it is why Icechunk stays a sink (section 5), not the store of record.
-- **The policy row matters.** VCC authorization exists because a virtual
-  ref can point anywhere, including a private bucket. mdim-refs has no
-  equivalent; the remap target is the natural place for "allowed prefixes".
+**Remap is the clearest case, and Icechunk has now built it.** Named
+containers are a two-column prefix table resolved at read time. The
+mdim-refs table binds remap rules at publish instead, so relocating data
+means re-rendering. Writing one named container per remap rule would let
+an Icechunk repository carry the remap table itself, bound late.
 
-#### Lance for held bytes (23 Oct 2026)
+**Layout features are not free just because they are views.** Splitting,
+sorting and dictionary coding are where Icechunk spends its engineering. A
+Parquet table gets the equivalents from Parquet and DuckDB, but only for
+readers that are ours. The 2 GB BRAN limit was a layout limit (one
+manifest), not a table limit, and manifest splitting addresses it.
 
-[wxylib/design m16](https://github.com/wxylib/design/blob/main/docs/m16-versioned-byte-ref-table.md)
-tested the versioning question on the GHRSST MUR 2024 store (935,496
-refs), against Parquet fragments with a create-only manifest commit and
-against Icechunk with daily commits.
+**Versioning is not a view.** Snapshots-as-views are easy to write and
+wrong without atomic publication: a reader must see one consistent
+snapshot across all arrays, and two writers must not both win. Icechunk
+does this with conditional writes and no server. Among table formats, Lance
+does the same (a put-if-absent commit of each version manifest, with
+optimistic retry and no catalog); Delta Lake can, where the object store
+supports conditional writes; Iceberg and DuckLake need a catalog. If the
+byte-reference table needs history, it should borrow a table format with
+transactions rather than grow one.
 
-- **For refs, history is mostly a column.** Lance holds the mdim-refs
-  tables unchanged, and snapshots, tags, diff, upsert and the remap view
-  all worked, with bytes matching GDAL. But nothing reading these stores
-  needs "as of" yet. If it ever does, use Lance rather than a thin fragments
-  layer: the thin layer handled appends and a two-writer race, and then the
-  first rescan rewrote half a year of rows.
-- **For bytes, versioning pays.** This is cogcache's model: refs in a table
-  until a chunk is needed, then the bytes held in the same row. Lance's
-  blob column stores each value either inline or as an external
-  (uri, position, size) range, and `read_blobs` returns bytes for both. A
-  half-held, half-external window over Hobart matches GDAL. Taking one held
-  chunk by row costs 1 ms, against 29 ms from Parquet with 64-row row
-  groups. A reprocessed day changes only the new version, and an older tag
-  still reads the bytes that were held. A ref cannot do that.
-- **Icechunk with daily commits.** A year of daily commits costs 22 MB of
-  history with manifests split by day, and 1.84 GB with a 365-day split.
-  Split by the append unit.
+**Most of what we version is already a column.** Preliminary and final
+versions of a day are two sources. A daily append is new rows keyed by
+source. "Which granules did this dataset use on a given date" is a question
+for the plan. That covers most of the need Icechunk's versioning answers
+for virtual data, which is why Icechunk stays a sink rather than the store
+of record.
 
----
+### Where versioning pays: held bytes
 
-## 6. Knowledge and catalog: sds, raad, bowerbird
+That last point was tested on the GHRSST MUR 2024 store (935,496
+references), comparing Lance, Parquet fragments with a simple manifest
+commit, and Icechunk with daily commits
+([design note](https://github.com/wxylib/design/blob/main/docs/m16-versioned-byte-ref-table.md)).
 
-The long-running AAD stack and its successors, by role.
+- **For references, history is mostly a column.** Lance holds the
+  mdim-refs tables unchanged, and snapshots, tags, diff, upsert and the
+  remap view all work, with bytes matching GDAL. Nothing reading these
+  stores needs "as of" yet. If it ever does, Lance is the better route than
+  a thin homemade layer, which handled appends and a two-writer race and
+  then rewrote half a year of rows on the first rescan.
+- **For bytes, versioning pays.** This is cogcache's model: references in a
+  table until a chunk is needed, then the bytes held in the same row.
+  Lance's blob column stores each value either inline or as an external
+  (uri, position, size) range, and reads both the same way. A half-held,
+  half-external window over Hobart matches GDAL. Taking one held chunk by
+  row costs 1 ms, against 29 ms from Parquet with 64-row row groups. A
+  reprocessed day changes only the new version, and an older tag still
+  reads the bytes that were held. A plain reference cannot do that.
+- **Icechunk with daily commits** costs 22 MB of history for a year when
+  manifests are split by day, and 1.84 GB with a 365-day split. Split by
+  the unit of append.
+
+## Knowledge and catalog
+
+The long-running AAD data stack already holds most of what a catalog
+needs; the virtual store gives each piece a clearer role.
 
 | Layer | Pieces | Keeps |
 |---|---|---|
-| acquisition knowledge | bowerbird (handlers: rget, earthdata, copernicus, thredds, aws_s3, ...), blueant (109 sources) | how to reach each provider; the dataset `id` |
-| listing | aad-filelist, raadfiles `file_db.tab`, pawsey-aad curated listings | what files exist, where |
-| sets | raadfiles finders, date and dedup rules | which files form a dataset, prelim vs final |
-| freshness | cmrlifecycle (ProductionDateTime, not revision-id), bb_fingerprint | what changed, what to rescan |
-| reading (old) | raadtools `read*()`, `extract(readfun, xyt)` | per-dataset code that the virtual store retires |
-| reading (new) | sooty, zaro, GDAL7, ndr, altarr | one lazy array per dataset |
+| acquisition | bowerbird and its handlers, blueant (109 sources) | how to reach each provider; the dataset id |
+| listing | aad-filelist, raadfiles | what files exist, and where |
+| sets | raadfiles finders, date and deduplication rules | which files form a dataset; preliminary versus final |
+| freshness | CMR production times, file fingerprints | what changed, and what to rescan |
+| reading, old | raadtools `read*()` | per-dataset code that the virtual store retires |
+| reading, new | GDAL, zaro, lazy array readers | one lazy array per dataset |
 | registry | sds | the string that opens it now |
 
-Positions taken:
-
-- **bowerbird stays the acquisition layer for what is not FAIR.** Its
-  configs are knowledge no aggregator holds. The bowerbird mirror is
-  blocklist's `access`; the provider URL is `public`.
+- **bowerbird stays the acquisition layer for data that is not FAIR.** Its
+  configurations are knowledge no aggregator holds. The bowerbird mirror is
+  the `access` location; the provider URL is the `public` one.
 - **raadfiles file sets are mosaic inputs**, and raadtools' edge cases
-  (NSIDC's 0 to 3 variables per file, percent becoming fraction) are codec
-  boundaries, i.e. eras: groups in one store, recorded once.
+  (zero to three variables per file, a percentage becoming a fraction) are
+  codec boundaries: eras, recorded once as groups in one store.
 - **sds stays strings-only and does not own the table.** It gains kinds for
-  `mdim_vrt`, `kerchunk_parquet`, `mdim_refs`, `icechunk`, `stac`, `cmr`,
-  and a link from each row to the bowerbird `id` it derives from. Recipe
-  functions (`esacci_chlor_a()`, `seaice_cdr()`, `mursst_meta()`) become
-  builder scripts that emit stores; the row becomes one entry.
-- **A row earns its place** if sds adds what a catalog cannot: a dressing,
-  a recipe, a virtual store, a verified choice among versions, or a status
-  nobody else tracks. If STAC serves it, register the collection.
-- **Publish the registry as data** (STAC or stac-geoparquet generated in
-  CI) so Python, GDAL and DuckDB users can contribute.
+  each published form (mdim VRT, kerchunk Parquet, mdim-refs, Icechunk,
+  STAC, CMR) and a link from each row back to its bowerbird id. Recipe
+  functions become builder scripts that emit stores, and each recipe
+  becomes one row.
+- **A row earns its place** if sds adds what a catalog cannot: a recipe, a
+  virtual store, a verified choice among versions, or a status nobody else
+  tracks. Where STAC already serves a dataset, the row points at the
+  collection.
+- **The registry is published as data**, as STAC or stac-geoparquet built
+  in CI, so that Python, GDAL and DuckDB users can contribute.
 
-Adopt rather than rebuild: STAC (rstac, GDAL STACIT, DuckDB stac), CMR
-via cmrlifecycle, earthdatalogin for auth, DMR++ as a ready-made physical
-layer for NASA collections (no code for it anywhere yet).
+Where good tools exist they are adopted rather than rebuilt: STAC, CMR,
+earthdatalogin for authentication, and DMR++ as a ready-made physical layer
+for NASA collections.
 
----
+## From HPC to the public
 
-## 7. The production path: HPC to object storage to the public
-
-The profitable path for the work is: develop where the data and compute
-already are, publish to storage under my control, and let a cheaper,
-more public layer serve it.
+The path for the work is to develop where the data and compute already
+are, publish to storage under our control, and let a cheaper and more
+public layer serve it.
 
 ```
-develop     Nectar (raad, /rdsi mirror), Pawsey Setonix + Acacia, NCI (BRAN in situ)
-            bowerbird sync, scans, VRTs, tables; Slurm + Singularity images (gdal-builds)
-publish     Pawsey object storage: the single source of truth
-            aad-index/oisst, aad-index/vzarr, aad-index/mdim-vrt; remap targets per endpoint
-present     source.coop (ausantarctic):
-            byte-exact sync of designated prefixes, URL rewrite only by supplied remap rules,
-            release checks, landing pages
-code        GitHub repos and releases; Actions for small appends and link checks
-operate     AWS: EC2 / Lambda for scheduled builds and appends, longer term
+develop    Nectar (raad mirror), Pawsey Setonix + Acacia, NCI (BRAN in situ)
+           bowerbird sync, scans, VRTs, tables; Slurm + Singularity images
+publish    Pawsey object storage: the single source of truth
+present    source.coop: byte-exact sync of designated prefixes,
+           URLs rewritten only by the publisher's remap rules
+code       GitHub repositories and releases; Actions for small appends and checks
+operate    cloud functions and instances for scheduled builds and appends (to come)
 ```
 
-What is settled (4 Oct 2026): Pawsey is the truth; nothing appears on
-source.coop that is not on Pawsey first; refs are never edited by hand
-downstream; remap rules stay with the publisher.
+The rules are simple. Pawsey is the truth; nothing appears on source.coop
+that is not on Pawsey first; references are never edited by hand
+downstream; remap rules stay with the publisher. The open leg is
+operations: moving from virtualisation work on research infrastructure to
+scheduled production that feeds stores, or indexes of stores, on
+source.coop. [ghrsst-cogger](https://github.com/AustralianAntarcticDivision/ghrsst-cogger)
+is a live example of that shape. A block-info scan is only metadata reads,
+so per-granule scans and daily appends suit small serverless jobs, with
+larger instances for backfills.
 
-Still open: the AWS leg, the move from virtualisation work in raad,
-Pawsey and GitHub to production operations that feed stores, or indexes of
-stores, on source.coop. A live example is
-[ghrsst-cogger](https://github.com/AustralianAntarcticDivision/ghrsst-cogger).
-A plausible split, not a plan: Lambda for per-granule scans and daily
-appends (a block-info scan is metadata reads), EC2 for backfills.
+## Tooling: GDAL first, and a Rust experiment
 
----
+### GDAL and R
 
-## 8. Tooling: the noble path and the extreme turns
+In order of leverage:
 
-### The noble path (GDAL and R)
+1. **GDAL block info.** A GDAL change that makes chunk references for every
+   multidimensional driver through one code path, with a fast path for
+   HDF5 chunk iteration. A first pull request was paused after review and
+   is being reworked under that name. It is written by hand.
+2. **An R binding of `GetRawBlockInfo`** in gdalraster. The function is
+   already in stock GDAL and the binding is small and independent of (1).
+   Until it exists the scanner is Python.
+3. **GDAL as a first-class reader of the stores:** the numcodecs shuffle
+   and zlib filters on the Zarr v3 path, TIFF predictors, the LZW and
+   floating-point predictor codecs that REMA uses, and reading Parquet
+   key-value metadata in place of sidecar JSON.
+4. **R readers:** zaro (which already reads the mdim-refs store), support
+   for the fsspec kerchunk layout, a batched range fetcher, and GDAL as the
+   common face.
+5. **A released table producer in R.** The only R implementation is not
+   yet packaged; raad.virtualize is the natural home for the store and
+   blocklist for the kerchunk writer.
 
-Highest leverage first.
+### wxylib: an experiment in Rust
 
-1. **GDAL block-info.** The shelved `mdim get-refs` PR (mdsumner/gdal
-   `feature/mdim-get-refs`), to be renamed block-info with some functions
-   moved into GDAL multidim per review. One code path makes refs for every
-   multidim driver; the HDF5 chunk-iterate fast path retires the rhdf5
-   fork. It is written by hand, every line owned.
-2. **An R binding of `GetRawBlockInfo`** in gdalraster (and GDAL7). It is
-   in stock GDAL already, small, and independent of (1). Until it exists
-   the scanner is Python.
-3. **GDAL as a first-class reader of the stores:** numcodecs shuffle/zlib on
-   the Zarr v3 path, TIFF predictors, imagecodecs lzw/floatpred (REMA),
-   reading Parquet key-value metadata instead of sidecar JSON.
-4. **R readers:** zaro (`mdimrefs://` merged), fix zaro for the fsspec
-   kerchunk layout, robstore as the batched range fetcher, altarr's
-   `fetch(chunks)` as the contract, GDAL7/ndr as the GDAL face.
-5. **A home for the table producer.** `byteref/R/mdimrefs.R` is the only
-   R implementation and it is not released. Recommendation on record:
-   raad.virtualize holds the store, blocklist the kerchunk writer.
+wxylib is a Rust project built quickly from the best available crates,
+with GDAL as its test oracle and design documents gating each stage. The
+point is to push it hard now and see whether it deserves a long-term
+commitment.
 
-### The extreme turn: wxylib (exploring, not committed)
+What it has shown for this scheme:
 
-wxylib is a Rust org (core, design, fixtures, docs, py, r, web) built
-fast from the best available crates, with GDAL as test oracle and gated
-design documents. The aim is to push it as hard as possible now to see
-if it deserves a long-term commitment.
+- the table is right: its own design principle, "a scanner that emits
+  chunk references rather than a reader", is this stance reached
+  independently;
+- it reads the mdim-refs Parquet export, maps codecs to Zarr v3, honours
+  remap, writes Icechunk and reads it back, matching GDAL byte for byte on
+  OISST; BRAN (97,920 references, many chunks per file) is structurally
+  right, with bytes not yet verified;
+- fixtures plus an oracle give the table the conformance test it never
+  had;
+- the table can be a cache with lineage, which is new and useful.
 
-What it has proven for this scheme:
+What it has not shown yet: a table producer of its own, a read path that
+goes directly through the flat table rather than Icechunk, a kerchunk
+writer, and an R binding that R users can install without a Rust
+toolchain. Much of it was written quickly with generated code, so
+correctness is guarded by the oracle more than by understanding.
 
-- the table is right: wxylib's principle A6 ("a scanner that emits chunk
-  references rather than a reader") is this stance, reached independently;
-- step C works: `wxy_virtual::from_refs_table` reads the mdim-refs Parquet
-  export, maps v2 codecs to v3, honours remap, writes Icechunk, reads back
-  through zarrs; OISST byte for byte against GDAL; BRAN 97,920 refs (many
-  chunks per file) structurally fine, bytes not yet verified;
-- fixtures plus oracle is the conformance test the table never had;
-- plans as values (`--dry-run` request lists) and wasm builds;
-- m05 makes the table a cache with lineage, which is new and useful.
+It earns a long-term commitment if four things hold: the flat-table reader
+works with the cache inside it, with BRAN verified byte for byte against
+GDAL; it consumes a table producer it does not own; an R user can read a
+table through it without a Rust toolchain (or R is decided not to be its
+goal); and it introduces no new file format. If those hold, wxylib is the
+engine of the scheme. If not, it is a strong consumer of it, which is
+still worth a lot.
 
-What it has not:
+### Reader coverage: the GHRSST COG run
 
-- no public producer of the table (step B) lives there;
-- the only read path goes through Icechunk; "table first" needs a zarrs
-  storage reading the Parquet view directly, which is also where the cache
-  belongs (and keyed on `source_id`, not the remapped path);
-- D (kerchunk, the GDAL-readable form) is not in wxylib;
-- the R binding is far from R users (vendored tarball size, rustc 1.95
-  needed, CRAN builders);
-- doc 03's S7 "VRT replacement" risks a seventh schema;
-- ~13k lines in days, much generated: correctness is guarded by the
-  oracle, understanding is not.
+GHRSST MUR `analysed_sst` COGs from source.coop (2024, 935,496 references)
+went through raad.virtualize and were published to a test bucket, then
+verified from the bucket: the VRT and Icechunk forms match GDAL on every
+window. The source encoding (Int16, ZSTD, TIFF horizontal predictor) splits
+the readers, and shows why several views of one table matter:
 
-Proposed test for "long-term commitment":
-
-1. the flat refs-table reader with the cache inside it, BRAN verified
-   byte for byte against GDAL from a machine that reaches THREDDS;
-2. a table producer (any language) that wxylib consumes and does not own;
-3. one R user reading a refs table through wxylib without a Rust
-   toolchain, or a decision that wxylib's R surface is not the goal;
-4. no new file format introduced (S7 reads the VRT subset and the table).
-
-If those hold, wxylib is the scheme's engine. If 2 or 4 fail, it is a
-strong consumer, which is still worth a lot.
-
-Live status is kept in wxylib/design
-[docs/commit-criteria.md](https://github.com/wxylib/design/blob/main/docs/commit-criteria.md).
-
-### Reader coverage: the GHRSST COG run (23 Oct 2026)
-
-GHRSST MUR `analysed_sst` COGs from source.coop (2024, 935,496 refs) went
-through raad.virtualize and were published to a test bucket.
-They were then verified from the bucket: the VRT and Icechunk forms match
-GDAL on every window. The source encoding (Int16, ZSTD, TIFF `PREDICTOR=2`)
-splits the readers, which shows why several views of one table matter:
-
-| Form | Python (imagecodecs) | GDAL / R |
+| Form | Python (imagecodecs) | GDAL and R |
 |---|---|---|
-| MDIM VRT | yes | yes, but a full-width row took 166 s |
-| Icechunk | yes, the same row took 6 s | no (`imagecodecs_delta`) |
-| kerchunk Parquet | yes | no (`imagecodecs_delta`) |
-| flat refs store | own decode | wxy-refs, if it decodes the predictor |
+| mdim VRT | yes | yes, but a full-width row took 166 s |
+| Icechunk | yes, the same row in 6 s | not yet (predictor codec) |
+| kerchunk Parquet | yes | not yet (predictor codec) |
+| flat refs store | own decoder | through wxylib, once it decodes the predictor |
 
-Improvements to track, each widening coverage for the R-first audience:
+Widening that coverage for R users means a TIFF predictor filter in GDAL's
+Zarr reader, predictor decoding in wxylib's table reader, faster COG tile
+fetching through the VRT, and recording attribute types in the store so
+that packed integers are not silently decoded to doubles.
 
-- a TIFF horizontal-predictor filter in GDAL's Zarr reader (to be
-  written alongside block-info)
-- the wxy-refs predictor decode, so R reads the flat store directly
-- why GDAL fetches COG tiles one at a time through the VRT
-- recording attribute dtypes in the store, because xarray decodes packed
-  int16 to float64
+## Where it stands, October 2026
 
----
+**Working now**
 
-## 9. Reminders before diverging
+- The mdim-refs/0.2 table, with OISST daily (16,387 sources in a 14 MB
+  SQLite file) read byte for byte the same by three readers.
+- All four endpoints built from that one table for OISST (mdim VRT,
+  kerchunk Parquet, flat Parquet and Icechunk), and largely verified.
+- A daily-updated OISST mdim VRT on Pawsey object storage.
+- GHRSST MUR 2024 through the pipeline to object storage, with the VRT and
+  Icechunk forms verified against GDAL.
+- Lance tested as a versioned store for held bytes, with reads matching
+  GDAL.
 
-Read this before starting the next exciting thing.
+**In progress**
 
-- **Do not write a sixth byte-ref schema.** Five existed; mdim-refs/0.2
-  merged two of them. Extend columns, do not fork tables.
-- **The VRT is the plan.** `gdal mdim mosaic` is already the n-d
-  concatenation engine. Anything that replaces it should read it.
-- **Design for time concatenation plus eras first.** Every working example
-  (OISST, MUR, BRAN, CDR sea ice) is time-concat; spatial mosaics are
-  already GTI's job.
-- **Remap at publish, never in sources.** Source URIs are verbatim and
-  immutable; prelim and final are distinct sources.
-- **A codec change ends an array.** Mixed codecs are an ingest failure, not
-  a warning.
-- **sds is strings only.** Bytes, tables and caches live elsewhere.
-- **R users first.** They are the gap. Day one is the mdim VRT through
-  GDAL; next is a table reader; Icechunk is for others.
-- **The GDAL PR is written by hand.** It is not generated.
-- **Before copying an Icechunk feature, ask: column, view, layout, or
-  storage?** Only the last needs a transactional format (section 5,
-  Icechunk features as table operations).
-- **Icechunk has limits already hit.** Retest with manifest splitting
-  before designing around or away from it; for daily appends, split by day.
-- **Prove bytes, not structure.** "Opens with the right shape" is not
-  "reads the same values as GDAL". The fixtures repo is the habit.
-- **Small open loops**: BRAN oracle run from a machine that reaches THREDDS; `scale_factor`
-  rounding (0.0078 vs 0.00778...) in the R-built BRAN index; VirtualiZarr
-  fill -32767 vs `_FillValue` -32768; GDAL 3.13 GetRawBlockInfo erroring on
-  unwritten chunks (worth an upstream issue); zaro's handling of `copy`
-  held rows; MUR three-way pilot (DMR++, HDF5 scan, COG IFDs, one table).
+- GDAL block info, being reworked after a first review.
+- BRAN2023 (4D, many variables, ~16.8M chunks per variable, many chunks per
+  file) built from NCI in situ, structurally right and awaiting byte
+  verification.
+- The flat Parquet layout, and a direct reader for it with the cache
+  inside.
+- Known rough edges: a scale-factor rounding difference in the R-built
+  BRAN index, a fill-value disagreement between VirtualiZarr and the
+  source attributes, and GDAL 3.13's block info erroring on unwritten
+  chunks.
 
----
+**Next**
 
-## 10. Stretch target (for a cold reader)
+- A gdalraster binding of `GetRawBlockInfo`, and a released R table
+  producer.
+- MUR SST three ways (DMR++, HDF5 scan, COG mirror) into one table.
+- sds rows for each published store, with the registry published as STAC.
+- Scheduled production on source.coop.
 
-Earth observation and ocean model archives are mostly not cloud-native,
-and will not be rewritten. They do not need to be. Every chunk of every
-array already sits at a known byte range in a file someone is already
-serving. Record those ranges once, in a plain table, beside a
-concatenation plan GDAL already understands, and the archive can be
-published as whatever its readers want: a GDAL VRT for R and GIS users, a
-Parquet table for query engines and browsers, kerchunk for xarray, an
-Icechunk repository for versioned pipelines. No copies, no new format, and
-no single pathway everyone must adopt.
+## The end state
 
-The end state:
-
-- a dataset's knowledge lives in a bowerbird source, its bytes in the
+- A dataset's knowledge lives in a bowerbird source, its bytes in the
   provider's files, its plan in a VRT, its references in one table, and its
-  address in one sds row;
-- a daily append is a scan of the new files and an upsert of their rows,
-  run where the data is, published to object storage, mirrored to
-  source.coop by rule;
+  address in one sds row.
+- A daily append is a scan of the new files and an upsert of their rows,
+  run where the data is, published to object storage and mirrored to
+  source.coop by rule.
 - R, Python, GDAL, DuckDB, Rust and the browser read the same table, and a
-  conformance fixture proves they read the same values;
-- a range cache, described by the same rows, makes repeated access to
+  conformance fixture proves they read the same values.
+- A range cache, described by the same rows, makes repeated access to
   remote archives cheap and records where every derived chunk came from.
 
-Milestones that would demonstrate it, smallest first:
-
-1. OISST daily, all four endpoints from one table, verified (largely done).
-2. BRAN2023 (many chunks per file, 4D, many variables, ~16.8M chunks per
-   variable) from NCI in situ, byte-verified.
-3. MUR SST three ways (DMR++, HDF5 scan, COG mirror) into one table.
-4. GDAL block-info merged; gdalraster binding released.
-5. sds rows for each published store; the registry published as STAC.
-
-## Open questions
-
-- Which of the unread repos in section 2 belong in the lineage.
-- Who the cold readers are (Pangeo, GDAL developers, ACCESS-NRI, funders,
-  NASA and earthaccess users), since the framing of section 10 depends on
-  it.
-- Whether Lance becomes the store of record for held bytes, the chunk
-  cache and a hardened zaro store, and when an R reader for it appears.
-
-## Sources
-
-Repositories read: mdsumner/sidebyside, hypertidy/regular-in-what,
-mdsumner/trianglewins, rgdal-dev/cogcache, mdsumner/zarrquet,
-mdsumner/pawsey-aad, mdsumner/raad.virtualize, hypertidy/blocklist,
-hypertidy/zaro, hypertidy/sds.
-
-Specs and design notes: [mdim-refs/0.2](https://github.com/wxylib/design/blob/main/specs/mdim-refs-0.2.md),
-[wxylib/design](https://github.com/wxylib/design) m02, m05, m06 and m16.
-
-For the Icechunk section: the Icechunk spec v2.1, changelog and
-virtual-ref reference (icechunk.io); Tom Nicholas's blog posts of June and
-July 2026 and his ESIP deck of May 2026; Earthmover blog posts of September
-and October 2026 (Iceberg head-to-head, tables and tensors, Zax SQL).
-
-Not checked yet: GDAL Icechunk read support in current releases, and the
-Lambda/EC2 split in section 7, which is a suggestion rather than a plan.
+The bytes stay where they are. Everything else is a table, and a choice of
+how to render it.
