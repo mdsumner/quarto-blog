@@ -1,0 +1,12 @@
+# fixtures
+
+Copied from https://github.com/wxylib/fixtures at commit
+e203c85f322bae598ec257763ae6f060937f3cc7, for the appendix figures of this post:
+
+- `cf/oisst-like.zarr`: an OISST-style Zarr v3 store as xarray writes it
+  (packed int16, latitude ascending, longitude 0 to 360)
+- `curvilinear/swath-120x160.tif` and `swath-120x160-lonlat.tif`: a
+  120 x 160 curved swath and its two-band longitude/latitude array, centre
+  coordinates
+
+See that repository for the scripts that make them.
