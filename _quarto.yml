@@ -21,7 +21,7 @@ website:
       - href: about.qmd
         text: About
       - icon: github
-        href: https://github.com/mdsumner
+        href: https://github.com/hypertidy
       - icon: mastodon
         href: https://rstats.me/@mdsumner
       - icon: rss
