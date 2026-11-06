@@ -29,8 +29,8 @@ one its own home: references in a virtual Zarr store, attributes in its
 metadata, and the graph in a lazy engine.
 
 As an inventory of what can appear in a VRT, that is fair. As an account
-of why VRT works, and why it has outlived every attempt to replace it, it
-misses most of the design. The three features describe what goes *in* the
+of why VRT works, and why newer tools keep arriving at parts of it but
+never the whole, it misses most of the design. The three features describe what goes *in* the
 file. The design is in what the file *is* and how it *behaves*. Read that
 way, VRT is six properties, and they cut across the three features:
 
@@ -39,7 +39,7 @@ way, VRT is six properties, and they cut across the three features:
 | **Closure** | the result is a dataset, so it opens anywhere and composes |
 | **Names** | sources are dataset names, from any driver, through any I/O chain |
 | **Placement** | windows of sources are pasted into windows of the output, aligned or not |
-| **Assertion** | the file states what a source lacks or gets wrong |
+| **Assertion** | the VRT augments a source, supplying what it lacks and correcting what it gets wrong |
 | **Deferral** | nothing is read until a window is requested |
 | **Emission** | tools write it; almost no large VRT is written by hand |
 
@@ -48,7 +48,9 @@ way, VRT is six properties, and they cut across the three features:
 "VRT" covers several things that share a name. This post is about
 **classic raster VRT**: a `<VRTDataset>` of `<VRTRasterBand>` elements fed
 by sources (Simple, Complex, Averaged, KernelFiltered), plus derived bands
-and warped VRTs. The neighbours appear only to show where classic ends:
+and warped VRTs. The full grammar is in
+[`gdalvrt.xsd`](https://raw.githubusercontent.com/OSGeo/gdal/master/frmts/vrt/data/gdalvrt.xsd).
+The neighbours appear only to show where classic ends:
 
 - **`vrt://` strings**: one source dataset with `gdal_translate` options
   written as a URI, so there is no file.
@@ -71,8 +73,9 @@ tool reads it, and it can be the source of another VRT. That one fact is
 what "serialised in one go to an XML file" is really doing. It is not a
 packaging detail; it is why VRT composes. A SQL view has the same idea.
 
-- **Classic raster:** full. A source can be another `.vrt`, a `vrt://`
-  string or an inline document, and the nesting goes as deep as you like.
+- **Classic raster:** full. A source can be another `.vrt`, by path or
+  through any `/vsi` chain, or a `vrt://` string, and the nesting goes as
+  deep as you like.
 - **Beyond classic:** every family is closed in its own model. The
   exception is that `vrt://` strings cannot nest, because GDAL splits the
   string at the first `?`. GDALG brings closure to whole pipelines.
@@ -82,16 +85,20 @@ packaging detail; it is why VRT composes. A SQL view has the same idea.
 A source is a dataset name, not a file path. It can be any driver
 (`NETCDF:"f.nc":sst`), any `/vsi` chain
 (`/vsizip/{/vsicurl/https://host/a.zip}/b.tif`), any subdataset, or another
-VRT. Anything GDAL can open can be placed. That reach is where the
-"indirection" of the three-feature view really lives. VRT redirects to
+VRT. Anything GDAL can open can be placed. A name can even cross data
+models: `vrt://f.zarr?transpose=/sst:1,2` picks two dimensions of a
+multidimensional array to form a classic raster, with the rest as bands,
+and that string can sit in `SourceFilename` like any other. That reach is
+where the "indirection" of the three-feature view really lives. VRT redirects to
 *datasets*, not to bytes.
 
 - **Classic raster:** full, through `SourceFilename` and its
   `relativeToVRT` attribute.
 - **Beyond classic:** the same names are used in every family (vector adds
-  open options beside the name). No family's schema types the name: what a
-  name means is defined by the drivers' open code, which is why names are
-  the hardest part to carry outside GDAL.
+  open options beside the name). No family's schema types the name; in
+  `gdalvrt.xsd`, `SourceFilename` is a plain `xs:string`. What a name
+  means is defined by the drivers' open code, which is why names are the
+  hardest part to carry outside GDAL.
 
 ## Placement
 
@@ -99,8 +106,8 @@ A window of a source is pasted into a window of the output. Offsets can be
 fractional, sizes can differ, and sources can overlap. When a request
 arrives, GDAL works out which source window feeds which output window and
 resamples where the sizes or offsets require it. This is the second half
-of "indirection" (several datasets as one), and it is the property no
-other system has.
+of "indirection" (several datasets as one), and no system outside GDAL
+has it.
 
 - **Classic raster:** this is classic's home ground. `SrcRect` and
   `DstRect` are arbitrary 2D windows, and every `ComplexSource` can carry
@@ -111,6 +118,11 @@ other system has.
   window (`srcwin`, `projwin`, `outsize`). Vector VRT has no placement in
   this sense: its nearest equivalents are clipping to a region and
   stacking layers in a union.
+
+GTI exists because classic VRT stops scaling here. Every source is listed
+in the XML, so opening a VRT parses every source entry, and nothing
+indexes them in space. GTI keeps placement and moves the sources into rows
+of an indexed vector layer.
 
 Placement is also where the three-feature split breaks down. In real
 mosaics, indirection *is* an operation:
@@ -136,8 +148,8 @@ carry the same information, and the three-feature split works.
 
 ## Assertion
 
-The file states what a source lacks or gets wrong, without copying a byte.
-The assertions that matter change what the bytes *mean*: a CRS for a file
+The VRT augments a source, supplying what it lacks and correcting what it
+gets wrong, without copying a byte. The assertions that matter change what the bytes *mean*: a CRS for a file
 that has none, a corrected geotransform, a nodata value, a scale and
 offset. Seven of the 29 keys of the `vrt://` syntax begin with `a_` for
 "assign" (`a_srs`, `a_ullr`, `a_gt`, `a_nodata`, `a_scale`, `a_offset`,
@@ -187,7 +199,7 @@ what reads it.
   people and by packages that build dataset names. GDALG is written by
   `gdal` pipelines.
 
-## And the operation chains?
+## Operations come from placement and assertion
 
 The third feature of the three-feature view is real, but it is not a
 property of its own. It is what placement and assertion become once they
@@ -219,9 +231,9 @@ three-feature view was drawn from. It is also where that view goes wrong:
 each feature can be pointed to in the XML, but in placement, indirection
 and computation are one thing.
 
-## Each property has been rebuilt elsewhere
+## Each property turns up elsewhere
 
-| Rebuilt as | Where |
+| Turns up as | Where |
 |---|---|
 | byte-level references, plus history | kerchunk, VirtualiZarr, Icechunk |
 | sources as rows with statistics, so planning becomes pruning | Iceberg, Delta, Lance; GDAL's own GTI |
@@ -231,10 +243,11 @@ and computation are one thing.
 | memory shared across languages and processes | Arrow, mizu |
 
 Each of these does its part better than VRT does. None does all six, and
-none composes misaligned windows of arbitrary formats by name. That is
-still classic raster VRT's alone.
+outside GDAL none composes misaligned windows of arbitrary formats by
+name. Inside GDAL that is classic raster VRT, and GTI as its answer to
+scale.
 
-## So what
+## What a replacement has to keep
 
 Splitting VRT into parts is the right instinct for an ecosystem that wants
 each part done well in its own place. The six properties add two cautions.
