@@ -219,7 +219,7 @@ compute values.
 - **Beyond classic:** derived arrays in multidimensional VRT, SQL and
   reprojected layers in vector VRT, and whole pipelines in GDALG.
 
-## The boundary in one table
+## Six properties, four forms
 
 | | Classic raster | `vrt://` | Multidimensional | Vector |
 |---|---|---|---|---|
