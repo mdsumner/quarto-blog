@@ -42,6 +42,10 @@ three features:
 | **Deferral** | nothing is read until a window is requested |
 | **Emission** | tools write it; almost no large VRT is written by hand |
 
+The three features are not lost: indirection lives in names and placement,
+metadata edits in assertion, and operation chains are what placement and
+assertion become once they compute values.
+
 ## One format, three data models
 
 VRT is GDAL's virtualization format, and it is first-class in all three of
@@ -84,11 +88,12 @@ opens what comes before it, and always runs `GDALTranslate` onto a new VRT
 dataset, applying the options after the `?` if there are any. So
 `vrt://f.tif` is the source wrapped in a transient identity VRT, and a
 `vrt://` string does not nest: everything after the first `?` belongs to
-the outermost string. And because the options are `gdal_translate`'s, a
-`vrt://` string cannot warp. The other forms are closed in their own
-models (a multidimensional VRT can read another, and a vector VRT layer
-can come from another vector VRT), and GDALG extends closure to whole
-pipelines.
+the outermost string (in `vrt://vrt://f.tif?bands=1?outsize=50%`, the
+second `?` lands inside the value of `bands`). And because the options are
+`gdal_translate`'s, a `vrt://` string cannot warp. The other forms are
+closed in their own models (a multidimensional VRT can read another, and a
+vector VRT layer can come from another vector VRT), and GDALG extends
+closure to whole pipelines.
 
 ## Names
 
@@ -146,12 +151,16 @@ Placement is also where the three-feature split breaks down. In real
 mosaics, indirection *is* an operation:
 
 - **USGS 3DEP 1 arc-second seamless VRT** (3,817 tiles, read 2026-11-05):
-  every tile is placed at a fractional offset and read with bilinear
-  resampling. The VRT writes its pixel size as 2.777778e-4 degree, while
-  the tiles sit on a 1/3600-degree pitch, so the tile offsets drift by up
-  to 0.10 px across the mosaic. The "redirection" becomes an interpolation
-  on every read, caused by one rounded constant. The tiles also overlap
-  their neighbours by 6 pixels.
+  every tile is read with bilinear resampling. The VRT writes its pixel
+  size as 2.777778e-4 degree, while the tiles sit on a 1/3600-degree
+  pitch, so the tile offsets drift by up to 0.10 px across the mosaic.
+  Each tile's offset is its distance from the mosaic's origin divided by
+  the VRT's pixel size, and with the rounded size that is almost never a
+  whole number: only 5 of the 3,817 tiles land on whole pixels. Every
+  other tile sits at a fractional offset and is read through its bilinear
+  resampling. The "redirection" becomes an interpolation on every read,
+  caused by one rounded constant. The tiles also overlap their neighbours
+  by 6 pixels.
 - **Copernicus DEM GLO-30 as one VRT** (26,475 tiles): 55 % of the tiles
   are resampled to the common grid, because their native widths change
   with latitude. Every one of the remaining 45 % overlaps a neighbour by a
