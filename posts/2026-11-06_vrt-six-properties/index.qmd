@@ -62,8 +62,7 @@ and warped VRTs. The neighbours appear only to show where classic ends:
 
 The six properties do not divide neatly between classic and the rest. All
 six are present in classic raster VRT. What changes from family to family
-is how strongly each one shows. So each section below ends with two
-lines: what classic raster VRT does, and what lies beyond it.
+is how strongly each one shows.
 
 ## Closure
 
@@ -216,9 +215,9 @@ compute values.
 
 Classic raster VRT is the strongest form of placement and emission. It is
 the reason "VRT" means a mosaic to most people, and it is the family the
-three-feature view describes best. It is also the family where that view
-is least accurate, because placement is where indirection and computation
-become one thing.
+three-feature view was drawn from. It is also where that view goes wrong:
+each feature can be pointed to in the XML, but in placement, indirection
+and computation are one thing.
 
 ## Each property has been rebuilt elsewhere
 
