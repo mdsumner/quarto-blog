@@ -162,11 +162,9 @@ mosaics, indirection *is* an operation:
 A virtual Zarr store (kerchunk, VirtualiZarr, Icechunk) can hold none of
 these placements. It references chunks that line up exactly with its own
 grid. By contrast, the GHRSST MUR daily COGs as a multidimensional VRT
-(53,520 placements across six arrays: full resolution and five overview
-levels) are all aligned, identity placements. Each overview array reaches
-its level through the name alone (`GTIFF_DIR:2:/vsicurl/...`). For data
-shaped like that, the VRT and a byte-reference store carry the same
-information, and the three-feature split works.
+(38,365 placements across five arrays) are all aligned, identity
+placements. For data shaped like that, the VRT and a byte-reference
+store carry the same information, and the three-feature split works.
 
 ## Assertion
 
@@ -291,7 +289,7 @@ the XML itself rather than handing it to GDAL, needs to model two things.
 *The counts above come from reading each VRT's XML, with no source opened:
 the [3DEP 1 arc-second VRT](https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt)
 on 2026-11-05, the
-[GHRSST MUR VRT](https://data.source.coop/ausantarctic/ausantarctic-scratch/ghrsst/ghrsst-mur-cog-analysed_sst/mdim.vrt)
+[GHRSST MUR VRT](https://data.source.coop/ausantarctic/ghrsst-mur-v2/ghrsst-mur-v2.vrt)
 on 2026-11-06, and the
 [COP30 VRT](https://opentopography.s3.sdsc.edu/raster/COP30/COP30_hh.vrt)
 on 2026-10-19.*
