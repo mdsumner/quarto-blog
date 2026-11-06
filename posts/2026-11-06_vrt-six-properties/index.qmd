@@ -214,7 +214,7 @@ names, and GDALG by `gdal` pipelines.
 
 The output need not be a file. VRT is XML text, and the text is itself a
 dataset name: `gdal.Open()` accepts a string that begins `<VRTDataset`.
-`gdal_translate -of VRT in.tif /vsistdout/` writes it to a pipe, and
+Then `gdal_translate -of VRT in.tif /vsistdout/` writes it to a pipe, and
 `gdal.Translate('', src, format='VRT')` builds one in memory, with the XML
 available from `GetMetadata('xml:VRT')`. So a pipeline that emits VRT is
 not bound to files. The recipe travels as a string and opens wherever it
