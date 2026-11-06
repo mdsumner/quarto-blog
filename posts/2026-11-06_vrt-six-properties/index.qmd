@@ -69,8 +69,7 @@ is how strongly each one shows.
 ## Closure
 
 A VRT is a dataset. It opens wherever GDAL opens a dataset, every GDAL
-tool reads it, and it can be the source of another VRT. That one fact is
-what "serialised in one go to an XML file" is really doing. It is not a
+tool reads it, and it can be the source of another VRT. That is not a
 packaging detail; it is why VRT composes. A SQL view has the same idea.
 
 - **Classic raster:** full. A source can be another `.vrt`, by path or
@@ -151,7 +150,9 @@ carry the same information, and the three-feature split works.
 The VRT augments a source, supplying what it lacks and correcting what it
 gets wrong, without copying a byte. The assertions that matter change what the bytes *mean*: a CRS for a file
 that has none, a corrected geotransform, a nodata value, a scale and
-offset. Seven of the 29 keys of the `vrt://` syntax begin with `a_` for
+offset. Seven of the
+[keys listed in the docs](https://gdal.org/en/stable/drivers/raster/vrt.html#vrt-connection-string)
+for the `vrt://` syntax begin with `a_` for
 "assign" (`a_srs`, `a_ullr`, `a_gt`, `a_nodata`, `a_scale`, `a_offset`,
 `a_coord_epoch`). Metadata repair is one of the main reasons people write
 VRTs at all.
@@ -250,20 +251,24 @@ scale.
 ## What a replacement has to keep
 
 Splitting VRT into parts is the right instinct for an ecosystem that wants
-each part done well in its own place. The six properties add two cautions.
+each part done well in its own place. A replacement has to keep two
+things.
 
-1. **The split is exact only for aligned data.** For model output stored
-   one file per step, a VRT lowers to byte references with nothing lost.
+1. **Keep placement as an operation.** Byte references are exact only for
+   aligned data. For model output stored one file per step, a VRT lowers
+   to byte references with nothing lost.
    For imagery mosaics, placement *is* an operation, so indirection and
    regridding have to be modelled together. A converter from VRT to
    virtual Zarr should say, source by source, which placements become byte
    references exactly and why the rest cannot.
-2. **A replacement has to keep closure, deferral and emission.** Without
+2. **Keep closure, deferral and emission.** Without
    them, it replaces the file format but not what made the format useful:
    a dataset that opens anywhere, plans before it reads, and is written by
    the tools people already run.
 
-*The counts above come from reading each VRT's XML, with no source opened.
-The 3DEP and GHRSST VRTs were read on 2026-11-05, and the COP30 source
-table on 2026-10-19. The script and results are in
-[wxylib/design, measurements/m29-vrt-rework](https://github.com/wxylib/design/tree/main/measurements/m29-vrt-rework).*
+*The counts above come from reading each VRT's XML, with no source opened:
+the [3DEP 1 arc-second VRT](https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt)
+and the GHRSST MUR VRT on 2026-11-05, and the
+[COP30 VRT](https://opentopography.s3.sdsc.edu/raster/COP30/COP30_hh.vrt)
+on 2026-10-19.*
+<!-- TODO: link the GHRSST MUR VRT once identified (38,360 placements, five arrays) -->
