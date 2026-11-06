@@ -55,7 +55,8 @@ This post is mostly about **classic raster VRT**: a `<VRTDataset>` of
 `<VRTRasterBand>` elements fed by sources (Simple, Complex, Averaged,
 KernelFiltered), plus derived bands and warped VRTs. The full grammar is in
 [`gdalvrt.xsd`](https://raw.githubusercontent.com/OSGeo/gdal/master/frmts/vrt/data/gdalvrt.xsd).
-The other forms show where classic ends:
+The other forms of virtualization in GDAL show where classic raster VRT
+ends:
 
 - **`vrt://` strings**: one source dataset with `gdal_translate` options
   written as a URI, so there is no file.
