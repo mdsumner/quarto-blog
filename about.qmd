@@ -6,7 +6,7 @@ about:
   links:
     - icon: github
       text: GitHub
-      href: https://github.com/mdsumner
+      href: https://github.com/hypertidy
     - icon: mastodon
       text: Fediverse
       href: https://rstats.me/@mdsumner
