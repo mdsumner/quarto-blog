@@ -43,14 +43,18 @@ way, VRT is six properties, and they cut across the three features:
 | **Deferral** | nothing is read until a window is requested |
 | **Emission** | tools write it; almost no large VRT is written by hand |
 
-## Where the boundary sits
+## One format, three data models
 
-"VRT" covers several things that share a name. This post is about
-**classic raster VRT**: a `<VRTDataset>` of `<VRTRasterBand>` elements fed
-by sources (Simple, Complex, Averaged, KernelFiltered), plus derived bands
-and warped VRTs. The full grammar is in
+VRT is GDAL's virtualization format, and it is first-class in all three of
+GDAL's data models. The `VRT` driver serves classic and multidimensional
+rasters, and `OGR_VRT` serves vector. A `vrt://` connection string is a
+fourth form: a classic raster VRT with no file.
+
+This post is mostly about **classic raster VRT**: a `<VRTDataset>` of
+`<VRTRasterBand>` elements fed by sources (Simple, Complex, Averaged,
+KernelFiltered), plus derived bands and warped VRTs. The full grammar is in
 [`gdalvrt.xsd`](https://raw.githubusercontent.com/OSGeo/gdal/master/frmts/vrt/data/gdalvrt.xsd).
-The neighbours appear only to show where classic ends:
+The other forms show where classic ends:
 
 - **`vrt://` strings**: one source dataset with `gdal_translate` options
   written as a URI, so there is no file.
