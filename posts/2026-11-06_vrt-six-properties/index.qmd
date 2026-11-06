@@ -1,0 +1,295 @@
+---
+title: "VRT is six properties: Closure, Names, Placement, Assertion, Deferral, Emission"
+description: >
+  GDAL's VRT is often described as three features in one XML file:
+  indirection, metadata edits and operation chains. Read as a design it is
+  six properties, and for classic raster VRT the six are what make it hard
+  to replace.
+author: "Michael Sumner"
+date: "2026-11-06"
+categories: [vrt, gdal, virtualization, zarr]
+execute:
+  eval: false
+---
+
+## Three features in one file
+
+Look at a classic raster VRT from GDAL and it's easy to see three
+features sharing one XML file:
+
+1. **Indirection.** The file holds references, not data. Reads go to
+   other files, other locations, or several datasets presented as one.
+2. **Metadata edits.** Attributes such as names, descriptions and labels
+   are changed without touching the arrays.
+3. **Operation chains.** Interpolation, regridding and the like are
+   recorded as a lazy graph that runs when the data is read.
+
+On this view, VRT bundles three jobs, and a modern stack would give each
+one its own home: references in a virtual Zarr store, attributes in its
+metadata, and the graph in a lazy engine.
+
+As an inventory of what can appear in a VRT, that is fair. As an account
+of why VRT works, and why newer tools keep arriving at parts of it but
+never the whole, it misses most of the design. The three features describe
+what goes *in* the file. The design is in what the file *is* and how it
+*behaves*. Read that way, VRT is six properties, and they cut across the
+three features:
+
+| Property | In one line |
+|---|---|
+| **Closure** | the result is a dataset, so it opens anywhere and composes |
+| **Names** | sources are dataset names, from any driver, through any I/O chain |
+| **Placement** | windows of sources are pasted into windows of the output, aligned or not |
+| **Assertion** | the VRT augments a source, supplying what it lacks and correcting what it gets wrong |
+| **Deferral** | nothing is read until a window is requested |
+| **Emission** | tools write it; almost no large VRT is written by hand |
+
+## One format, three data models
+
+VRT is GDAL's virtualization format, and it is first-class in all three of
+GDAL's data models. The `VRT` driver serves classic and multidimensional
+rasters, and `OGR_VRT` serves vector. A `vrt://` connection string is a
+fourth form: a classic raster VRT with no file.
+
+This post is mostly about **classic raster VRT**: a `<VRTDataset>` of
+`<VRTRasterBand>` elements fed by sources (Simple, Complex, Averaged,
+KernelFiltered), plus derived bands and warped VRTs. The full grammar is in
+[`gdalvrt.xsd`](https://raw.githubusercontent.com/OSGeo/gdal/master/frmts/vrt/data/gdalvrt.xsd).
+The other forms of virtualization in GDAL show where classic raster VRT
+ends:
+
+- **`vrt://` strings**: one source dataset with `gdal_translate` options
+  written as a URI, so there is no file.
+- **Multidimensional VRT**: groups, dimensions and arrays. Sources are
+  placed by index slabs, and derived arrays add View, Transpose, Resample
+  and Grid steps.
+- **Vector VRT** (`OGRVRTDataSource`): layers built from other layers,
+  with fields, geometry from columns, SQL, regions and unions.
+- **GTI** (sources as rows of a vector layer) and **GDALG** (a saved
+  `gdal` pipeline that opens as a dataset): close relatives, not VRT.
+
+All six properties are present in classic raster VRT, and the sections
+below describe them there. The other forms come in where they show a
+property more strongly or less, and the table near the end compares all
+four.
+
+## Closure
+
+A VRT is a dataset. It opens wherever GDAL opens a dataset, every GDAL
+tool reads it, and it can be the source of another VRT. That is not a
+packaging detail; it is why VRT composes. A SQL view has the same idea.
+
+A source can be another VRT in two ways. It can be a `.vrt` file, by path
+or through any `/vsi` chain, and that nesting goes as deep as you like. Or
+it can be a `vrt://` string. GDAL splits the string at the first `?`,
+opens what comes before it, and always runs `GDALTranslate` onto a new VRT
+dataset, applying the options after the `?` if there are any. So
+`vrt://f.tif` is the source wrapped in a transient identity VRT, and a
+`vrt://` string does not nest: everything after the first `?` belongs to
+the outermost string. And because the options are `gdal_translate`'s, a
+`vrt://` string cannot warp. The other forms are closed in their own
+models (a multidimensional VRT can read another, and a vector VRT layer
+can come from another vector VRT), and GDALG extends closure to whole
+pipelines.
+
+## Names
+
+A source is a dataset name, not a file path. It can be any driver
+(`NETCDF:"f.nc":sst`), any `/vsi` chain
+(`/vsizip/{/vsicurl/https://host/a.zip}/b.tif`), any subdataset, or another
+VRT. Anything GDAL can open can be placed. A name can even cross data
+models: `vrt://f.zarr?transpose=/sst:1,2` picks two dimensions of a
+multidimensional array to form a classic raster, with the rest as bands,
+and that string can sit in `SourceFilename` like any other. That reach is
+where the "indirection" of the three-feature view really lives. VRT
+redirects to *datasets*, not to bytes.
+
+The `/vsi` chains are GDAL's virtual file system, one of its quiet modules.
+Python reaches it directly as `gdal.VSIFile`, a file-like object over any
+`/vsi` path. rasterio adopts it under its own abstractions (`s3://` URLs,
+`MemoryFile`).
+
+The same names are used in every form; vector VRT adds open options beside
+the name. No schema types the name: in `gdalvrt.xsd`, `SourceFilename` is a
+plain `xs:string`, with a `relativeToVRT` attribute. What a name means is
+defined by the drivers' open code, which is why names are the hardest part
+to carry outside GDAL.
+
+## Placement
+
+A window of a source is pasted into a window of the output. Offsets can be
+fractional, sizes can differ, and sources can overlap. When a request
+arrives, GDAL works out which source window feeds which output window and
+resamples where the sizes or offsets require it. This is the second half
+of "indirection" (several datasets as one), and GDAL excels at quietly
+providing this capability.
+
+In classic raster VRT, `SrcRect` and `DstRect` are arbitrary 2D windows,
+and every `ComplexSource` can carry its own resampling. Multidimensional
+VRT is stricter: it places sources by integer slabs (`SourceSlab`,
+`DestSlab`), and resampling is a separate derived step.
+
+Non-aligned placement works because GDAL's `RasterIO` has no alignment
+requirement. A VRT source turns the requested output window into a
+floating-point source window and passes it on with the source's
+resampling method. With nearest neighbour the fractional offsets are
+rounded to the nearest pixel; with bilinear, cubic and the rest, `RasterIO`
+interpolates across the fractional window. A classic VRT never reprojects
+a source: placement assumes one CRS. Reprojection is the warper's job,
+either as a warped VRT over a whole dataset or, in GTI, per source
+whenever a source's CRS differs from the index's.
+
+GTI exists because classic VRT stops scaling here. Every source is listed
+in the XML, so opening a VRT parses every source entry, and nothing
+indexes them in space. GTI keeps placement and moves the sources into rows
+of an indexed vector layer.
+
+Placement is also where the three-feature split breaks down. In real
+mosaics, indirection *is* an operation:
+
+- **USGS 3DEP 1 arc-second seamless VRT** (3,817 tiles, read 2026-11-05):
+  every tile is placed at a fractional offset and read with bilinear
+  resampling. The VRT writes its pixel size as 2.777778e-4 degree, while
+  the tiles sit on a 1/3600-degree pitch, so the tile offsets drift by up
+  to 0.10 px across the mosaic. The "redirection" becomes an interpolation
+  on every read, caused by one rounded constant. The tiles also overlap
+  their neighbours by 6 pixels.
+- **Copernicus DEM GLO-30 as one VRT** (26,475 tiles): 55 % of the tiles
+  are resampled to the common grid, because their native widths change
+  with latitude. Every one of the remaining 45 % overlaps a neighbour by a
+  pixel.
+
+A virtual Zarr store (kerchunk, VirtualiZarr, Icechunk) can hold none of
+these placements. It references chunks that line up exactly with its own
+grid. By contrast, the GHRSST MUR daily COGs as a multidimensional VRT
+(38,365 placements across five arrays) are all aligned, identity
+placements. For data shaped like that, the VRT and a byte-reference
+store carry the same information, and the three-feature split works.
+
+## Assertion
+
+The VRT augments a source, supplying what it lacks and correcting what it
+gets wrong, without copying a byte. The assertions that matter change what
+the bytes *mean*: a CRS for a file that has none, a corrected
+geotransform, a nodata value, a scale and offset. Seven of the
+[keys listed in the docs](https://gdal.org/en/stable/drivers/raster/vrt.html#vrt-connection-string)
+for the `vrt://` syntax begin with `a_` for "assign" (`a_srs`, `a_ullr`,
+`a_gt`, `a_nodata`, `a_scale`, `a_offset`, `a_coord_epoch`). Metadata
+repair is one of the main reasons people write VRTs at all.
+
+In classic raster VRT the assertions are `SRS`, `GeoTransform`,
+`NoDataValue`, `Offset`, `Scale`, `ColorInterp`, band `Description` and
+metadata. Renaming barely applies, because classic bands are numbered and
+a description is all they have. It matters in the other forms: arrays and
+dimensions are named in multidimensional VRT, and fields are renamed and
+retyped in vector VRT. Multidimensional VRT can also assert whole
+coordinates (`RegularlySpacedValues`) and dimension types, and vector VRT
+asserts geometry type, layer CRS and geometry built from columns.
+
+The 3DEP case shows why assertion belongs next to placement. An exact
+pixel size of 1/3600 degree would make every one of its placements
+integer, and remove the resampling entirely.
+
+## Deferral
+
+Opening a VRT plans; it does not read. Ask for a window, and GDAL works
+out which sources, which source windows and which operations that window
+needs before it touches a byte, with the block cache underneath. So a VRT
+is cheap to make, cheap to pass on, and cheap to throw away.
+
+Every form works this way. The plan, though, lives only inside GDAL's
+objects. No form exposes it as data that another process, language or
+engine could take.
+
+## Emission
+
+Tools compile *to* VRT. That is how VRTs with thousands of sources exist,
+and why most VRTs in the wild are tool output rather than written by hand.
+Classic raster VRT is written by `gdalbuildvrt`, `gdal_translate -of VRT`,
+`gdalwarp -of VRT`, and `gdal raster mosaic` and `stack`.
+Multidimensional VRT is written by `gdal mdim mosaic` (GDAL 3.12) and
+`gdal mdim convert`. Vector VRTs are mostly written by hand or by
+scripts, `vrt://` strings by people and by packages that build dataset
+names, and GDALG by `gdal` pipelines.
+
+The output need not be a file. VRT is XML text, and the text is itself a
+dataset name: `gdal.Open()` accepts a string that begins `<VRTDataset`.
+Then `gdal_translate -of VRT in.tif /vsistdout/` writes it to a pipe, and
+`gdal.Translate('', src, format='VRT')` builds one in memory, with the XML
+available from `GetMetadata('xml:VRT')`. So a pipeline that emits VRT is
+not bound to files. The recipe travels as a string and opens wherever it
+lands, as long as its source names resolve there.
+
+## Operations come from placement and assertion
+
+The third feature of the three-feature view is real, but it is not a
+property of its own. It is what placement and assertion become once they
+compute values.
+
+In classic raster VRT these are derived bands with pixel functions, warped
+VRTs, and the per-source operations of `ComplexSource` (scale, offset,
+LUT, nodata), `KernelFilteredSource` and `AveragedSource`. The most common
+operation in practice is the one hidden inside placement: a resample
+whenever a source window and output window differ. The other forms have
+derived arrays in multidimensional VRT, SQL and reprojected layers in
+vector VRT, and whole pipelines in GDALG.
+
+## Six properties, four forms
+
+| | Classic raster | `vrt://` | Multidimensional | Vector |
+|---|---|---|---|---|
+| Closure | full, nests | doesn't nest | full | full |
+| Names | full | the string is a name | full | full, plus open options |
+| Placement | arbitrary 2D windows, resampled per source | one window | integer slabs; resampling is a derived step | none; regions and unions |
+| Assertion | CRS, geotransform, nodata, scale, offset | the seven `a_` keys | plus coordinates, dimension types, names | geometry, CRS, field names and types |
+| Deferral | full | full | full | full |
+| Emission | many GDAL tools | people and packages | `gdal mdim mosaic`, `gdal mdim convert` | mostly by hand |
+| Operations | pixel functions, warped VRT, per-source ops | translate options | derived array steps | SQL, reprojection |
+
+Classic raster VRT is the strongest form of placement and emission. It is
+the reason "VRT" means a mosaic or a stack, most of the time, and it is
+the family the three-feature view was drawn from. It is also where that
+view goes wrong: each feature can be pointed to in the XML, but in
+placement, indirection and computation are one thing.
+
+## Each property turns up elsewhere
+
+| Turns up as | Where |
+|---|---|
+| byte-level references, plus history | kerchunk, VirtualiZarr, Icechunk |
+| sources as rows with statistics, so planning becomes pruning | Iceberg, Delta, Lance; GDAL's own GTI |
+| the plan as a value an engine optimises | Polars, DuckDB, DataFusion, JAX |
+| assertion as declared metadata | Zarr v3 attributes and conventions |
+| saved operation chains that reopen | `gdal` pipelines and `.gdalg.json` |
+| memory shared across languages and processes | Arrow, mizu |
+
+Each of these does its part better than VRT does. None does all six, and
+outside GDAL none composes misaligned windows of arbitrary formats by
+name. Inside GDAL that is classic raster VRT, and GTI as its answer to
+scale.
+
+## What software ingesting VRT needs to model
+
+Splitting VRT into parts is the right instinct for an ecosystem that wants
+each part done well in its own place. Software that ingests a VRT, reading
+the XML itself rather than handing it to GDAL, needs to model two things.
+
+1. **Placement as an operation.** Byte references are exact only for
+   aligned data. For model output stored one file per step, a VRT lowers
+   to byte references with nothing lost. For imagery mosaics, placement
+   *is* an operation, so indirection and regridding have to be modelled
+   together. A converter from VRT to virtual Zarr should say, source by
+   source, which placements become byte references exactly and why the
+   rest cannot.
+2. **Closure, names and deferral.** A source can be another VRT, a
+   source name means whatever GDAL's drivers say it means, and nothing is
+   read until a window is asked for. Software that models only the
+   top-level XML reads one VRT file, not the format.
+
+*The counts above come from reading each VRT's XML, with no source opened:
+the [3DEP 1 arc-second VRT](https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt)
+on 2026-11-05, the
+[GHRSST MUR VRT](https://data.source.coop/ausantarctic/ghrsst-mur-v2/ghrsst-mur-v2.vrt)
+on 2026-11-06, and the
+[COP30 VRT](https://opentopography.s3.sdsc.edu/raster/COP30/COP30_hh.vrt)
+on 2026-10-19.*
