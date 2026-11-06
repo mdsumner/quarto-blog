@@ -208,7 +208,7 @@ and why most VRTs in the wild are tool output rather than written by hand.
 Classic raster VRT is written by `gdalbuildvrt`, `gdal_translate -of VRT`,
 `gdalwarp -of VRT`, and `gdal raster mosaic` and `stack`.
 Multidimensional VRT is written by `gdal mdim mosaic` (GDAL 3.12) and
-`gdalmdimtranslate -of VRT`. Vector VRTs are mostly written by hand or by
+`gdal mdim convert`. Vector VRTs are mostly written by hand or by
 scripts, `vrt://` strings by people and by packages that build dataset
 names, and GDALG by `gdal` pipelines.
 
@@ -243,14 +243,14 @@ vector VRT, and whole pipelines in GDALG.
 | Placement | arbitrary 2D windows, resampled per source | one window | integer slabs; resampling is a derived step | none; regions and unions |
 | Assertion | CRS, geotransform, nodata, scale, offset | the seven `a_` keys | plus coordinates, dimension types, names | geometry, CRS, field names and types |
 | Deferral | full | full | full | full |
-| Emission | many GDAL tools | people and packages | `gdal mdim mosaic`, `gdalmdimtranslate` | mostly by hand |
+| Emission | many GDAL tools | people and packages | `gdal mdim mosaic`, `gdal mdim convert` | mostly by hand |
 | Operations | pixel functions, warped VRT, per-source ops | translate options | derived array steps | SQL, reprojection |
 
 Classic raster VRT is the strongest form of placement and emission. It is
-the reason "VRT" means a mosaic to most people, and it is the family the
-three-feature view was drawn from. It is also where that view goes wrong:
-each feature can be pointed to in the XML, but in placement, indirection
-and computation are one thing.
+the reason "VRT" means a mosaic or a stack, most of the time, and it is
+the family the three-feature view was drawn from. It is also where that
+view goes wrong: each feature can be pointed to in the XML, but in
+placement, indirection and computation are one thing.
 
 ## Each property turns up elsewhere
 
