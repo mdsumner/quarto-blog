@@ -82,15 +82,15 @@ packaging detail; it is why VRT composes. A SQL view has the same idea.
 A source can be another VRT in two ways. It can be a `.vrt` file, by path
 or through any `/vsi` chain, and that nesting goes as deep as you like. Or
 it can be a `vrt://` string. GDAL splits the string at the first `?`,
-opens what comes before it, and applies the options after it with
-`GDALTranslate` onto a new VRT dataset. So `vrt://vrt://f.tif` opens, but
-only one set of options survives the split: in
-`vrt://vrt://f.tif?bands=1?outsize=50%,50%`, everything after the first
-`?` belongs to the outer string. And because the options are
-`gdal_translate`'s, a `vrt://` string cannot warp. The other forms are
-closed in their own models (a multidimensional VRT can read another, and a
-vector VRT layer can come from another vector VRT), and GDALG extends
-closure to whole pipelines.
+opens what comes before it, and always runs `GDALTranslate` onto a new VRT
+dataset, applying the options after the `?` if there are any. So
+`vrt://f.tif` is the source wrapped in a transient identity VRT, and a
+`vrt://` string does not nest: everything after the first `?` belongs to
+the outermost string. And because the options are `gdal_translate`'s, a
+`vrt://` string cannot warp. The other forms are closed in their own
+models (a multidimensional VRT can read another, and a vector VRT layer
+can come from another vector VRT), and GDALG extends closure to whole
+pipelines.
 
 ## Names
 
@@ -238,7 +238,7 @@ vector VRT, and whole pipelines in GDALG.
 
 | | Classic raster | `vrt://` | Multidimensional | Vector |
 |---|---|---|---|---|
-| Closure | full, nests | nests, one set of options | full | full |
+| Closure | full, nests | doesn't nest | full | full |
 | Names | full | the string is a name | full | full, plus open options |
 | Placement | arbitrary 2D windows, resampled per source | one window | integer slabs; resampling is a derived step | none; regions and unions |
 | Assertion | CRS, geotransform, nodata, scale, offset | the seven `a_` keys | plus coordinates, dimension types, names | geometry, CRS, field names and types |
