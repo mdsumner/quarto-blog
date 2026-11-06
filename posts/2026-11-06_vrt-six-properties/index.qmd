@@ -121,13 +121,23 @@ A window of a source is pasted into a window of the output. Offsets can be
 fractional, sizes can differ, and sources can overlap. When a request
 arrives, GDAL works out which source window feeds which output window and
 resamples where the sizes or offsets require it. This is the second half
-of "indirection" (several datasets as one), and no system outside GDAL
-has it.
+of "indirection" (several datasets as one), and GDAL excels at quietly
+providing this capability.
 
 In classic raster VRT, `SrcRect` and `DstRect` are arbitrary 2D windows,
 and every `ComplexSource` can carry its own resampling. Multidimensional
 VRT is stricter: it places sources by integer slabs (`SourceSlab`,
 `DestSlab`), and resampling is a separate derived step.
+
+Non-aligned placement works because GDAL's `RasterIO` has no alignment
+requirement. A VRT source turns the requested output window into a
+floating-point source window and passes it on with the source's
+resampling method. With nearest neighbour the fractional offsets are
+rounded to the nearest pixel; with bilinear, cubic and the rest, `RasterIO`
+interpolates across the fractional window. A classic VRT never reprojects
+a source: placement assumes one CRS. Reprojection is the warper's job,
+either as a warped VRT over a whole dataset or, in GTI, per source
+whenever a source's CRS differs from the index's.
 
 GTI exists because classic VRT stops scaling here. Every source is listed
 in the XML, so opening a VRT parses every source entry, and nothing
