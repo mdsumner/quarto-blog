@@ -1,10 +1,8 @@
 ---
-title: "VRT is six properties: Closure, Names, Placement, Assertion, Deferral, Emission"
+title: "VRT is Closure, Names, Placement, Assertion, Deferral, Emission"
 description: >
-  GDAL's VRT is often described as three features in one XML file:
-  indirection, metadata edits and operation chains. Read as a design it is
-  six properties, and for classic raster VRT the six are what make it hard
-  to replace.
+  GDAL VRT has three features in one XML file: indirection, metadata edits,
+  and operation chains. There is a deeper design though, in six properties.
 author: "Michael Sumner"
 date: "2026-11-06"
 categories: [vrt, gdal, virtualization, zarr]
