@@ -107,8 +107,7 @@ redirects to *datasets*, not to bytes.
 The `/vsi` chains are GDAL's virtual file system, one of its quiet modules.
 Python reaches it directly as `gdal.VSIFile`, a file-like object over any
 `/vsi` path. rasterio adopts it under its own abstractions (`s3://` URLs,
-`MemoryFile`), and that is where most array users meet it without seeing
-it.
+`MemoryFile`).
 
 The same names are used in every form; vector VRT adds open options beside
 the name. No schema types the name: in `gdalvrt.xsd`, `SourceFilename` is a
