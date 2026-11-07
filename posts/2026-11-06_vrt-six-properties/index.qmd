@@ -1,5 +1,5 @@
 ---
-title: "VRT is: Closure, Names, Placement, Assertion, Deferral, Emission"
+title: "Lazy, Generated, Corrective: VRT Unifies Datasets by Position and Metadata"
 description: >
   GDAL VRT has three features in one XML file: indirection, metadata edits,
   and operation chains. There is a deeper design though, in six properties.
